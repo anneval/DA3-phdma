@@ -1,0 +1,38 @@
+---
+title: "A1"
+author: "Anne Valder"
+date: "2023-11-09"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+rm(list=ls())
+```
+
+```{r, include=FALSE}
+getwd()
+source("set-data-directory.R")
+source("ch00-tech-prep/theme_bg.R")
+source("ch00-tech-prep/da_helper_functions.R")
+```
+
+```{r}
+# Import libraries 
+library(tidyverse)
+library(readr)
+```
+
+## Data
+```{r}
+data_in <- paste(data_dir,"cps-earnings","clean/", sep = "/")
+
+#import data (state must be as character: it's a mix of double and character in raw)
+data_all <- read_csv(paste0(data_in,"morg-2014-emp.csv"), 
+                     col_types = cols(.default = "?", 
+                                      state = "c"))
+```
+
