@@ -1,12 +1,10 @@
 ---
-title: "Prediction with Machine Learning for Economists"
-subtitle: "Assignemnt 1"
+title: "Assignment 1"
+subtitle: "Course: ECBS6067 - Prediction with Machine Learning for Economists"
 author: "Anne Valder"
 due date: "2023-11-10"
 output:
   pdf_document: default
-   header-includes: 
-  - \renewcommand{\and}{\\}
   html_document:
     df_print: paged
 ---
@@ -20,17 +18,8 @@ knitr::opts_chunk$set(echo = TRUE)
 rm(list=ls())
 ```
 
-# Tasks
 
-1. Build four predictive models using linear regression for earnings per hour. The target variable is earnings per hour, all others would be predictors.Model 1 shall be the simplest, model 4 the more complex. It shall be OLS. You shall explain your choice of predictors.
-
-2. Compare model performance of these models (a) RMSE in the full sample, (2) cross-validated RMSE and (c) BIC in the full sample.
-
-3. Discuss the relationship between model complexity and performance. You may use visual aids.
-
-
-
-```{r, echo=FALSE}
+```{r, echo=FALSE, include=FALSE}
 # Set directory, load functions and theme 
 
 getwd()
@@ -41,7 +30,7 @@ source("ch00-tech-prep/da_helper_functions.R")
 ```
 
  
-```{r, echo=FALSE}
+```{r, echo=FALSE, include=FALSE}
 # Import libraries
 library(tidyverse)
 library(readr)
@@ -53,8 +42,19 @@ library(fixest)
 library(lmtest)
 ```
 
+# Task 1 
 
-```{r, echo=FALSE}
+*Build four predictive models using linear regression for earnings per hour. The target variable is earnings per hour, all others would be predictors. Model 1 shall be the simplest, model 4 the more complex. It shall be OLS. You shall explain your choice of predictors.*
+
+In order to construct 4 different models to predict earnings per hour, I first filter for the occupation '2310' which includes elementary and middle school teachers. Possible research questions could therefore be 
+
+data preparation steps:
+1) Sample design
+2) Label engineering
+3) Feature engineering
+ 
+
+```{r, echo=FALSE, include=FALSE}
 ## Load data
 data_all <- read_csv(paste0(data_dir,"/cps-earnings/clean/morg-2014-emp.csv"),
                      col_types = cols(.default = "?", 
@@ -65,7 +65,7 @@ data_all <- read_csv(paste0(data_dir,"/cps-earnings/clean/morg-2014-emp.csv"),
 
 #### e.g. Research question: Predictions might help you to decide what salary to put in a job ad for teachers. Or what are the differences between female and male salaries. Are there differences between government and private employees regarding the salary?
 
-```{r}
+```{r,echo=FALSE, include=FALSE}
 data <- data_all %>% filter(occ2012 == 2310)  #Elementary and middle school teachers
 
 summary(data)
@@ -73,7 +73,7 @@ glimpse (data)
 ```
 
 ### Sample design: filtering the data to match the business/ policy question.
-```{r}
+```{r,echo=FALSE,include=FALSE}
 # 1) construct the target variable earnings per hour from 'weekly earnings' and 'usual work hours':
 
 data <- data %>% mutate(earnh=earnwke/uhours)
@@ -117,7 +117,7 @@ summary(as.factor(data$ind02)) # all TRUE
 
 
 ### visualize data 
-```{r}
+```{r,echo=FALSE, include=FALSE}
 # distribution of earnings per hour 
 
 
@@ -132,7 +132,7 @@ hist_earnh
 ```
 
 ### label engineering 
-```{r}
+```{r,echo=FALSE, include=FALSE}
 ### label engineering: log vs label, otherwise given:
 # Use when: More interested in relative changes than in changes per currency. Log differences approximate relative, or percentage, differences, and relative price differences are often more stable.The related technical advantage is that the distribution of log prices is often close to normal, which makes linear regressions give better approximation to average differences.
 
@@ -153,7 +153,7 @@ hist_learnh
 
 ## feature engineering
 ### 1) missing values 
-```{r}
+```{r,echo=FALSE, include=FALSE}
 #1. What to do with missing values? 
 
 # where do we have missing variables in our data se?
@@ -173,7 +173,7 @@ data$unioncov  <- fct_explicit_na(data$unioncov ,na_level = "Missing")
 #If binary (e.g, yes/no; male/female; 1/2) – create a 0/1 binary variable
 #3. How to use text to create variables
 #May simply go and find some words, and create binaries –> seminar
-```{r}
+```{r,echo=FALSE, include=FALSE}
 #2a) # female (1,0) create binary!  
 summary(as.factor(data$sex))
 data <- data %>% mutate(female=as.numeric(sex==2))
@@ -193,7 +193,7 @@ boxplot_gender
 ```
 
 
-```{r}
+```{r,echo=FALSE, include=FALSE}
 #2b) Native & Foreign create binary!
 
 summary(as.factor(data$prcitshp)) 
@@ -236,7 +236,7 @@ data %>% dplyr::select(earnh,native) %>% filter(native==0) %>% summary()
 ```
 
 
-```{r}
+```{r,echo=FALSE, include=FALSE}
 #2c) # class of worker: private / gov. Create binary! 
 
 summary(as.factor(data$class)) 
@@ -274,7 +274,7 @@ boxplot_class
 ```
 
 
-```{r}
+```{r,echo=FALSE, include=FALSE}
 #2) race binary as: white and other.
 
 summary(as.factor(data$race)) 
@@ -297,7 +297,7 @@ boxplot_race
 ```
 
 
-```{r}
+```{r,echo=FALSE, include=FALSE}
 # 2d) Education level. Create binaries.  
 
 summary(as.factor(data$grade92)) 
@@ -337,7 +337,7 @@ data  <- data %>% mutate(edu_HighS = as.numeric(grade92==38),
 ```
 
 
-```{r}
+```{r,echo=FALSE, include=FALSE}
 #2e) UNION Do as 1,0 
 summary(as.factor(data$unionmme))
 summary(as.factor(data$unioncov))
@@ -358,7 +358,7 @@ boxplot_union
 ```
 
 # Furhter demographics (family)
-```{r}
+```{r,echo=FALSE, include=FALSE}
 data <- data %>% mutate(married = as.numeric(marital==1 | marital==2),
                       divorced = as.numeric(marital==3 | marital==5 | marital==6),
                       wirowed = as.numeric(marital==4),
@@ -372,7 +372,7 @@ data <- data %>% mutate(married = as.numeric(marital==1 | marital==2),
 ```
 
 
-```{r}
+```{r,echo=FALSE, include=FALSE}
 # graph group by state? mean salary by state? 
 # check frequency of teacher by state type
 data %>%
@@ -396,7 +396,7 @@ salary_state
 ```
 
 ### 4) functional form X's (plot against earning per hour)
-```{r}
+```{r,echo=FALSE, include=FALSE}
 #4. Selecting functional form - log or sq of X's
 
 # age sqaured 
@@ -440,7 +440,7 @@ plot_agelearnh
 ```
 
 ### 5) Interactions 
-```{r}
+```{r,echo=FALSE, include=FALSE}
 #5. Thinking interactions
 ### add interactions, non-linear functional forms, additional variables 
 
@@ -462,13 +462,13 @@ data <- data %>% mutate(female_age =female*age,
 
 
 # extend for all relevant variables!
-```{r}
+```{r,echo=FALSE, include=FALSE}
 # data summary
-#datasummary(earnh + age + agesq + lnage + female + female_age +female_agesq +female_lnage + native + private + white + union + married + divorced + wirowed + nevermar + child0 + child1 + child2 + child3 + child4plus  + edu_HighS +edu_BA + edu_MA + edu_Prof + edu_PhD    ~ Mean + Median + Min + Max + P25 + P75 + N , data = data )
+datasummary(earnh + age + agesq + lnage + female + female_age +female_agesq +female_lnage + native + private + white + union + married + divorced + wirowed + nevermar + child0 + child1 + child2 + child3 + child4plus  + edu_HighS +edu_BA + edu_MA + edu_Prof + edu_PhD    ~ Mean + Median + Min + Max + P25 + P75 + N , data = data )
 ```
 
 ### Split data randomly into test (20%) and train set (80%) (for CV RMSE later)
-```{r}
+```{r,echo=FALSE, include=FALSE}
 data <- data %>% mutate(train_index = sample(c("train","test"),nrow(data),replace=TRUE,prob =c(0.8,0.2)))
 
 data_train <- data %>% filter(train_index == "train")
@@ -476,6 +476,8 @@ data_train <- data %>% filter(train_index == "train")
 data_test <- data %>% filter(train_index == "test")
 
 ```
+
+
 
 ## Models
 
@@ -487,7 +489,7 @@ data_test <- data %>% filter(train_index == "test")
 
 ### Model 1: the target variable is continous: earnings per hour (levels)
 
-```{r}
+```{r,echo=FALSE, include=FALSE}
 # model 1 - explain earnings per hour by education / skilllevel
 
 #model_1 <- lm_robust(earnh ~  edu_BA + edu_MA + edu_Prof + edu_PhD, data,se_type = "HC1")
@@ -503,7 +505,7 @@ summary(resid_pred1)
 
 ### Model 2: the target variable is continous: earnings per hour
 
-```{r}
+```{r,echo=FALSE, include=FALSE}
 # model 2 - explain earnings per hour by education / skilllevel & experience (lnage)
 
 #model_2 <- lm_robust(earnh  ~  age + lnage + edu_BA + edu_MA + edu_Prof + edu_PhD, data, se_type = "HC1")
@@ -519,7 +521,7 @@ summary(resid_pred2)
 ```
 ### Model 3: the target variable is continous: earnings per hour
 
-```{r}
+```{r,echo=FALSE, include=FALSE}
 # model 3 - explain earnings per hour by education / skilllevel & experience (lnage) plus several other covariates like sex, family status, union ...
 
 #model_3 <- lm_robust(earnh  ~ age  + lnage + edu_BA + edu_MA + edu_Prof + edu_PhD + female + union + native + private + white + married + divorced + wirowed + nevermar + child0 + + child1 + child2 + child3 + child4plus, data, se_type = "HC1")
@@ -534,13 +536,13 @@ summary(resid_pred3)
 ```
 ### Model 4: the target variable is continous: earnings per hour
 ## add interactions 
-```{r}
+```{r,echo=FALSE, include=FALSE}
 # model 4 - explain earnings per hour by education / skilllevel & experience (lnage) plus several other covariates like sex, family status, union ...including interaction terms (agesex)
 
 
 #model_4 <- lm_robust(earnh  ~ age  + lnage + edu_BA + edu_MA + edu_Prof + edu_PhD + female + union + native + private + white + married + divorced + wirowed + nevermar + child0 + + child1 + child2 + child3 + child4plus + female_age + female_lnage, data = data,se_type = "HC1")
 
-model_4 <- lm(earnh  ~ age  + lnage + edu_BA + edu_MA + edu_Prof + edu_PhD + female + union + native + private + white + married + divorced + wirowed + nevermar + child0 + + child1 + child2 + child3 + child4plus + female_age + female_lnage, data = data)
+model_4 <- lm(earnh  ~ age  + lnage + edu_BA + edu_MA + edu_Prof + edu_PhD + female + union + native + private + white + married + divorced + wirowed + nevermar + child0 + + child1 + child2 + child3 + child4plus + female_age + female_lnage, data)
 summary(model_4)
 
 pred_4 <- predict(model_4, data)
@@ -550,15 +552,16 @@ summary(resid_pred4)
 ```
 
 #model 5 FE - is OLS but than eval diff.. 
-```{r}
+```{r,echo=FALSE, include=FALSE}
 model_5 <- feols(earnh ~ age  + lnage + edu_BA + edu_MA + edu_Prof + edu_PhD | stfips, data ,vcov = "HC1")
 
 summary(model_5)
 ```
 
+2. Compare model performance of these models (a) RMSE in the full sample, (2) cross-validated RMSE and (c) BIC in the full sample.
 
 ### Model performance (RMSE(full), BIC, RMSE(CV)); indirect and direct approach for evaluation of model fit
-```{r}
+```{r,echo=FALSE, include=FALSE}
 models <- c("model_1", "model_2","model_3", "model_4")
 BIC <- c()
 RMSE <- c()
@@ -589,14 +592,54 @@ stargazer(evaluation, summary = F,sep="")
 
 ```
 ### Cross validation 
-```{r}
+```{r,echo=FALSE, include=FALSE}
 set.seed(123)
+# set number of folds
+k <- 5
+
+cv1 <- train(earnh ~  edu_BA + edu_MA + edu_Prof + edu_PhD, data, method = "lm", trControl = trainControl(method = "cv", number = k))
+
+cv2 <- train(earnh  ~  lnage + edu_BA + edu_MA + edu_Prof + edu_PhD, data, method = "lm", trControl = trainControl(method = "cv", number = k))
+
+cv3 <- train(earnh  ~ age  + lnage + edu_BA + edu_MA + edu_Prof + edu_PhD + female + union + native + private + white + married + divorced + wirowed + nevermar + child0 + + child1 + child2 + child3 + child4plus, data, method = "lm", trControl = trainControl(method = "cv", number = k), na.action = "na.omit")
+
+cv4 <- train(earnh  ~ age  + lnage + edu_BA + edu_MA + edu_Prof + edu_PhD + female + union + native + private + white + married + divorced + wirowed + nevermar + child0 + + child1 + child2 + child3 + child4plus + female_age + female_lnage, data, method = "lm", trControl = trainControl(method = "cv", number = k), na.action = "na.omit")
+
+
+
+# calculate average rmse
+cv <- c("cv1", "cv2", "cv3", "cv4")
+rmse_cv <- c()
+
+
+for(i in 1:length(cv)){
+  rmse_cv[i] <- sqrt((get(cv[i])$resample[[1]][1]^2 +
+                       get(cv[i])$resample[[1]][2]^2 +
+                       get(cv[i])$resample[[1]][3]^2 +
+                       get(cv[i])$resample[[1]][4]^2)/4)
+}
+
+# summarize results
+cv_mat <- data.frame(rbind(cv1$resample[4], "Average"),
+           rbind(cv1$resample[1], rmse_cv[1]),
+           rbind(cv2$resample[1], rmse_cv[2]),
+           rbind(cv3$resample[1], rmse_cv[3]),
+           rbind(cv4$resample[1], rmse_cv[4])
+           )
+
+colnames(cv_mat)<-c("Resample","Model1", "Model2", "Model3", "Model4")
+cv_mat
+
+#stargazer(cv_mat, summary = F, digits=2, float=F) 
+
+stargazer(cv_mat, summary = F, digits=1, float=F, type="text")
+
 ```
 
-
+3. Discuss the relationship between model complexity and performance. You may use visual aids.
 
 ### relationship between model complexity and performance: 
-```{r}
+```{r,echo=FALSE, include=FALSE}
 # graphs 
 ```
 
