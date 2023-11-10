@@ -1,21 +1,38 @@
 ---
-title: "Assignemnt 1"
+title: "Prediction with Machine Learning for Economists"
+subtitle: "Assignemnt 1"
 author: "Anne Valder"
-date: "2023-11-09"
-output: pdf_document
+due date: "2023-11-10"
+output:
+  pdf_document: default
+   header-includes: 
+  - \renewcommand{\and}{\\}
+  html_document:
+    df_print: paged
 ---
 
-```{r setup, include=FALSE}
+```{r setup, echo=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r,include=FALSE}
 # Clear memory
-```{r}
 rm(list=ls())
 ```
 
+# Tasks
+
+1. Build four predictive models using linear regression for earnings per hour. The target variable is earnings per hour, all others would be predictors.Model 1 shall be the simplest, model 4 the more complex. It shall be OLS. You shall explain your choice of predictors.
+
+2. Compare model performance of these models (a) RMSE in the full sample, (2) cross-validated RMSE and (c) BIC in the full sample.
+
+3. Discuss the relationship between model complexity and performance. You may use visual aids.
+
+
+
+```{r, echo=FALSE}
 # Set directory, load functions and theme 
-```{r, include=FALSE, echo=FALSE}
+
 getwd()
 #setwd("C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies")
 source("set-data-directory.R")
@@ -23,17 +40,22 @@ source("ch00-tech-prep/theme_bg.R")
 source("ch00-tech-prep/da_helper_functions.R")
 ```
 
-# Import libraries 
-```{r, include=FALSE}
+ 
+```{r, echo=FALSE}
+# Import libraries
 library(tidyverse)
 library(readr)
 library(dplyr)
 library(Metrics)
 library(caret)
+library(modelsummary)
+library(fixest)
+library(lmtest)
 ```
 
+
+```{r, echo=FALSE}
 ## Load data
-```{r, include=FALSE}
 data_all <- read_csv(paste0(data_dir,"/cps-earnings/clean/morg-2014-emp.csv"),
                      col_types = cols(.default = "?", 
                                 )) 
@@ -306,11 +328,11 @@ boxplot_grade92 <- ggplot(data, aes(x = grade92, y = earnh)) +
 
 boxplot_grade92
 
-data  <- data %>% mutate(edu_HighS = as.numeric(grade92==38,
+data  <- data %>% mutate(edu_HighS = as.numeric(grade92==38),
                         edu_BA = as.numeric(grade92==43),
                         edu_MA=as.numeric(grade92==44),
                         edu_Prof = as.numeric(grade92==45),
-                        edu_PhD = as.numeric(grade92==46)))
+                        edu_PhD = as.numeric(grade92==46))
 
 ```
 
@@ -358,7 +380,7 @@ data %>%
   dplyr::summarize(frequency=n()) %>%
   mutate(percent = frequency / sum(frequency)*100)
 
-
+# most teacher is CA,, FL, NY, TX
 salary_state <- ggplot(data, aes(reorder(stfips, earnh, FUN = mean), earnh)) +
   geom_bar(position='dodge', stat='summary', fun='mean',binwidth = 0.1, fill = color[1], color =color.outline, alpha = 0.8, size = 0.25) +
    coord_flip() +
@@ -367,8 +389,10 @@ salary_state <- ggplot(data, aes(reorder(stfips, earnh, FUN = mean), earnh)) +
 
 salary_state
 
+# use as fixed effects - state 
+
 # Continuous – nothing to do. Make sure it is stored as number
-glimpse(data)
+#glimpse(data)
 ```
 
 ### 4) functional form X's (plot against earning per hour)
@@ -383,12 +407,13 @@ glimpse(data)
 data <- data %>% mutate(agesq=age^2,
                         lnage = log(age))
 
-plot_ageearnh <- ggplot(data = data, aes(x=age, y=earnh)) +
+plot_ageearnh <- ggplot(data = data, aes(x=data$age, y=earnh)) +
   geom_point( color = color[1], size = 1,  shape = 16, alpha = 0.8, show.legend=F, 
               na.rm = TRUE) + 
   geom_smooth(method="lm", se=F, colour=color[4], size=1, span=0.9) +
   labs(x = "Age (years)",y = "Earnings per hour") +
   theme_bg()
+
 
 plot_ageearnh
 
@@ -412,12 +437,11 @@ plot_agelearnh <- ggplot(data = data, aes(x=lnage, y=earnh)) +
 
 plot_agelearnh
 
-
 ```
 
 ### 5) Interactions 
 ```{r}
-#5. Thinking interactions  - boxplots? 
+#5. Thinking interactions
 ### add interactions, non-linear functional forms, additional variables 
 
 #Look at possible need for interactions by domain knowledge / visualization
@@ -430,7 +454,7 @@ data <- data %>% mutate(female_age =female*age,
                         female_lnage = female*lnage)
 
 #Other ideas:
-# occupation*region – industry and labour market structures that impact on wages differ between regions (have only one occupation)
+# occupation*region – industry and labour market structures that impact on wages differ between regions (have only one occupation) # do fixed effects with state
 
 #occupation*age and occupation*age squared – the return to work experience may be different for different  occupations (have only one occupation)
 
@@ -440,8 +464,7 @@ data <- data %>% mutate(female_age =female*age,
 # extend for all relevant variables!
 ```{r}
 # data summary
-datasummary(  earnh + age + agesq + lnage + female + female_age +female_agesq +female_lnage + native + private + white + union + married + divorced + wirowed + nevermar + child0 + child1 + child2 + child3 + child4plus       ~
-               Mean + Median + Min + Max + P25 + P75 + N , data = data )
+#datasummary(earnh + age + agesq + lnage + female + female_age +female_agesq +female_lnage + native + private + white + union + married + divorced + wirowed + nevermar + child0 + child1 + child2 + child3 + child4plus  + edu_HighS +edu_BA + edu_MA + edu_Prof + edu_PhD    ~ Mean + Median + Min + Max + P25 + P75 + N , data = data )
 ```
 
 ### Split data randomly into test (20%) and train set (80%) (for CV RMSE later)
@@ -454,34 +477,123 @@ data_test <- data %>% filter(train_index == "test")
 
 ```
 
-### Model 1: the target variable is continous: earnings per hour
-###The goal is to predict the earnings per hour that may be appropriate for an teachers fulfilling certain criteria.
+## Models
+
+### The goal is to predict the earnings per hour that may be appropriate for teachers fulfilling certain criteria.
+
+# do log model for comparison?
+
+# Recommended variables to include by AI: https://chat.openai.com/share/44e6cfb2-6a2a-4c1d-a824-1618ae741cd7
+
+### Model 1: the target variable is continous: earnings per hour (levels)
+
 ```{r}
-# earn ~ grade92
+# model 1 - explain earnings per hour by education / skilllevel
+
+#model_1 <- lm_robust(earnh ~  edu_BA + edu_MA + edu_Prof + edu_PhD, data,se_type = "HC1")
+#summary(model_1)
+
+model_1 <- lm(earnh ~  edu_BA + edu_MA + edu_Prof + edu_PhD, data)
+summary(model_1)
+
+pred_1 <- predict(model_1, data)
+resid_pred1 <- pred_1-data$earnh
+summary(resid_pred1)
 ```
 
 ### Model 2: the target variable is continous: earnings per hour
 
 ```{r}
-# earn ~ grade92 + age + agesq + sex + sector
+# model 2 - explain earnings per hour by education / skilllevel & experience (lnage)
+
+#model_2 <- lm_robust(earnh  ~  age + lnage + edu_BA + edu_MA + edu_Prof + edu_PhD, data, se_type = "HC1")
+
+model_2 <- lm(earnh  ~  lnage + edu_BA + edu_MA + edu_Prof + edu_PhD, data)
+
+summary(model_2)
+
+pred_2 <- predict(model_2, data)
+resid_pred2 <- pred_2-data$earnh
+summary(resid_pred2)
+
 ```
 ### Model 3: the target variable is continous: earnings per hour
 
 ```{r}
-# earn ~ grade92+ age + agesq + stfips+ race + sex
+# model 3 - explain earnings per hour by education / skilllevel & experience (lnage) plus several other covariates like sex, family status, union ...
+
+#model_3 <- lm_robust(earnh  ~ age  + lnage + edu_BA + edu_MA + edu_Prof + edu_PhD + female + union + native + private + white + married + divorced + wirowed + nevermar + child0 + + child1 + child2 + child3 + child4plus, data, se_type = "HC1")
+
+model_3 <- lm(earnh  ~ age  + lnage + edu_BA + edu_MA + edu_Prof + edu_PhD + female + union + native + private + white + married + divorced + wirowed + nevermar + child0 + + child1 + child2 + child3 + child4plus, data)
+
+summary(model_3)
+
+pred_3 <- predict(model_3, data)
+resid_pred3 <- pred_3-data$earnh
+summary(resid_pred3)
 ```
 ### Model 4: the target variable is continous: earnings per hour
-
+## add interactions 
 ```{r}
-# earn ~ grade92+ age + agesq + stfips+ race + sex + marrital + childpres + prcitship + union  INTERACTIONS(age*sex,agesq*sex)
+# model 4 - explain earnings per hour by education / skilllevel & experience (lnage) plus several other covariates like sex, family status, union ...including interaction terms (agesex)
 
+
+#model_4 <- lm_robust(earnh  ~ age  + lnage + edu_BA + edu_MA + edu_Prof + edu_PhD + female + union + native + private + white + married + divorced + wirowed + nevermar + child0 + + child1 + child2 + child3 + child4plus + female_age + female_lnage, data = data,se_type = "HC1")
+
+model_4 <- lm(earnh  ~ age  + lnage + edu_BA + edu_MA + edu_Prof + edu_PhD + female + union + native + private + white + married + divorced + wirowed + nevermar + child0 + + child1 + child2 + child3 + child4plus + female_age + female_lnage, data = data)
+summary(model_4)
+
+pred_4 <- predict(model_4, data)
+resid_pred4 <- pred_4-data$earnh
+summary(resid_pred4)
+
+```
+
+#model 5 FE - is OLS but than eval diff.. 
+```{r}
+model_5 <- feols(earnh ~ age  + lnage + edu_BA + edu_MA + edu_Prof + edu_PhD | stfips, data ,vcov = "HC1")
+
+summary(model_5)
 ```
 
 
 ### Model performance (RMSE(full), BIC, RMSE(CV)); indirect and direct approach for evaluation of model fit
 ```{r}
-# see tables 
+models <- c("model_1", "model_2","model_3", "model_4")
+BIC <- c()
+RMSE <- c()
+RSquared <- c()
+regr <- c()
+k <- c()
+library(Metrics)
+# Get for all models
+for ( i in 1:length(models)){
+  BIC[i] <- BIC(get(models[i]))
+  RMSE[i] <- rmse(predict(get(models[i])), get(models[i])$model$earnh)
+  RSquared[i] <-summary(get(models[i]))$r.squared
+  regr[[i]] <- coeftest(get(models[i]), vcov = sandwich)
+  k[i] <- get(models[i])$rank -1
+}
+
+
+evaluation <- data.frame(models, k, RSquared, RMSE, BIC)
+evaluation
+
+evaluation <- evaluation %>%
+  mutate(models = paste0("(",gsub("reg","",models),")")) %>%
+  rename(Model = models, "R-squared" = RSquared, "RMSE (full)" = RMSE, "N predictors" = k)
+evaluation
+
+stargazer(evaluation, summary = F,sep="")
+
+
 ```
+### Cross validation 
+```{r}
+set.seed(123)
+```
+
+
 
 ### relationship between model complexity and performance: 
 ```{r}
