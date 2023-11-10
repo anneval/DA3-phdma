@@ -1,5 +1,5 @@
 ---
-title: "A1"
+title: "Assignemnt 1"
 author: "Anne Valder"
 date: "2023-11-09"
 output: pdf_document
@@ -9,30 +9,482 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Clear memory
 ```{r}
 rm(list=ls())
 ```
 
-```{r, include=FALSE}
+# Set directory, load functions and theme 
+```{r, include=FALSE, echo=FALSE}
 getwd()
+#setwd("C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies")
 source("set-data-directory.R")
 source("ch00-tech-prep/theme_bg.R")
 source("ch00-tech-prep/da_helper_functions.R")
 ```
 
-```{r}
 # Import libraries 
+```{r, include=FALSE}
 library(tidyverse)
 library(readr)
+library(dplyr)
+library(Metrics)
+library(caret)
 ```
 
-## Data
-```{r}
-data_in <- paste(data_dir,"cps-earnings","clean/", sep = "/")
-
-#import data (state must be as character: it's a mix of double and character in raw)
-data_all <- read_csv(paste0(data_in,"morg-2014-emp.csv"), 
+## Load data
+```{r, include=FALSE}
+data_all <- read_csv(paste0(data_dir,"/cps-earnings/clean/morg-2014-emp.csv"),
                      col_types = cols(.default = "?", 
-                                      state = "c"))
+                                )) 
+```
+
+### Data preperations (first filtering for occupation: 2310 - elementary and middle school teachers)
+
+#### e.g. Research question: Predictions might help you to decide what salary to put in a job ad for teachers. Or what are the differences between female and male salaries. Are there differences between government and private employees regarding the salary?
+
+```{r}
+data <- data_all %>% filter(occ2012 == 2310)  #Elementary and middle school teachers
+
+summary(data)
+glimpse (data)
+```
+
+### Sample design: filtering the data to match the business/ policy question.
+```{r}
+# 1) construct the target variable earnings per hour from 'weekly earnings' and 'usual work hours':
+
+data <- data %>% mutate(earnh=earnwke/uhours)
+
+                         
+# 2) drop extreme values where earning per hour is below 1 or larger than 300. We are interested in predicting "standard" teaching salaries.Salaries smaller than 1 would be considered errors in our case. Keeping an extreme value like '583' that is likely to be an error, will have a high cost - the quadratic errors in the loss function will tilt the curve and our prediction will be off for most observations.
+
+data %>% dplyr::select(earnh) %>% summary()
+data <- data %>% filter(earnh >= 1 & earnh <= 300)
+
+# 3) select age range of working population (18-65) as we want to predict a competitive teacher salary (here also a proxy for teachers working full time / main job)
+
+data %>% dplyr::select(age) %>% summary()
+#summary(as.factor(data$age))
+
+data <- data %>% filter(age >= 18 & earnh <= 65)
+
+# 4) Only consider teachers with a certain level of education (we do not want to include for example tutoring from high school students when predicting a standard competitive teacher salary. Thus we restrict the sample to people who have a High school graduate, diploma or GED (i.e. grade92 >= 38)  
+
+# variable grade 92: Highest grade attended
+#34 7th or 8th
+#36 10th 
+#37 11th
+#38 12th grade NO DIPLOMA
+#39 High school graduate, diploma or GED START 
+#40 Some college but no degree 
+#41 Associate degree -- occupational/vocational 
+#42 Associate degree -- academic program 
+#43 Bachelor's degree (e.g. BA,AB,BS) 
+#44 Master's degree (e.g. MA,MS,MEng,Med,MSW,MBA) 
+#45 Professional school deg. (e.g. MD,DDS,DVM,LLB,JD)
+#46 Doctorate degree (e.g. PhD, EdD) 
+
+summary(as.factor(data$grade92))
+data <- data %>% filter(grade92 >= 38)
+
+
+summary(as.factor(data$ind02)) # all TRUE 
+
+```
+
+
+### visualize data 
+```{r}
+# distribution of earnings per hour 
+
+
+hist_earnh <- ggplot(data, aes(x=earnh))+
+              geom_histogram(binwidth = 2, fill = color[1], color = color.outline, 
+                             alpha = 0.8, size = 0.25) +
+              ylab("Count") +
+              xlab("Earnings per hour") +
+              theme_bg()
+
+hist_earnh
+```
+
+### label engineering 
+```{r}
+### label engineering: log vs label, otherwise given:
+# Use when: More interested in relative changes than in changes per currency. Log differences approximate relative, or percentage, differences, and relative price differences are often more stable.The related technical advantage is that the distribution of log prices is often close to normal, which makes linear regressions give better approximation to average differences.
+
+#do:Look at some patterns & Compare model performance
+
+data <- data %>% mutate(learnh=log(earnh))
+
+
+hist_learnh <- ggplot(data, aes(x=learnh))+
+              geom_histogram(binwidth = 0.1, fill = color[1], color =color.outline, alpha = 0.8, size = 0.25) +
+              ylab("Count") +
+              xlab("Earnings per hour (log)") +
+              theme_bg()
+
+hist_learnh
+# levels seems to be fine here 
+```
+
+## feature engineering
+### 1) missing values 
+```{r}
+#1. What to do with missing values? 
+
+# where do we have missing variables in our data se?
+to_filter <- sapply(data, function(x) sum(is.na(x)))
+to_filter[to_filter > 0]
+
+data$ethnic <- fct_explicit_na(as.character(data$ethnic),na_level = "Missing")
+data$unioncov  <- fct_explicit_na(data$unioncov ,na_level = "Missing")
+
+#ethnic, use race instead
+#union cov, use unionmme instead - so no imputations necessary
+
+```
+
+### 2) & 3)  ordered categorical values, text, binary variables 
+#2. Dealing with ordered categorical values - continuous or set of binaries
+#If binary (e.g, yes/no; male/female; 1/2) – create a 0/1 binary variable
+#3. How to use text to create variables
+#May simply go and find some words, and create binaries –> seminar
+```{r}
+#2a) # female (1,0) create binary!  
+summary(as.factor(data$sex))
+data <- data %>% mutate(female=as.numeric(sex==2))
+
+#  graph: earnings distribution male & female
+
+boxplot_gender <- ggplot(data, aes(x = female, y = earnh)) +
+  stat_boxplot(aes(group = female), geom = "errorbar", width = 0.3,
+               color = c(color[2],color[1]), size = 0.5, na.rm=T)+
+  geom_boxplot(aes(group = female),
+               color = c(color[2],color[1]), fill = c(color[2],color[1]),
+               size = 0.5, width = 0.6, alpha = 0.3, na.rm=T, outlier.shape = NA) +
+  labs(x = "Sex (0 = male, 1 = female)",y = "Earnings per hour")+
+  theme_bg()
+
+boxplot_gender
+```
+
+
+```{r}
+#2b) Native & Foreign create binary!
+
+summary(as.factor(data$prcitshp)) 
+
+# graph: earnings distribution Citizenship status (boxplot)
+
+boxplot_native <- ggplot(data, aes(x = prcitshp, y = earnh)) +
+  stat_boxplot(aes(group = prcitshp), geom = "errorbar", width = 0.3,
+               color = c(color[5],color[4],color[3],color[2],color[1]), size = 0.5, na.rm=T)+
+  geom_boxplot(aes(group = prcitshp),
+               color = c(color[5],color[4],color[3],color[2],color[1]), fill = c(color[5],color[4],color[3],color[2],color[1]),
+               size = 0.5, width = 0.6, alpha = 0.3, na.rm=T, outlier.shape = NA) +
+  labs(x = "Citizenship status",y = "Earnings per hour")+
+  theme_bg()+
+    scale_x_discrete(labels = label_wrap(10)) 
+
+boxplot_native
+
+# Native binary 
+
+data <- data %>% mutate(native = ifelse(prcitshp=="Native, Born Abroad Of US Parent(s)",1,ifelse(prcitshp=="Native, Born in PR or US Outlying Area",1,ifelse(prcitshp=="Native, Born In US",1,0))))
+
+summary(as.factor(data$native)) 
+
+# graph: earnings distribution native & foreign (boxplot)
+
+boxplot_native2 <- ggplot(data, aes(x = native, y = earnh)) +
+  stat_boxplot(aes(group = native), geom = "errorbar", width = 0.3,
+               color = c(color[2],color[1]), size = 0.5, na.rm=T)+
+  geom_boxplot(aes(group = native),
+               color = c(color[2],color[1]), fill = c(color[2],color[1]),
+               size = 0.5, width = 0.6, alpha = 0.3, na.rm=T, outlier.shape = NA) +
+  labs(x = "Citizenship status (0 = foreign, 1= native)",y = "Earnings per hour")+
+  theme_bg()
+
+boxplot_native2
+
+data %>% dplyr::select(earnh,native) %>% filter(native==1) %>% summary()
+data %>% dplyr::select(earnh,native) %>% filter(native==0) %>% summary()
+```
+
+
+```{r}
+#2c) # class of worker: private / gov. Create binary! 
+
+summary(as.factor(data$class)) 
+
+
+boxplot_class2 <- ggplot(data, aes(x = class, y = earnh)) +
+  stat_boxplot(aes(group = class), geom = "errorbar", width = 0.3,
+               color = c(color[5],color[4],color[3],color[2],color[1]), size = 0.5, na.rm=T)+
+  geom_boxplot(aes(group = class),
+               color = c(color[5],color[4],color[3],color[2],color[1]), fill = c(color[5],color[4],color[3],color[2],color[1]),
+               size = 0.5, width = 0.6, alpha = 0.3, na.rm=T, outlier.shape = NA) +
+  labs(x = "Class of worker",y = "Earnings per hour")+
+  theme_bg()
+
+boxplot_class2
+
+# change to binary 
+
+data <- data %>% mutate(private = ifelse(class == "Private, For Profit",1,ifelse(class == "Private, Nonprofit",1,0)))
+
+summary(as.factor(data$private)) 
+
+boxplot_class <- ggplot(data, aes(x = private, y = earnh)) +
+  stat_boxplot(aes(group = private), geom = "errorbar", width = 0.3,
+               color = c(color[2],color[1]), size = 0.5, na.rm=T)+
+  geom_boxplot(aes(group = private),
+               color = c(color[2],color[1]), fill = c(color[2],color[1]),
+               size = 0.5, width = 0.6, alpha = 0.3, na.rm=T, outlier.shape = NA) +
+  labs(x = "Class of worker (0 = government, 1 = private)",y = "Earnings per hour")+
+  theme_bg()
+
+boxplot_class
+
+# add graph: earnings distribution private & gov (boxplot)
+```
+
+
+```{r}
+#2) race binary as: white and other.
+
+summary(as.factor(data$race)) 
+
+data <- data %>% mutate(white = ifelse(race == 1 ,1,0))
+
+summary(as.factor(data$white))
+
+boxplot_race <- ggplot(data, aes(x = white, y = earnh)) +
+  stat_boxplot(aes(group = white), geom = "errorbar", width = 0.3,
+               color = c(color[2],color[1]), size = 0.5, na.rm=T)+
+  geom_boxplot(aes(group = white),
+               color = c(color[2],color[1]), fill = c(color[2],color[1]),
+               size = 0.5, width = 0.6, alpha = 0.3, na.rm=T, outlier.shape = NA) +
+  labs(x = "Race (White = 1, Else = 0)",y = "Earnings per hour")+
+  theme_bg()
+
+boxplot_race
+
+```
+
+
+```{r}
+# 2d) Education level. Create binaries.  
+
+summary(as.factor(data$grade92)) 
+
+#graph: earnings distribution education levels 
+
+
+#38 12th grade NO DIPLOMA
+#39 High school graduate, diploma or GED START 
+#40 Some college but no degree 
+#41 Associate degree -- occupational/vocational 
+#42 Associate degree -- occupational/vocational 
+#43 Bachelor's degree (e.g. BA,AB,BS) 
+#44 Master's degree (e.g. MA,MS,MEng,Med,MSW,MBA) 
+#45 Professional school deg. (e.g. MD,DDS,DVM,LLB,JD)
+#46 Doctorate degree (e.g. PhD, EdD) 
+
+boxplot_grade92 <- ggplot(data, aes(x = grade92, y = earnh)) +
+  stat_boxplot(aes(group = grade92), geom = "errorbar", width = 0.3,
+               color = c(color[1],color[2],color[3],color[4],color[5],color[4],color[3],color[2],color[1]), size = 0.5, na.rm=T)+
+  geom_boxplot(aes(group = grade92),
+               color = c(color[1],color[2],color[3],color[4],color[5],color[4],color[3],color[2],color[1]), fill = c(color[1],color[2],color[3],color[4],color[5],color[4],color[3],color[2],color[1]),
+               size = 0.5, width = 0.6, alpha = 0.3, na.rm=T, outlier.shape = NA) +
+  labs(x = "Education level",y = "Earnings per hour")+
+  scale_x_continuous(limits =c(37,47), breaks = seq(38,46, 1),label = c("12th grade NO DIPLOMA", "High school graduate, diploma or GED START", "Some college but no degree","Associate degree -- occupational/vocational","Associate degree -- academic", "Bachelor's degree", "Master's degree", "Professional school deg.", "Doctorate degree"))+
+  theme_bg() +
+  coord_flip()
+
+boxplot_grade92
+
+data  <- data %>% mutate(edu_HighS = as.numeric(grade92==38,
+                        edu_BA = as.numeric(grade92==43),
+                        edu_MA=as.numeric(grade92==44),
+                        edu_Prof = as.numeric(grade92==45),
+                        edu_PhD = as.numeric(grade92==46)))
+
+```
+
+
+```{r}
+#2e) UNION Do as 1,0 
+summary(as.factor(data$unionmme))
+summary(as.factor(data$unioncov))
+
+data <- data %>% mutate(union = as.numeric(unionmme=="Yes" | unioncov=="Yes"))
+
+boxplot_union <- ggplot(data, aes(x = union, y = earnh)) +
+  stat_boxplot(aes(group = union), geom = "errorbar", width = 0.3,
+               color = c(color[2],color[1]), size = 0.5, na.rm=T)+
+  geom_boxplot(aes(group = union),
+               color = c(color[2],color[1]), fill = c(color[2],color[1]),
+               size = 0.5, width = 0.6, alpha = 0.3, na.rm=T, outlier.shape = NA) +
+  labs(x = "Union (0 = No, 1 = Yes)",y = "Earnings per hour")+
+  theme_bg()
+
+boxplot_union
+
+```
+
+# Furhter demographics (family)
+```{r}
+data <- data %>% mutate(married = as.numeric(marital==1 | marital==2),
+                      divorced = as.numeric(marital==3 | marital==5 | marital==6),
+                      wirowed = as.numeric(marital==4),
+                      nevermar = as.numeric(marital==7),
+                      child0 = as.numeric(chldpres==0),
+                      child1 = as.numeric(chldpres==1),
+                      child2 = as.numeric(chldpres==2),
+                      child3 = as.numeric(chldpres==3),
+                      child4plus = as.numeric(chldpres>=4))
+# no need for "ownchild" variable  
+```
+
+
+```{r}
+# graph group by state? mean salary by state? 
+# check frequency of teacher by state type
+data %>%
+  group_by(stfips) %>%
+  dplyr::summarize(frequency=n()) %>%
+  mutate(percent = frequency / sum(frequency)*100)
+
+
+salary_state <- ggplot(data, aes(reorder(stfips, earnh, FUN = mean), earnh)) +
+  geom_bar(position='dodge', stat='summary', fun='mean',binwidth = 0.1, fill = color[1], color =color.outline, alpha = 0.8, size = 0.25) +
+   coord_flip() +
+  labs(x = "States",y = "Earnings per hour (mean)")+
+  theme_bg()
+
+salary_state
+
+# Continuous – nothing to do. Make sure it is stored as number
+glimpse(data)
+```
+
+### 4) functional form X's (plot against earning per hour)
+```{r}
+#4. Selecting functional form - log or sq of X's
+
+# age sqaured 
+#adding the square of the variable allows you to model more accurately the effect of age, which may have a non-linear relationship with the independent variable. For instance, the effect of age could be positive up until, say, the age of 50, and then negative thereafter.
+
+#Adding the age squared to age, allows you to model the effect a differing ages, rather than assuming the effect is linear for all ages.
+
+data <- data %>% mutate(agesq=age^2,
+                        lnage = log(age))
+
+plot_ageearnh <- ggplot(data = data, aes(x=age, y=earnh)) +
+  geom_point( color = color[1], size = 1,  shape = 16, alpha = 0.8, show.legend=F, 
+              na.rm = TRUE) + 
+  geom_smooth(method="lm", se=F, colour=color[4], size=1, span=0.9) +
+  labs(x = "Age (years)",y = "Earnings per hour") +
+  theme_bg()
+
+plot_ageearnh
+
+# squared age
+plot_age2earnh <- ggplot(data = data, aes(x=agesq, y=earnh)) +
+  geom_point( color = color[1], size = 1,  shape = 16, alpha = 0.8, show.legend=F, 
+              na.rm = TRUE) + 
+  geom_smooth(method="loess", se=F, colour=color[4], size=1, span=0.9) +
+  labs(x = "Age (years) squared",y = "Earnings per hour") +
+  theme_bg()
+
+plot_age2earnh
+
+
+plot_agelearnh <- ggplot(data = data, aes(x=lnage, y=earnh)) +
+  geom_point( color = color[1], size = 1,  shape = 16, alpha = 0.8, show.legend=F, 
+              na.rm = TRUE) + 
+  geom_smooth(method="loess", se=F, colour=color[4], size=1, span=0.9) +
+  labs(x = "Age (years) in log",y = "Earnings per hour") +
+  theme_bg()
+
+plot_agelearnh
+
+
+```
+
+### 5) Interactions 
+```{r}
+#5. Thinking interactions  - boxplots? 
+### add interactions, non-linear functional forms, additional variables 
+
+#Look at possible need for interactions by domain knowledge / visualization
+
+#Education Level and Years of Experience: (age)
+#the potential work experience proxied by age for males and females is different, that is, females experience more career interruptions than males
+
+data <- data %>% mutate(female_age =female*age,
+                        female_agesq =female*agesq,
+                        female_lnage = female*lnage)
+
+#Other ideas:
+# occupation*region – industry and labour market structures that impact on wages differ between regions (have only one occupation)
+
+#occupation*age and occupation*age squared – the return to work experience may be different for different  occupations (have only one occupation)
+
+```
+
+
+# extend for all relevant variables!
+```{r}
+# data summary
+datasummary(  earnh + age + agesq + lnage + female + female_age +female_agesq +female_lnage + native + private + white + union + married + divorced + wirowed + nevermar + child0 + child1 + child2 + child3 + child4plus       ~
+               Mean + Median + Min + Max + P25 + P75 + N , data = data )
+```
+
+### Split data randomly into test (20%) and train set (80%) (for CV RMSE later)
+```{r}
+data <- data %>% mutate(train_index = sample(c("train","test"),nrow(data),replace=TRUE,prob =c(0.8,0.2)))
+
+data_train <- data %>% filter(train_index == "train")
+  
+data_test <- data %>% filter(train_index == "test")
+
+```
+
+### Model 1: the target variable is continous: earnings per hour
+###The goal is to predict the earnings per hour that may be appropriate for an teachers fulfilling certain criteria.
+```{r}
+# earn ~ grade92
+```
+
+### Model 2: the target variable is continous: earnings per hour
+
+```{r}
+# earn ~ grade92 + age + agesq + sex + sector
+```
+### Model 3: the target variable is continous: earnings per hour
+
+```{r}
+# earn ~ grade92+ age + agesq + stfips+ race + sex
+```
+### Model 4: the target variable is continous: earnings per hour
+
+```{r}
+# earn ~ grade92+ age + agesq + stfips+ race + sex + marrital + childpres + prcitship + union  INTERACTIONS(age*sex,agesq*sex)
+
+```
+
+
+### Model performance (RMSE(full), BIC, RMSE(CV)); indirect and direct approach for evaluation of model fit
+```{r}
+# see tables 
+```
+
+### relationship between model complexity and performance: 
+```{r}
+# graphs 
 ```
 
