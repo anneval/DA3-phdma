@@ -95,135 +95,605 @@
 \subtitle{Course: ECBS6067 - Prediction with Machine Learning for
 Economists}
 \author{Anne Valder}
-\date{}
+\date{2023-11-10}
 
 \begin{document}
 \maketitle
 
-\hypertarget{tasks}{%
-\section{Tasks}\label{tasks}}
+\textbf{Task1:} In order to construct 4 different models to predict
+earnings per hour, I first filter for the occupation `2310' which
+includes elementary and middle school teachers. Predictions for this
+occupation might help us when we have to decide what salary to put in a
+job advertisement for teachers, for example. Or if we want to
+investigate differences due to gender, education level, experience etc.
+The first step is to conduct the following data set preparation steps:
 
-\begin{enumerate}
-\def\labelenumi{\arabic{enumi}.}
+\textbf{Sample design:} In order to match the business or policy
+question, I start by constructing the target variable earnings per hour
+from `weekly earnings' and `usual work hours. Next, I drop extreme
+values where earnings per hour is below 1 or larger than 300. Since I am
+interested in predicting ``standard'' teaching earnings per hour,
+earnings smaller than 1 would be considered errors. Keeping an extreme
+value, like '583' that is likely to be an error, would have a high-cost
+due to the quadratic errors in the loss function. In addition, I select
+an age range between 18 and 65, i.e.the working population age and an
+education level (= Highest grade attended) that includes only high
+school graduates or higher. The reasons for this is that for teachers
+under 18 teaching is likely not their main occupation. Moreover,
+including only teachers with a certain degree assures that we do not
+include for example tutoring from high school students in the sample.
+
+\textbf{Label engineering:} In this step I transformed the target
+variable into logs since it might be interesting to analyse relative
+changes rather than changes per monetary unit. Moreover, relative price
+differences are often more stable and the distribution of log prices is
+often close to normal, which makes linear regressions give better
+approximation to average differences. As we can see from the histogram
+below, transforming the target variable to logs does not alter the shape
+of the distribution significantly. Therefore, I continue to use the
+target variable in levels.
+
+\textbf{Feature engineering:} Next, I will define the list and
+functional form of variables that I later use as predictors. First, I
+look at missing values. Here I find that the two variables `ethnic' and
+`unioncov' contain missing values. Rather than imputing the data, I make
+use of related variables like `race' and `unionmme'. Second, after some
+visual inspections (boxplots like the ones below for `sex' or
+`prcitshp') I transform all relevant ordered categorical values or text
+variables to binary variables. I end up with 19 ``new'' binary
+variables: female, native, private, white, union, edu\_HighS, edu\_BA,
+edu\_MA, edu\_Prof, edu\_PhD, married, divorced, wirowed, nevermar,
+child0, child1, child2, child3, child4plus. Third, I look at the
+functional form of the predictors. Since I suspect a nonlinear relation
+between earnings per hour and age. For example, the effect of age could
+be positive up until, the age of 50, and then negative thereafter.
+Therefore, I construct the variables `agesq'. After inspecting the
+graphic relation, I also added `lnage'. As indicated by the graphs the
+variable `lnage' captures the relationship the best. For all other
+continuous predictors, I assume linear relationships. Last, I consider
+interactions of variables. One is the interaction between `female' and
+`age' (and agesq, lnage). Age being here a proxy for years of
+experience. The interaction follows the believe, that the potential work
+experience for males and females is different, that is, females
+experience more career interruptions than males. Other interactions
+could have been occupation*state since industry and labour market
+structures that impact earnings per hour differ between regions.
+However, I am only considering one occupation here. To circumvent this
+another option is to include state fixed effects. In the end the sample
+consists of 3623 observations and 49 variables (some redundant for the
+following analysis like household ID).Table 1A in the appendix presents
+a summary of all relevant variables.
+
+\textbf{Models:} As specified above, the target variable is earnings per
+hour. AI suggests including the following predictor variables when
+predicting teacher's earning per hour: education, year of experience,
+additional certifications, geographic location, school type, class size,
+employment status, gender and many more
+\href{https://chat.openai.com/share/44e6cfb2-6a2a-4c1d-a824-1618ae741cd7}{ChatGPT}.
+Unfortunately, not all of these variables are available in the data. I
+end up with the following four models:
+
+\begin{itemize}
 \item
-  Build four predictive models using linear regression for earnings per
-  hour. The target variable is earnings per hour, all others would be
-  predictors.Model 1 shall be the simplest, model 4 the more complex. It
-  shall be OLS. You shall explain your choice of predictors.
+  \textbf{Model 1:} edu\_BA + edu\_MA + edu\_Prof + edu\_PhD
 \item
-  Compare model performance of these models (a) RMSE in the full sample,
-  (2) cross-validated RMSE and (c) BIC in the full sample.
+  \textbf{Model 2:} edu\_BA + edu\_MA + edu\_Prof + edu\_PhD + age +
+  lnage
 \item
-  Discuss the relationship between model complexity and performance. You
-  may use visual aids.
-\end{enumerate}
+  \textbf{Model 3:} edu\_BA + edu\_MA + edu\_Prof + edu\_PhD + age +
+  lnage + female + stfips
+\item
+  \textbf{Model 4:} edu\_BA + edu\_MA + edu\_Prof + edu\_PhD + age +
+  lnage + female + stfips + union+ native + private + white + married +
+  divorced + wirowed + nevermar + child0+ child1 + child2 + child3 +
+  child4plus + female\_age + female\_lnage
+\end{itemize}
 
-\hypertarget{data-preperations-first-filtering-for-occupation-2310---elementary-and-middle-school-teachers}{%
-\subsubsection{Data preperations (first filtering for occupation: 2310 -
-elementary and middle school
-teachers)}\label{data-preperations-first-filtering-for-occupation-2310---elementary-and-middle-school-teachers}}
+In model 1 (the simplest) I try to explain earnings per hour by the
+``most obvious'' factor education-, i.e.~skill-level. I assume that the
+higher the education, the higher should be the earnings. In the second
+model, I add `age' and `lnage' as a proxy for experience. I assume that
+the older the teacher, the more experience she/ he has in teaching.
+Since the visualizations showed a nonlinear relation between age and
+earnings per hour, I also add the log of age. It seems that the gain of
+age (i.e.~experience) is especially high in the beginning and then
+diminishes quickly. In the third model I include the variable `female'
+since past research indicates disparities in earnings due to gender.
+Moreover, I add the geographic location, since the labour market
+structures that impact earnings per hour might differ between regions.
+Furthermore. in model 4, I allow for more demographic variables I deem
+important for prediction: union membership, the origin of the teacher,
+their employment class and their race and some social variables
+concerning family status. On top, I add interaction terms as described
+above.
 
-\hypertarget{e.g.-research-question-predictions-might-help-you-to-decide-what-salary-to-put-in-a-job-ad-for-teachers.-or-what-are-the-differences-between-female-and-male-salaries.-are-there-differences-between-government-and-private-employees-regarding-the-salary}{%
-\paragraph{e.g.~Research question: Predictions might help you to decide
-what salary to put in a job ad for teachers. Or what are the differences
-between female and male salaries. Are there differences between
-government and private employees regarding the
-salary?}\label{e.g.-research-question-predictions-might-help-you-to-decide-what-salary-to-put-in-a-job-ad-for-teachers.-or-what-are-the-differences-between-female-and-male-salaries.-are-there-differences-between-government-and-private-employees-regarding-the-salary}}
+\textbf{Task 2: Model Evaluation} In order to analyse the performance of
+the four different models, I calculate the R-squared, the RMSE and the
+BIC in the full sample. In addition, I split my data into a test (20\%)
+and train set (80\%) and calculate the cross-validated RMSE.\\
+In Table 1 we can see that as the models become more complex
+(i.e.~include more predictors) the R-squared increases, the RMSE of the
+full sample decreases until model 3 and then stays constant and the BIC
+first decreases and then increases again for model 3 and 4. This in line
+with the theory that the BIC penalizes adding additional predictors more
+heavily (Békés and Kézdi, 2021). Looking at table 2, we can see the
+cross validated RMSE, which is again the lowest for model 3 and 4.
 
-\hypertarget{sample-design-filtering-the-data-to-match-the-business-policy-question.}{%
-\subsubsection{Sample design: filtering the data to match the business/
-policy
-question.}\label{sample-design-filtering-the-data-to-match-the-business-policy-question.}}
+\begin{table}
 
-\hypertarget{visualize-data}{%
-\subsubsection{visualize data}\label{visualize-data}}
+\caption{\label{tab:unnamed-chunk-27}Earnings per hour - BIC, in-sampe RMSE}
+\centering
+\begin{tabular}[t]{l|r|r|r|r}
+\hline
+Models & N predictors & R-squared & RMSE (full) & BIC\\
+\hline
+model\_1 & 4 & 0.06 & 12.89 & 28855.08\\
+\hline
+model\_2 & 6 & 0.09 & 12.67 & 28746.69\\
+\hline
+model\_3 & 57 & 0.16 & 12.20 & 28893.19\\
+\hline
+model\_4 & 70 & 0.16 & 12.15 & 28968.00\\
+\hline
+\end{tabular}
+\end{table}
 
-\hypertarget{label-engineering}{%
-\subsubsection{label engineering}\label{label-engineering}}
+\begin{table}
 
-\hypertarget{feature-engineering}{%
-\subsection{feature engineering}\label{feature-engineering}}
+\caption{\label{tab:unnamed-chunk-29}Earnings per hour - CV RMSE}
+\centering
+\begin{tabular}[t]{l|r|r|r|r}
+\hline
+Resample & Model1 & Model2 & Model3 & Model4\\
+\hline
+Fold1 & 13.54 & 12.94 & 12.20 & 11.92\\
+\hline
+Fold2 & 12.65 & 12.31 & 13.26 & 12.45\\
+\hline
+Fold3 & 13.35 & 13.45 & 11.63 & 12.56\\
+\hline
+Fold4 & 12.05 & 11.98 & 12.46 & 12.82\\
+\hline
+Average & 12.91 & 12.68 & 12.40 & 12.44\\
+\hline
+\end{tabular}
+\end{table}
 
-\hypertarget{missing-values}{%
-\subsubsection{1) missing values}\label{missing-values}}
+\textbf{Task 3: Relationship between model complexity and performance:}
+As can be seen from the results of the model evaluation above when the
+model complexity increases (due to additional features, interactions,
+polynomials etc.) the performance of the model at first increases but
+once a certain complexity is reached the model performance stagnates or
+decreases. The reason metrics like the BIC or the RMSE (full sample and
+cross validated) begin to raise again is overfitting. Overfitting means
+to fit a model to the data set that is too complex. It can happen for
+example that adding more and more features does not increase the
+predictive power because the ``new'' features are strongly correlated
+with predictor variables already in the model. Metrics like BIC and AIC
+penalize this compared to metrics like R-squared, which increases with
+the number of predictors. An option to avoid overfitting in the training
+data is to evaluate it on test data (cross validation) (Békés and Kézdi,
+2021).The graph below visualizes the relationship between model
+complexity and performance. At first, the model RMSE decreases for both
+the live and original data when the complexity increases. After a
+certain threshold (i.e.~overfitting) the RMSE of the live and the
+original data start to diverge with the RMSE of the original data
+falling monotonously and the RMSE for target observations rising.
 
-\hypertarget{ordered-categorical-values-text-binary-variables}{%
-\subsubsection{2) \& 3) ordered categorical values, text, binary
-variables}\label{ordered-categorical-values-text-binary-variables}}
+\includegraphics[width=0.5\textwidth,height=\textheight]{modelcomplexity.JPG}
+Source: Békés and Kézdi, (2021), p.379
 
-\#2. Dealing with ordered categorical values - continuous or set of
-binaries \#If binary (e.g, yes/no; male/female; 1/2) -- create a 0/1
-binary variable \#3. How to use text to create variables \#May simply go
-and find some words, and create binaries --\textgreater{} seminar
+\hypertarget{references}{%
+\subsection{References}\label{references}}
 
-\hypertarget{furhter-demographics-family}{%
-\section{Furhter demographics
-(family)}\label{furhter-demographics-family}}
+ChatGPT, Teacher Earnings Predictors, November 9, 2023. Retrieved from:
+\url{https://chat.openai.com/share/44e6cfb2-6a2a-4c1d-a824-1618ae741cd7}
 
-\hypertarget{functional-form-xs-plot-against-earning-per-hour}{%
-\subsubsection{4) functional form X's (plot against earning per
-hour)}\label{functional-form-xs-plot-against-earning-per-hour}}
+Békés,G., Kézdi,G.(2021).R, Python and Stata code for Data Analysis for
+Business, Economics, and Policy, ch13-used-cars-reg, GitHub repository,
+\url{https://github.com/gabors-data-analysis/da_case_studies/tree/master/ch14-used-cars-log}
 
-\hypertarget{interactions}{%
-\subsubsection{5) Interactions}\label{interactions}}
+Békés, G., \& Kézdi, G. (2021). Data analysis for business, economics,
+and policy. Cambridge University Press, chapter 13.
 
-\hypertarget{extend-for-all-relevant-variables}{%
-\section{extend for all relevant
-variables!}\label{extend-for-all-relevant-variables}}
+\hypertarget{appendix}{%
+\subsection{Appendix}\label{appendix}}
 
-\hypertarget{split-data-randomly-into-test-20-and-train-set-80-for-cv-rmse-later}{%
-\subsubsection{Split data randomly into test (20\%) and train set (80\%)
-(for CV RMSE
-later)}\label{split-data-randomly-into-test-20-and-train-set-80-for-cv-rmse-later}}
+ 
+  \providecommand{\huxb}[2]{\arrayrulecolor[RGB]{#1}\global\arrayrulewidth=#2pt}
+  \providecommand{\huxvb}[2]{\color[RGB]{#1}\vrule width #2pt}
+  \providecommand{\huxtpad}[1]{\rule{0pt}{#1}}
+  \providecommand{\huxbpad}[1]{\rule[-#1]{0pt}{#1}}
 
-\hypertarget{models}{%
-\subsection{Models}\label{models}}
+\begin{table}[ht]
+\begin{centerbox}
+\begin{threeparttable}
+\captionsetup{justification=centering,singlelinecheck=off}
+\caption{Table 1A: Data summary}
+ \label{tab:unnamed-chunk-30}
+\setlength{\tabcolsep}{0pt}
+\begin{tabular}{l l l l l l l l}
 
-\hypertarget{the-goal-is-to-predict-the-earnings-per-hour-that-may-be-appropriate-for-teachers-fulfilling-certain-criteria.}{%
-\subsubsection{The goal is to predict the earnings per hour that may be
-appropriate for teachers fulfilling certain
-criteria.}\label{the-goal-is-to-predict-the-earnings-per-hour-that-may-be-appropriate-for-teachers-fulfilling-certain-criteria.}}
 
-\hypertarget{do-log-model-for-comparison}{%
-\section{do log model for
-comparison?}\label{do-log-model-for-comparison}}
+\hhline{>{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}-}
+\arrayrulecolor{black}
 
-\hypertarget{recommended-variables-to-include-by-ai-httpschat.openai.comshare44e6cfb2-6a2a-4c1d-a824-1618ae741cd7}{%
-\section{\texorpdfstring{Recommended variables to include by AI:
-\url{https://chat.openai.com/share/44e6cfb2-6a2a-4c1d-a824-1618ae741cd7}}{Recommended variables to include by AI: https://chat.openai.com/share/44e6cfb2-6a2a-4c1d-a824-1618ae741cd7}}\label{recommended-variables-to-include-by-ai-httpschat.openai.comshare44e6cfb2-6a2a-4c1d-a824-1618ae741cd7}}
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt}   \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} Mean \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} Median \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} Min \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} Max \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} P25 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} P75 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} N \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
 
-\hypertarget{model-1-the-target-variable-is-continous-earnings-per-hour-levels}{%
-\subsubsection{Model 1: the target variable is continous: earnings per
-hour
-(levels)}\label{model-1-the-target-variable-is-continous-earnings-per-hour-levels}}
 
-\hypertarget{model-2-the-target-variable-is-continous-earnings-per-hour}{%
-\subsubsection{Model 2: the target variable is continous: earnings per
-hour}\label{model-2-the-target-variable-is-continous-earnings-per-hour}}
+\hhline{>{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}-}
+\arrayrulecolor{black}
 
-\hypertarget{model-3-the-target-variable-is-continous-earnings-per-hour}{%
-\subsubsection{Model 3: the target variable is continous: earnings per
-hour}\label{model-3-the-target-variable-is-continous-earnings-per-hour}}
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} earnh \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 25.67 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 23.08 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.60 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 153.67 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 16.90 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 31.25 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
 
-\hypertarget{model-4-the-target-variable-is-continous-earnings-per-hour}{%
-\subsubsection{Model 4: the target variable is continous: earnings per
-hour}\label{model-4-the-target-variable-is-continous-earnings-per-hour}}
 
-\hypertarget{add-interactions}{%
-\subsection{add interactions}\label{add-interactions}}
+\hhline{}
+\arrayrulecolor{black}
 
-\#model 5 FE - is OLS but than eval diff..
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} learnh \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3.13 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3.14 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.47 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 5.03 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 2.83 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3.44 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
 
-\hypertarget{model-performance-rmsefull-bic-rmsecv-indirect-and-direct-approach-for-evaluation-of-model-fit}{%
-\subsubsection{Model performance (RMSE(full), BIC, RMSE(CV)); indirect
-and direct approach for evaluation of model
-fit}\label{model-performance-rmsefull-bic-rmsecv-indirect-and-direct-approach-for-evaluation-of-model-fit}}
 
-\hypertarget{cross-validation}{%
-\subsubsection{Cross validation}\label{cross-validation}}
+\hhline{}
+\arrayrulecolor{black}
 
-\hypertarget{relationship-between-model-complexity-and-performance}{%
-\subsubsection{relationship between model complexity and
-performance:}\label{relationship-between-model-complexity-and-performance}}
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} age \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 42.19 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 42.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 18.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 64.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 33.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 51.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} agesq \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1904.02 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1764.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 324.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 4096.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1089.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 2601.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} lnage \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3.71 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3.74 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 2.89 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 4.16 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3.50 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3.93 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} female \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.82 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} female\_age \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 34.61 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 38.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 64.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 26.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 49.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} female\_agesq \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1563.67 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1444.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 4096.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 676.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 2401.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} female\_lnage \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3.04 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3.64 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 4.16 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3.26 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3.89 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} native \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.96 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} private \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.20 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} white \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.88 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} union \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.56 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} married \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.71 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} divorced \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.10 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} wirowed \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.01 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} nevermar \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.18 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} child0 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.52 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} child1 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.05 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} child2 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.03 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} child3 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.13 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} child4plus \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.26 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} edu\_HighS \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} edu\_BA \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.43 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} edu\_MA \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.47 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} edu\_Prof \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.01 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{}
+\arrayrulecolor{black}
+
+\multicolumn{1}{!{\huxvb{0, 0, 0}{0}}l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} edu\_PhD \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.01 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 1.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 0.00 \hspace{6pt}\huxbpad{6pt}} &
+\multicolumn{1}{l!{\huxvb{0, 0, 0}{0}}}{\huxtpad{6pt + 1em}\raggedright \hspace{6pt} 3623 \hspace{6pt}\huxbpad{6pt}} \tabularnewline[-0.5pt]
+
+
+\hhline{>{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}->{\huxb{0, 0, 0}{1}}-}
+\arrayrulecolor{black}
+\end{tabular}
+\end{threeparttable}\par\end{centerbox}
+
+\end{table}
+ 
+
+\includegraphics[width=0.5\linewidth]{A1_files/figure-latex/figures-side-1}
+\includegraphics[width=0.5\linewidth]{A1_files/figure-latex/figures-side-2}
+
+\includegraphics[width=0.5\linewidth]{A1_files/figure-latex/figures-side3-1}
+\includegraphics[width=0.5\linewidth]{A1_files/figure-latex/figures-side3-2}
+
+\includegraphics[width=0.5\linewidth]{A1_files/figure-latex/figures-side2-1}
+\includegraphics[width=0.5\linewidth]{A1_files/figure-latex/figures-side2-2}
 
 \end{document}
