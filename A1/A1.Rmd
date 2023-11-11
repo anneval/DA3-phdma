@@ -21,7 +21,6 @@ rm(list=ls())
 ```{r, echo=FALSE, include=FALSE}
 # Set directory, load functions and theme 
 getwd()
-#setwd("C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies")
 source("set-data-directory.R")
 source("ch00-tech-prep/theme_bg.R")
 source("ch00-tech-prep/da_helper_functions.R")
@@ -64,7 +63,6 @@ In order to match the business or policy question,     I start by constructing t
 
 data <- data %>% mutate(earnh=earnwke/uhours)
 
-                         
 # 2) drop extreme values:
 
 data %>% dplyr::select(earnh) %>% summary()
@@ -73,7 +71,6 @@ data <- data %>% filter(earnh >= 1 & earnh <= 300)
 # 3) select age range of working population (18-65) 
 
 data %>% dplyr::select(age) %>% summary()
-#summary(as.factor(data$age))
 
 data <- data %>% filter(age >= 18 & age <= 65)
 
@@ -95,7 +92,7 @@ data <- data %>% filter(age >= 18 & age <= 65)
 summary(as.factor(data$grade92))
 data <- data %>% filter(grade92 >= 38)
 
-# all TRUE for occupation 
+# Check all TRUE for occupation 
 summary(as.factor(data$ind02)) 
 ```
 **Label engineering:**
@@ -103,8 +100,6 @@ In this step I transformed the target variable into logs since it might be inter
 As we can see from the histogram below, transforming the target variable to logs does not alter the shape of the distribution significantly. Therefore, I continue to use the target variable in levels.   
 ```{r,echo=FALSE, include=FALSE}
 ### label engineering: log vs label
-#do:Look at some patterns & Compare model performance
-
 data <- data %>% mutate(learnh=log(earnh))
 
 # distribution of earnings per hour 
@@ -123,8 +118,6 @@ hist_learnh <- ggplot(data, aes(x=learnh))+
               ylab("Count") +
               xlab("Earnings per hour (log)") +
               theme_bg()
-
-
 ```
 
 **Feature engineering:** 
@@ -133,9 +126,7 @@ Third, I look at the functional form of the predictors. Since I suspect a nonlin
 Last, I consider interactions of variables. One is the interaction between 'female' and 'age' (and agesq, lnage). Age being here a proxy for years of experience. The interaction follows the believe, that the potential work experience for males and females is different, that is, females experience more career interruptions than males. Other interactions could have been occupation*state since industry and labour market structures that impact earnings per hour differ between regions. However, I am only considering one occupation here. To circumvent this another option is to include state fixed effects.
 In the end the sample consists of 3623 observations and 49 variables (some redundant for the following analysis like household ID).Table 3 in the appendix presents a summary of all relevant variables.
 ```{r,echo=FALSE, include=FALSE}
-#1. What to do with missing values? 
-
-# where do we have missing variables in our data se?
+#1. Missing values? 
 to_filter <- sapply(data, function(x) sum(is.na(x)))
 to_filter[to_filter > 0]
 
@@ -144,16 +135,10 @@ data$unioncov  <- fct_explicit_na(data$unioncov ,na_level = "Missing")
 
 #ethnic, use race instead
 #union cov, use unionmme instead - so no imputations necessary
-
 ```
 
 ```{r,echo=FALSE, include=FALSE}
-#2. Dealing with ordered categorical values - continuous or set of binaries
-#If binary (e.g, yes/no; male/female; 1/2) – create a 0/1 binary variable
-#3. How to use text to create variables
-#May simply go and find some words, and create binaries –> seminar
-
-
+#2. Dealing with ordered categorical values - continuous or set of binaries & text
 #2a) # female (1,0) create binary!  
 summary(as.factor(data$sex))
 data <- data %>% mutate(female=as.numeric(sex==2))
@@ -175,7 +160,6 @@ boxplot_gender
 
 ```{r,echo=FALSE, include=FALSE}
 #2b) Native & Foreign create binary!
-
 summary(as.factor(data$prcitshp)) 
 
 # graph: earnings distribution Citizenship status (boxplot)
@@ -306,7 +290,6 @@ data  <- data %>% mutate(edu_HighS = as.numeric(grade92==38),
                         edu_MA=as.numeric(grade92==44),
                         edu_Prof = as.numeric(grade92==45),
                         edu_PhD = as.numeric(grade92==46))
-
 ```
 
 ```{r,echo=FALSE, include=FALSE}
@@ -327,11 +310,10 @@ boxplot_union <- ggplot(data, aes(x = union, y = earnh)) +
   theme_bg()
 
 boxplot_union
-
 ```
 
 ```{r,echo=FALSE, include=FALSE}
-# Furhter demographics (family)
+# Further demographics (family)
 data <- data %>% mutate(married = as.numeric(marital==1 | marital==2),
                       divorced = as.numeric(marital==3 | marital==5 | marital==6),
                       wirowed = as.numeric(marital==4),
@@ -350,7 +332,7 @@ data %>%
   group_by(stfips) %>%
   dplyr::summarize(frequency=n()) %>%
   mutate(percent = frequency / sum(frequency)*100)
-# most teacher is CA,, FL, NY, TX
+# most teachers is CA,, FL, NY, TX
 
 # graph mean salary by state
 
@@ -371,7 +353,6 @@ salary_state
 ```{r,echo=FALSE, include=FALSE}
 #4. Selecting functional form - log or sq of X's
 
-# age squared:
 #Adding the age squared to age, allows you to model the effect a differing ages, rather than assuming the effect is linear for all ages. Also added log after inspecting the graphic relation.
 
 data <- data %>% mutate(agesq=age^2,
@@ -391,8 +372,6 @@ plot_age2earnh <- ggplot(data = data, aes(x=agesq, y=earnh)) +
   geom_smooth(method="loess", se=F, colour=color[4], size=1, span=0.9) +
   labs(x = "Age (years) squared",y = "Earnings per hour") +
   theme_bg()
-
-
 
 plot_agelearnh <- ggplot(data = data, aes(x=lnage, y=earnh)) +
   geom_point( color = color[1], size = 1,  shape = 16, alpha = 0.8, show.legend=F, 
@@ -439,7 +418,6 @@ In model 1 (the simplest) I try to explain earnings per hour by the "most obviou
 geographic location, since the labour market structures that impact earnings per hour might differ between regions. Furthermore. in model 4, I allow for more demographic variables I deem important for prediction: union membership, the origin of the teacher, their employment class and their race and some social variables concerning family status. On top, I add interaction terms as described above.
 ```{r,echo=FALSE, include=FALSE}
 ### The goal is to predict the earnings per hour that may be appropriate for teachers fulfilling certain criteria.
-
 model_1 <- lm(earnh ~  edu_BA + edu_MA + edu_Prof + edu_PhD, data)
 summary(model_1)
 
@@ -449,7 +427,7 @@ summary(resid_pred1)
 ```
 
 ```{r,echo=FALSE, include=FALSE}
-# model 2 - explain earnings per hour by education / skilllevel & experience (lnage)
+# model 2 - explain earnings per hour by education / skill level & experience
 
 model_2 <- lm(earnh  ~ edu_BA + edu_MA + edu_Prof + edu_PhD + age + lnage, data)
 
@@ -462,7 +440,7 @@ summary(resid_pred2)
 ```
 
 ```{r,echo=FALSE, include=FALSE}
-# model 3 - explain earnings per hour by education / skilllevel & experience (lnage) plus several other covariates like sex, family status, union ...
+# model 3 - explain earnings per hour by education / skill level & experience plus several other covariates like sex, geographic location
 model_3 <- lm(earnh  ~  edu_BA + edu_MA + edu_Prof + edu_PhD + age  + lnage + female + stfips, data)
 
 summary(model_3)
@@ -473,7 +451,7 @@ summary(resid_pred3)
 ```
 
 ```{r,echo=FALSE, include=FALSE}
-# model 4 - explain earnings per hour by education / skilllevel & experience (lnage) plus several other covariates like sex, family status, union ...including interaction terms (agesex)
+# model 4 - explain earnings per hour by education / skill level & experience plus several other covariates like sex, family status, union ...including interaction terms (agesex)
 
 model_4 <- lm(earnh  ~ age  + lnage + edu_BA + edu_MA + edu_Prof + edu_PhD + female + stfips +union + native + private + white + married + divorced + wirowed + nevermar + child0 + child1 + child2 + child3 + child4plus + female_age + female_lnage, data)
 summary(model_4)
@@ -531,7 +509,6 @@ evaluation
 ```
 
 ```{r,echo=FALSE}
-#stargazer(evaluation, summary = F,digits=1,sep="",type="text")
 kable(evaluation,digits=2,caption = "Earnings per hour - BIC, in-sampe RMSE")
 ```
 
@@ -559,7 +536,6 @@ cv_mat
 ```
 
 ```{r,echo=FALSE}
-#stargazer(cv_mat, summary = F, digits=1, float=F, type="text")
 kable(cv_mat, digits =2, caption = "Earnings per hour - CV RMSE")
 ```
 **Task 3: Relationship between model complexity and performance:**
