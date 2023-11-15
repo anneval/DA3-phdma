@@ -1,0 +1,55 @@
+---
+title: "Assignment 2 - Airbnb prediction models"
+subtitle: "Course: ECBS6067 - Prediction with Machine Learning for Economists"
+author: "Anne Valder"
+date: "2023-12-02"
+output:
+  pdf_document: default
+  html_document:
+  df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data 
+```{r}
+# Oslo, Dates? Look at Slides Airbnb model 
+```
+
+# Task 1
+## • Business Your task will be to help a company operating small and mid size apartments hosting 2 6 guests . The company is set to price their new apartments not on the market.
+## • Pick a city you will operate in.
+## • Build a price prediction model similarly to how we did in our case study for London.
+## • Discuss your modeling decisions and compare your results to those of the case study.
+
+### • You may use other variables we used in class,
+### • You may do different feature engineering
+### • You may make other sample design decisions
+### • But document your steps
+### • Have 3 different models and compare performance
+### • Argue for your choice of models
+### • One model must be OLS another must Random Forest or any boosting algorithm , the third could be either or stg different
+
+```{r}
+
+```
+
+# Tasks 2
+## • Please pick two dates , one before and one after lockdowns in that city.
+## • Carry out the exercise before the lockdown
+## • Take your selected model and use it on the post lockdown date
+## • Compare the predictive power of the model . Discuss briefly in the report
+
+
+```{r}
+
+```
+
+# Tasks 3
+## • Consider your ML model (RF or Boosting
+## • Explain features ’ contribution to predicted values on average , using Shapley values
+## • You shall use a SHAP method
+## • You may use graphs , but the emphasis is on the discussion part.
+## • This is worth relatively few points , do it only if everything else is already done
