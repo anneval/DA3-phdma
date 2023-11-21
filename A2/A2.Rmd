@@ -1,0 +1,358 @@
+---
+title: "Assignment 2 - Airbnb prediction models"
+subtitle: "Course: ECBS6067 - Prediction with Machine Learning for Economists"
+author: "Anne Valder"
+date: "2023-12-02"
+output:
+  pdf_document: default
+  html_document:
+  df_print: paged
+---
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies')
+```
+
+```{r,include=FALSE}
+# Clear memory
+rm(list=ls())
+```
+
+```{r, echo=FALSE, include=FALSE}
+# Set directory, load functions and theme 
+getwd()
+source("set-data-directory.R")
+source("ch00-tech-prep/theme_bg.R")
+source("ch00-tech-prep/da_helper_functions.R")
+```
+ 
+
+```{r, echo=FALSE, include=FALSE}
+# Load data 
+# Copenhagen 24 September, 2023 
+listings <- read.csv(paste0(data_dir,"/airbnb/assignment/listings_cph.csv"), sep = ",", header = T, stringsAsFactors = F)
+
+#Dates? For task 2 
+#calender <- read.csv(paste0(data_dir,"/airbnb/assignment/calendar_cph.csv"), sep = ",", header = T, stringsAsFactors = F)
+
+#reviews <- read.csv(paste0(data_dir,"/airbnb/assignment/reviews_cph.csv"), sep = ",", header = T)
+```
+
+# Ssample Design:
+```{r, echo=FALSE, include=FALSE}
+# Clean data set:
+
+## drop all variables in listings file that are redundant, lots of url variables or descriptive, or host related variables.
+
+drop_variables <- c("host_thumbnail_url","host_picture_url","listing_url","picture_url","host_url","last_scraped","description", "neighborhood_overview", "host_about", "host_response_time", "name", "host_location","neighbourhood_group_cleansed","source","license","calendar_updated") # drop similar variables to airbnb_london_cleaner.R. Either not needed or oly contrains NAs..
+
+# add source? 
+listings <- listings %>% select(-drop_variables)
+
+# check if id variables contain at least one alphabetical character, if yes drop those
+
+listings$junk<-grepl("[[:alpha:]]", listings$id)
+summary(as.factor(listings$junk))
+listings <-subset(listings,junk==FALSE)
+listings <- listings %>% select(-junk) 
+
+# check all classes and variabley types of data set listings
+#sapply(listings, class)
+#sapply(listings, typeof)
+```
+
+```{r, echo=FALSE, include=FALSE}
+### Adjustment "within" columns/ variables:
+#remove percentage signs
+#remove dollar signs 
+
+remove_symbols <- function(x) {
+  #remove either dollar sign or percentage sign
+  value_clean <-  gsub("[$%]", "", x)
+  # convert value to numeric
+   if (length(value_clean) > 1) {
+    return(value_clean)
+  } else {
+    return(as.numeric(value_clean))
+  }
+}
+
+# apply the function to all columns in the data frame
+
+listings_clean <- listings %>% mutate_all(.funs = remove_symbols)
+
+#format binary variables
+# function to convert "f" and "t" to 0 and 1
+convert_binary <- function(x) {
+  ifelse(toupper(x) == "T", 1, ifelse(toupper(x) == "F", 0, x))
+}
+
+# apply the function to all columns in the data frame
+listings_clean <- listings_clean %>%
+  mutate_all(.funs = convert_binary)
+
+### Amenities still not working corretly !! (4 rows entertainment only, cannot be true)
+# create dummies for amenities
+# Extract amenities from the text and create dummy variables
+extract_and_group_amenities <- function(data) {
+  data %>%
+    mutate(amenities = gsub('\\[|\\]|"', '', amenities)) %>%
+    #separate_rows(amenities, sep = ',\\s*') %>%
+    mutate(amenities = trimws(amenities)) %>%
+    #Remove strings starting with "\u" in the amenities column
+    mutate(amenities = str_replace_all(amenities, '^\\\\u.*', '')) %>%
+    filter(amenities != "") %>%  # Remove empty strings after removal
+    mutate(amenity_type = case_when(
+      str_detect(amenities, "Wifi") ~ "a_Internet",
+      str_detect(amenities, "Washer|Dryer|Laundromat nearby|Drying rack for clothing|Iron") ~ "a_Laundry",
+      str_detect(amenities, "Kitchen|Microwave|Refrigerator|Dishes and silverware|Toaster|Freezer|Stove|Oven|Cooking basics") ~ "a_Kitchen",
+      str_detect(amenities, "Espresso machine|French press|Hot water|Coffee maker: pour-over coffee") ~ "a_TeaCoffee",
+      str_detect(amenities, "Heating") ~ "a_Heating",
+      str_detect(amenities, "Air conditioning") ~ "a_Aircondition",
+      str_detect(amenities, "Pets allowed") ~ "a_Petfriendly",
+      str_detect(amenities, "Parking|Paid street parking off premises") ~ "a_Parking",
+      str_detect(amenities, "Balcony|Outdoor furniture|Backyard|Private patio or balcony") ~ "a_OutdoorArea", 
+      str_detect(amenities, "Soap|Shampoo|Hair dryer|Shower gel|Body soap|Conditioner") ~ "a_Toiletry",
+      str_detect(amenities, "TV with standard cable|TV|Netflix|Disney+|Chromecast|HBO Max|sound system|Bluetooth") ~ "a_Entertainment",
+      str_detect(amenities, "Changing table|High chair|Baby bath") ~ "a_Childfriendly",
+      str_detect(amenities, "Dedicated workspace") ~ "a_HomeOffice",
+      str_detect(amenities, "Long term stays allowed") ~ "a_LongTermStay",
+      str_detect(amenities, "Self check-in|Keypad") ~ "a_Selfcheckin",
+      str_detect(amenities, "Smoke alarm") ~ "a_Security",
+      TRUE ~ "Other_Group"
+    )) %>%
+    pivot_wider(names_from = amenity_type, values_from = amenities, values_fn = length, values_fill = 0) %>%
+    mutate(across(starts_with("a_"), ~ifelse(. > 0, 1, 0)))
+}
+
+listings_clean <- extract_and_group_amenities(listings_clean)
+# kind of drops amenities column automatically by storing into "other_group"
+```
+
+
+### Sample design- policy question related sample
+
+```{r, echo=FALSE, include=FALSE}
+# add new numeric columns from certain columns
+
+vars_to_convert <- c("host_id","id","scrape_id","maximum_nights","minimum_nights","accommodates","bathrooms","review_scores_rating","number_of_reviews","reviews_per_month","beds","host_is_superhost","host_listings_count","host_total_listings_count","host_has_profile_pic","host_identity_verified","latitude","longitude","minimum_minimum_nights","maximum_minimum_nights","minimum_maximum_nights","maximum_maximum_nights","minimum_nights_avg_ntm","maximum_nights_avg_ntm","has_availability","availability_30","availability_60","availability_90", "availability_365","number_of_reviews", "bedrooms")
+
+listings_clean <- listings_clean %>% 
+    mutate(across(all_of(vars_to_convert), as.numeric))
+
+## filter n accommodate 2-6 according to policy question 
+summary(as.factor(listings_clean$accommodates))
+listings_clean <- listings_clean %>%
+  filter(accommodates >= 2 & accommodates <= 6 )
+
+# Some of the input values are improperly formatted due to the presence of commas (i.e.,) between the numbers.Using the gsub function, we can remove these commas.
+listings_clean <- listings_clean %>% 
+  mutate(price_n = gsub(",", "", price),
+         price_n = as.numeric(price_n))
+
+# keep Airbnbs with price info only
+summary(listings_clean$price_n)
+listings_clean <- listings_clean %>%
+  drop_na(price)
+
+# drop extreme values in terms of price
+summary(listings_clean$price_n)
+# min is 75 DKK which is approx 10EUR and max is 150368DKK which is 20166,60 EUR
+# Drop everything above 15000DKK (i.e. 2000EUR) 
+listings_clean <- listings_clean %>% 
+  filter(price_n <=  15000) %>% 
+  mutate(price_ln = log(price_n))
+
+# drop extreme values in terms of duration?
+# filter min night at least 1 to delte errors
+listings_clean <- listings_clean %>% 
+    filter(minimum_nights <= 7 & minimum_nights >= 1)
+
+# keep if only certain "standard" property types for representative Airbnb prices (probably extra cost for special Airbnbs like Boats etc.)
+summary(as.factor(listings_clean$property_type))
+
+listings_clean <- listings_clean %>%
+  mutate(f_property_type = factor(property_type)) %>%
+  filter(!f_property_type %in% c("Barn", "Entire cabin","Boat","Hut","Private room in boat","Dome","Farm 
+                               stay","Private room in castle","Private room in hut","Camper/RV","Houseboat","Private
+                               room in cabin"))
+
+#Room type as factor
+table(listings_clean$room_type)
+listings_clean <- listings_clean %>%
+  mutate(f_room_type = factor(room_type))
+
+# Rename room type because it is too long
+listings_clean$f_room_type2 <- factor(ifelse(listings_clean$f_room_type== "Entire home/apt", "Entire/Apt",
+                            ifelse(listings_clean$f_room_type== "Private room", "Private",
+                                   ifelse(listings_clean$f_room_type== "Shared room", "Shared", "."))))
+
+# no cancellation policy variable 
+
+#create days since first review
+listings_clean <- listings_clean %>%
+  mutate(
+    n_days_since = as.numeric(as.Date(calendar_last_scraped,format="%Y-%m-%d") -
+                                as.Date(first_review ,format="%Y-%m-%d")))
+
+summary(listings_clean)
+```
+
+ 
+### Label engineering
+- log price or not look at each distribution also boxplots here already? 
+```{r, echo=FALSE, include=FALSE}
+
+p1_lnprice <- ggplot(listings_clean, aes(price_ln)) +
+  geom_histogram(binwidth = 0.15, fill = color[1], color = color.outline, alpha = 0.8, size = 0.25) +
+  ylab("Count") +
+  xlab("Log price") +
+  theme_bg()
+p1_lnprice
+
+
+summary(listings_clean$price_n)
+
+p1_price <- ggplot(listings_clean, aes(price_n)) +
+  geom_histogram(fill = color[1], color = color.outline, alpha = 0.8, size = 0.25) +
+  ylab("count") +
+  xlab("Price") +
+  ggplot2::xlim(c(0,5000))+
+  theme_bg()
+p1_price
+```
+
+### Feature engineering
+# look at some cnts. key vars, functional form #
+# missing values
+# interaction
+# functional form overall
+
+```{r, echo=FALSE, include=FALSE}
+# where do we have missing variables now?
+to_filter <- sapply(listings_clean, function(x) sum(is.na(x)))
+to_filter[to_filter > 0]
+
+# calender updated and license NAs, dropped beginning, drop columns when many missing not imortant
+
+# NAs bathroom use bathrroms_text
+listings_clean <- listings_clean %>%
+  mutate(bathrooms = as.numeric(str_extract(bathrooms_text, "\\d+\\.?\\d*")),
+         shared_bathroom = as.integer(str_detect(bathrooms_text, "shared")))
+
+
+# bedroom many NAs - use number of beds or impute from number of bed, sth like if bed = 1 than put 1, either remain NA than check again number NAs 
+listings_clean <- listings_clean %>%
+  mutate(bedrooms = if_else(beds %in% c(1, 2), 1, bedrooms)) %>%
+  filter(bedrooms < 15) # there was one error 15 bedrooms 5 beds.
+
+listings_clean <- listings_clean %>%
+  mutate(
+    beds = if_else(is.na(beds) & !is.na(bedrooms), bedrooms, beds),
+    beds = if_else(is.na(beds) & is.na(bedrooms) & accommodates %in% c(1, 2), 1,
+                   if_else(is.na(beds) & is.na(bedrooms) & accommodates > 2, 2, beds)),
+    bedrooms = if_else(is.na(bedrooms) & is.na(beds) & accommodates %in% c(1, 2), 1,
+                       if_else(is.na(bedrooms) & is.na(beds) & accommodates > 2, 2, bedrooms))
+  )
+
+# 2. imput when few, not that important
+listings_clean <- listings_clean %>%
+  mutate(
+    bathrooms =  ifelse(is.na(bathrooms), median(bathrooms, na.rm = T), bathrooms)) #assume at least 1 bath
+
+
+# 4. Replace missing variables re reviews with zero, when no review + add flags
+listings_clean <- listings_clean %>%
+  mutate(
+    flag_days_since=ifelse(is.na(n_days_since),1, 0),
+    n_days_since =  ifelse(is.na(n_days_since), median(n_days_since, na.rm = T), n_days_since),
+    flag_review_scores_rating=ifelse(is.na(review_scores_rating),1, 0),
+    review_scores_rating =  ifelse(is.na(review_scores_rating), median(review_scores_rating, na.rm = T), review_scores_rating),
+    flag_reviews_per_month=ifelse(is.na(reviews_per_month),1, 0),
+    reviews_per_month =  ifelse(is.na(reviews_per_month), median(reviews_per_month, na.rm = T), reviews_per_month)
+          )
+
+# redo features
+# Create variables, measuring the time since: squared, cubic, logs
+listings_clean <- listings_clean %>%
+  mutate(
+    ln_days_since = log(n_days_since+1),
+    ln_days_since2 = log(n_days_since+1)^2,
+    ln_days_since3 = log(n_days_since+1)^3 ,
+    n_days_since2=n_days_since^2,
+    n_days_since3=n_days_since^3,
+    ln_review_scores_rating = log(review_scores_rating),
+    ln_days_since=ifelse(is.na(ln_days_since),0, ln_days_since),
+    ln_days_since2=ifelse(is.na(ln_days_since2),0, ln_days_since2),
+    ln_days_since3=ifelse(is.na(ln_days_since3),0, ln_days_since3),
+  )
+
+# where do we have missing variables now?
+to_filter <- sapply(data, function(x) sum(is.na(x)))
+to_filter[to_filter > 0]
+
+
+```
+### Descriptives of final data set
+
+### seperate data into train, test and holdout 
+
+```{r, echo=FALSE, include=FALSE}
+# see slide 56 again 
+# use only ~80% as working data, rest is hold ou
+# Split These 80% again into train and test (80/20)?
+```
+
+ä### set up models:
+```{r, echo=FALSE, include=FALSE}
+#Model 1: OLS(very similar to M7 vom slides singe this model was best in Terms of RMSE (test)). Use as external validity check & also try model 8 compar and Choose best
+
+# Dp LASSO TO "SKIP" Modelling choice 
+
+# Model 2: Random forest or Boosting 
+
+# Model 3: Choose freely - Lasso? Or Boosting / RF bot Chosen so far
+
+```
+
+# Task 1
+## • Business Your task will be to help a company operating small and mid size apartments hosting 2 6 guests . The company is set to price their new apartments not on the market.
+## • Pick a city you will operate in.
+## • Build a price prediction model similarly to how we did in our case study for London.
+## • Discuss your modeling decisions and compare your results to those of the case study.
+
+### • You may use other variables we used in class,
+### • You may do different feature engineering
+### • You may make other sample design decisions
+### • But document your steps
+### • Have 3 different models and compare performance
+### • Argue for your choice of models
+### • One model must be OLS another must Random Forest or any boosting algorithm , the third could be either or stg different
+
+```{r, echo=FALSE, include=FALSE}
+# target variables prices - take log? look at distributions 
+
+```
+
+# Tasks 2
+## • Please pick two dates , one before and one after lockdowns in that city.
+## • Carry out the exercise before the lockdown
+## • Take your selected model and use it on the post lockdown date
+## • Compare the predictive power of the model . Discuss briefly in the report
+
+
+```{r, echo=FALSE, include=FALSE}
+# get other older data set from inside Airbnb e.g.
+# 29 December, 2022
+
+```
+
+# Tasks 3
+## • Consider your ML model (RF or Boosting
+## • Explain features ’ contribution to predicted values on average , using Shapley values
+## • You shall use a SHAP method
+## • You may use graphs , but the emphasis is on the discussion part.
+## • This is worth relatively few points , do it only if everything else is already done
+
+### extra add: graph on cv rmse
