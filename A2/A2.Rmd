@@ -148,8 +148,8 @@ extract_and_group_amenities <- function(data) {
       grepl("Long term stays allowed", amenities) ~ "a_LongTermStay",
       grepl("Self check-in|Keypad", amenities) ~ "a_Selfcheckin",
       grepl("Smoke alarm", amenities) ~ "a_Security",
-      grepl("cats", amenities) ~ "a_cats",
-      grepl("dogs", amenities) ~ "a_dogs",
+      grepl("Cats", amenities) ~ "a_cats",
+      grepl("Dogs", amenities) ~ "a_dogs",
       TRUE ~ "Other_Group"
     )) %>%
     pivot_wider(names_from = amenity_type, values_from = amenities, values_fn = length, values_fill = 0) %>%
@@ -471,34 +471,20 @@ summary(lm(price_ln ~ review_scores_rating,data=listings_clean))
 ### Feature engineering (interactions)
 # fix amenities first 
 ```{r, echo=FALSE, include=FALSE}
-
-#################################################
-# Look for interactions
-################################################
-#Look up room type interactions
-p1 <- price_diff_by_variables2(listings_clean, "f_room_type", "a_Childfriendly", "Room type")
-
-p2 <- price_diff_by_variables2(listings_clean, "f_room_type", "f_property_type", "Room type", "Property type")
-#Look up canelation policy
-#p3 <- price_diff_by_variables2(listings_clean, "f_cancellation_policy", "d_familykidfriendly", "Cancellation policy", "Family kid friendly")
-#p4 <- price_diff_by_variables2(listings_clean, "f_cancellation_policy", "d_tv", "Cancellation policy", "TV")
-#Look up property type
-p5 <- price_diff_by_variables2(listings_clean, "f_property_type", "a_cats", "Property type", "Cats")
-p6 <- price_diff_by_variables2(listings_clean, "f_property_type", "a_dogs", "Property type", "Dogs")
-
-g_interactions <- plot_grid(p1, p2, p3, p4, p5, p6, nrow=3, ncol=2)
-g_interactions
-
-
-# dummies suggested by graphs
-X1  <- c("f_room_type*f_property_type",  "f_room_type*d_familykidfriendly")
-
 # Additional interactions of factors and dummies
-X2  <- c("d_airconditioning*f_property_type", "d_cats*f_property_type", "d_dogs*f_property_type")
-X3  <- c(paste0("(f_property_type + f_room_type + f_cancellation_policy + f_bed_type) * (",
-                paste(amenities, collapse=" + "),")"))
+
+X1  <- c("f_room_type*f_property_type",  "f_room_type*a_Childfriendly","a_Petfriendly*f_property_type")
+
+
+amenities <-  grep("^a_.*", names(listings_clean), value = TRUE)
+
+
+X2  <- c(paste("(f_property_type + f_room_type * (",paste(amenities, collapse=" + "),")"))
 
 ```
+
+
+
 ```{r, echo=FALSE, include=FALSE}
 write.csv(listings_clean, paste0(data_out, "airbnb_cph_work_book.csv"), row.names = F)
 ```
@@ -540,19 +526,37 @@ listings_clean$holdout <- 0
 listings_clean$holdout[holdout_ids] <- 1
 
 #Hold-out set Set
-data_holdout <- listings_clean %>% filter(holdout == 1)
+listings_holdout <- listings_clean %>% filter(holdout == 1)
 
 #Working data set
-data_work <- listings_clean %>% filter(holdout == 0)
+listings_work <- listings_clean %>% filter(holdout == 0)
 
 # see slide 56 again 
 # use only ~80% as working data, rest is hold ou
 # Split These 80% again into train and test (80/20)?
+
+
+
 ```
 
 ### seperate data into train and test data set  
 
 ```{r}
+
+# Basic Variables
+basic_lev  <- c("accommodates", "beds", "f_property_type", "f_room_type", "n_days_since", "flag_days_since","neighbourhood_cleaned","bathroom")
+
+reviews <- c("f_number_of_reviews","n_review_scores_rating", "flag_review_scores_rating")
+# Higher orders
+poly_lev <- c("accommodates2", "n_days_since2", "n_days_since3")
+
+modellev1 <- paste0(" ~ ",paste(c(basic_lev,reviews,poly_lev,X1,X2,amenities),collapse = " + "))
+vars_model_8 <- c("price_n", basic_lev,reviews,poly_lev,amenities,X1,X2)
+
+modellev7 <- paste0(" ~ ",paste(c(basic_lev,reviews,poly_lev,X1,amenities),collapse = " + "))
+
+
+formula <- paste0("price_n", modellev7)
 
 ```
 
@@ -561,26 +565,52 @@ data_work <- listings_clean %>% filter(holdout == 0)
 
 TODO:
 
-train and test
+train and test<??
 look up LASSO old files
 amenities code!!! für itneractions
 
-```{r, echo=FALSE, include=FALSE}
+```{r, echo=FALSE, include=FALSE, warning=F}
 #Model 1: OLS(very similar to M7 vom slides singe this model was best in Terms of RMSE (test)). Use as external validity check & also try model 8 compar and Choose best
 
 # Dp LASSO TO "SKIP" Modelling choice 
-
 
 # Set lasso tuning parameters
 n_folds = 5
 train_control <- trainControl(method = "cv", number = n_folds)
 
 tune_grid <- expand.grid("alpha" = c(1), "lambda" = seq(0.05, 1, by = 0.05))
-
 # change! LAssO over all variables? 
-formula <- formula(paste0("price_n ~ ", paste(setdiff(vars_model_8, "price_n"), collapse = " + ")))
+set.seed(1234)
 
+listings_clean$bathrooms
 
+lasso_model <- caret::train(price_n ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + f_room_type*f_property_type + f_room_type*a_Childfriendly + a_Petfriendly*f_property_type + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly,
+                      data = listings_work,
+                      method = "glmnet",
+                      preProcess = c("center", "scale"),
+                      trControl = train_control,
+                      tuneGrid = tune_grid,
+                    na.action=na.exclude)
+
+lasso_coeffs <- coef(lasso_model$finalModel, lasso_model$bestTune$lambda) %>%
+  as.matrix() %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "variable") %>%
+  rename(coefficient = `s1`)  # the column has a name "1", to be renamed
+
+print(lasso_coeffs)
+
+lasso_coeffs_nz<-lasso_coeffs %>%
+  filter(coefficient!=0)
+print(nrow(lasso_coeffs_nz))
+
+summary(lasso_model)
+
+# Evaluate model. CV error:
+lasso_cv_rmse <- lasso_model$results %>%
+  filter(lambda == lasso_model$bestTune$lambda) %>%
+  dplyr::select(RMSE)
+print(lasso_cv_rmse[1, 1])
 
 ```
 
