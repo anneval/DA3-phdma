@@ -9,6 +9,9 @@ output:
   df_print: paged
 ---
 
+# CHat GPT Link:
+# https://chat.openai.com/share/c7ed8e6b-ffa8-46f0-97e4-672bff890d60
+
 ```{r setup, echo=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies')
@@ -25,6 +28,7 @@ getwd()
 source("set-data-directory.R")
 source("ch00-tech-prep/theme_bg.R")
 source("ch00-tech-prep/da_helper_functions.R")
+
 ```
  
 
@@ -37,9 +41,12 @@ listings <- read.csv(paste0(data_dir,"/airbnb/assignment/listings_cph.csv"), sep
 #calender <- read.csv(paste0(data_dir,"/airbnb/assignment/calendar_cph.csv"), sep = ",", header = T, stringsAsFactors = F)
 
 #reviews <- read.csv(paste0(data_dir,"/airbnb/assignment/reviews_cph.csv"), sep = ",", header = T)
+
+use_case_dir <- "A2/"
+data_out <- use_case_dir
 ```
 
-# Ssample Design:
+# Sample Design:
 ```{r, echo=FALSE, include=FALSE}
 # Clean data set:
 
@@ -91,35 +98,58 @@ convert_binary <- function(x) {
 # apply the function to all columns in the data frame
 listings_clean <- listings_clean %>%
   mutate_all(.funs = convert_binary)
+```
 
-### Amenities still not working corretly !! (4 rows entertainment only, cannot be true)
+
+```{r, echo=FALSE, include=FALSE}
+### Amenities still not working correctly !! (4 rows entertainment only, cannot be true)
 # create dummies for amenities
+
+# works but to detailed would create over 2000 variables...
+#listings_clean_am <- listings_clean %>%
+ # mutate(amenities = gsub("[^a-zA-Z,]", " ", gsub("[0-9]", "", gsub("\\\\", "", gsub("\xe2\x80\x93", "", amenities)))),
+    #     amenities = str_replace_all(amenities, "\\s+", " "),
+    #     amenities = gsub("\\s*,\\s*", ",", amenities))
+
+
+#listings_clean_am$amenities<-as.list(strsplit(listings_clean_am$amenities, ","))
+
+#define levels and dummies 
+#levs <- levels(factor(unlist(listings_clean_am$amenities)))
+#listings_clean_test<-cbind(listings_clean_am,as.data.frame(do.call(rbind, lapply(lapply(listings_clean$amenities, factor, levs), table))))
+#head(levs)
+
+
+# therefore group manually most important ones 
+
+
 # Extract amenities from the text and create dummy variables
 extract_and_group_amenities <- function(data) {
   data %>%
     mutate(amenities = gsub('\\[|\\]|"', '', amenities)) %>%
-    #separate_rows(amenities, sep = ',\\s*') %>%
+    separate_rows(amenities, sep = ',\\s*') %>%
     mutate(amenities = trimws(amenities)) %>%
-    #Remove strings starting with "\u" in the amenities column
-    mutate(amenities = str_replace_all(amenities, '^\\\\u.*', '')) %>%
+    # Remove strings starting with "\u" in the amenities column
+    mutate(amenities = gsub('^\\\\u.*', '', amenities)) %>%
     filter(amenities != "") %>%  # Remove empty strings after removal
     mutate(amenity_type = case_when(
-      str_detect(amenities, "Wifi") ~ "a_Internet",
-      str_detect(amenities, "Washer|Dryer|Laundromat nearby|Drying rack for clothing|Iron") ~ "a_Laundry",
-      str_detect(amenities, "Kitchen|Microwave|Refrigerator|Dishes and silverware|Toaster|Freezer|Stove|Oven|Cooking basics") ~ "a_Kitchen",
-      str_detect(amenities, "Espresso machine|French press|Hot water|Coffee maker: pour-over coffee") ~ "a_TeaCoffee",
-      str_detect(amenities, "Heating") ~ "a_Heating",
-      str_detect(amenities, "Air conditioning") ~ "a_Aircondition",
-      str_detect(amenities, "Pets allowed") ~ "a_Petfriendly",
-      str_detect(amenities, "Parking|Paid street parking off premises") ~ "a_Parking",
-      str_detect(amenities, "Balcony|Outdoor furniture|Backyard|Private patio or balcony") ~ "a_OutdoorArea", 
-      str_detect(amenities, "Soap|Shampoo|Hair dryer|Shower gel|Body soap|Conditioner") ~ "a_Toiletry",
-      str_detect(amenities, "TV with standard cable|TV|Netflix|Disney+|Chromecast|HBO Max|sound system|Bluetooth") ~ "a_Entertainment",
-      str_detect(amenities, "Changing table|High chair|Baby bath") ~ "a_Childfriendly",
-      str_detect(amenities, "Dedicated workspace") ~ "a_HomeOffice",
-      str_detect(amenities, "Long term stays allowed") ~ "a_LongTermStay",
-      str_detect(amenities, "Self check-in|Keypad") ~ "a_Selfcheckin",
-      str_detect(amenities, "Smoke alarm") ~ "a_Security",
+      grepl("Wifi", amenities) ~ "a_Internet",
+      grepl("Washer|Dryer|Laundromat nearby|Drying rack for clothing|Iron", amenities) ~ "a_Laundry",
+      grepl("Kitchen|Microwave|Refrigerator|Dishes and silverware|Toaster|Freezer|Stove|Oven|Cooking basics", amenities) ~ "a_Kitchen",
+      grepl("Espresso machine|French press|Hot water|Coffee maker: pour-over coff#ee", amenities) ~ "a_TeaCoffee",
+      grepl("Heating", amenities) ~ "a_Heating",
+      grepl("Pets allowed", amenities) ~ "a_Petfriendly",
+      grepl("Parking|Paid street parking off premises", amenities) ~ "a_Parking",
+      grepl("Balcony|Outdoor furniture|Backyard|Private patio or balcony", amenities) ~ "a_OutdoorArea",
+      grepl("Soap|Shampoo|Hair dryer|Shower gel|Body soap|Conditioner", amenities) ~ "a_Toiletry",
+      grepl("TV with standard cable|TV|Netflix|Disney+|Chromecast|HBO Max|sound system|Bluetooth", amenities) ~ "a_Entertainment",
+      grepl("Changing table|High chair|Baby bath", amenities) ~ "a_Childfriendly",
+      grepl("Dedicated workspace", amenities) ~ "a_HomeOffice",
+      grepl("Long term stays allowed", amenities) ~ "a_LongTermStay",
+      grepl("Self check-in|Keypad", amenities) ~ "a_Selfcheckin",
+      grepl("Smoke alarm", amenities) ~ "a_Security",
+      grepl("cats", amenities) ~ "a_cats",
+      grepl("dogs", amenities) ~ "a_dogs",
       TRUE ~ "Other_Group"
     )) %>%
     pivot_wider(names_from = amenity_type, values_from = amenities, values_fn = length, values_fill = 0) %>%
@@ -203,7 +233,6 @@ summary(listings_clean)
 ### Label engineering
 - log price or not look at each distribution also boxplots here already? 
 ```{r, echo=FALSE, include=FALSE}
-
 p1_lnprice <- ggplot(listings_clean, aes(price_ln)) +
   geom_histogram(binwidth = 0.15, fill = color[1], color = color.outline, alpha = 0.8, size = 0.25) +
   ylab("Count") +
@@ -214,13 +243,52 @@ p1_lnprice
 
 summary(listings_clean$price_n)
 
-p1_price <- ggplot(listings_clean, aes(price_n)) +
+p2_price <- ggplot(listings_clean, aes(price_n)) +
   geom_histogram(fill = color[1], color = color.outline, alpha = 0.8, size = 0.25) +
   ylab("count") +
   xlab("Price") +
   ggplot2::xlim(c(0,5000))+
   theme_bg()
-p1_price
+p2_price
+```
+
+
+```{r, echo=FALSE, include=FALSE}
+### boxplots
+## Boxplot of price by room type
+summary(as.factor(listings_clean$f_room_type))
+
+p3_roomtype <- ggplot(data = listings_clean, aes(x = f_room_type, y = price_n)) +
+  stat_boxplot(aes(group = f_room_type), geom = "errorbar", width = 0.3,
+               color = c(color[2],color[1], color[3], color[4]), size = 0.5, na.rm=T)+
+  geom_boxplot(aes(group = f_room_type),
+               color = c(color[2],color[1], color[3], color[4]), fill = c(color[2],color[1], color[3], color[4]),
+               size = 0.5, width = 0.6, alpha = 0.3, na.rm=T, outlier.shape = NA) +
+  scale_y_continuous(expand = c(0.01,0.01),limits = c(0,2500), breaks = seq(0,2500,500)) +
+  labs(x = "Room type",y = "Price (DKK)")+
+  theme_bg()
+p3_roomtype
+
+# Boxplot accomodates and price
+
+summary(as.factor(listings_clean$accommodates))
+
+p4_accomdates <- ggplot(listings_clean, aes(x = factor(accommodates), y = price_n))+
+ geom_boxplot(aes(group = accommodates),
+               color = c(color[2],color[1], color[3], color[4],color[5]), fill = c(color[2],color[1], color[3], color[4],color[5] ),
+               size = 0.3, width = 0.8, alpha = 0.3, na.rm=T, outlier.shape = NA)  +
+     stat_boxplot(aes(group = accommodates), geom = "errorbar", width = 0.8,
+               color = c(color[2],color[1], color[3], color[4],color[5] ), size = 0.5, na.rm=T)+
+    scale_color_manual(name="",
+                     values=c(color[2],color[1],color[1],color[2],color[1],color[2])) +
+  scale_fill_manual(name="",
+                     values=c(color[2],color[1],color[3],color[4],color[1],color[2])) +
+  labs(x = "Accomodates (Persons)",y = "Price (DKK)")+
+  scale_y_continuous(expand = c(0.01,0.01), limits=c(0, 3500), breaks = seq(0,3500, 500))+
+  theme_bg() +
+  theme(legend.position = c(0.3,0.8)        )
+p4_accomdates
+
 ```
 
 ### Feature engineering
@@ -273,6 +341,83 @@ listings_clean <- listings_clean %>%
     reviews_per_month =  ifelse(is.na(reviews_per_month), median(reviews_per_month, na.rm = T), reviews_per_month)
           )
 
+# where do we have missing variables now?
+to_filter <- sapply(data, function(x) sum(is.na(x)))
+to_filter[to_filter > 0]
+
+```
+
+### Feature engineering (functional forms)
+```{r, echo=FALSE, include=FALSE}
+################################################
+# look key vars, functional form #
+################################################
+## accomodates: look at distribution
+
+summary(as.factor(listings_clean$accommodates))
+
+listings_clean %>%
+  group_by(accommodates) %>%
+  summarise(mean_price = mean(price_n), min_price= min(price_n), max_price = max(price_n), n = n())
+
+p5_accommodates <- ggplot(data = listings_clean, aes(x=accommodates, y=price_n)) +
+  geom_point(size=1, colour=color[3], shape=16)+
+  labs(x="Number of people accomodated",y="Price")+
+  geom_smooth(method="lm", colour=color[1], se=FALSE)+
+  theme_bg()
+
+p5_accommodates
+
+# Squares and further values to create
+listings_clean <- listings_clean %>%
+  mutate(accommodates2=accommodates^2, ln_accommodates=log(accommodates) ,
+         ln_accommodates2=log(accommodates)^2)
+
+# Regression 1: ln price and num of accomodates and squares
+summary(lm(price_ln ~ accommodates + accommodates2, data=listings_clean))
+# Regression 2: ln price and log num of accomodates
+summary(lm(price_ln ~ ln_accommodates , data=listings_clean))
+# Regression 3: ln price and num of accomodates
+summary(lm(price_ln ~ accommodates, data=listings_clean))
+
+
+## Beds
+listings_clean %>%
+  group_by(beds) %>%
+  summarise(mean_price = mean(price_n), min_price= min(price_n), max_price = max(price_n), n = n())
+# maybe best is to have log beds
+listings_clean <- listings_clean %>%
+  mutate(ln_beds = log(beds))
+
+## bathrooms
+ggplot(listings_clean, aes(bathrooms)) +
+  geom_histogram(binwidth = 0.5, fill = color[1], color = color.outline, alpha = 0.8, size = 0.25) +
+  ylab("") +
+  xlab("N of bathrooms") +
+  theme_bg()
+
+## Number of reviews
+nreview_plot <- listings_clean %>%
+  filter(number_of_reviews <100)
+
+ggplot(nreview_plot, aes(number_of_reviews)) +
+  geom_histogram(binwidth = 5, fill = color[1], color = color.outline, alpha = 0.8, size = 0.25) +
+  ylab("") +
+  xlab("N of reviews") +
+  theme_bg()
+
+# number of reviews: use logs as well
+listings_clean <- listings_clean %>%
+  mutate(ln_number_of_reviews = log(number_of_reviews+1))
+
+ggplot(listings_clean, aes(ln_number_of_reviews)) +
+  geom_histogram(binwidth = 0.5, fill = color[1], color = color.outline, alpha = 0.8, size = 0.25) +
+  ylab("") +
+  xlab("Log N of reviews") +
+  theme_bg()
+
+## Time since
+# Create variables, measuring the time since: squared, cubic, logs
 # redo features
 # Create variables, measuring the time since: squared, cubic, logs
 listings_clean <- listings_clean %>%
@@ -288,32 +433,165 @@ listings_clean <- listings_clean %>%
     ln_days_since3=ifelse(is.na(ln_days_since3),0, ln_days_since3),
   )
 
-# where do we have missing variables now?
-to_filter <- sapply(data, function(x) sum(is.na(x)))
-to_filter[to_filter > 0]
 
+# Check the effect
+p6_lndays <- listings_clean %>%
+  filter(listings_clean$price_n<=15000, ln_days_since>2)
+
+skimr::skim(listings_clean$n_number_of_reviews)
+ggplot(data = listings_clean, aes(x=number_of_reviews , y=price_n)) +
+  geom_point(size=1.5, colour=color[3], shape=4) +
+  geom_smooth(method="loess", colour=color[1], se=F)+
+  labs(x="Log number of days since first review",y="Log daily price")+
+  theme_bg()
+
+
+#-Inf values
+#lm(ln_price ~ ln_days_since + ln_days_since2 + ln_days_since3, data=data)
+
+## review score effect
+ggplot(data = listings_clean, aes(x=review_scores_rating , y=price_n)) +
+  geom_point(size=1.5, colour=color[3], shape=4) +
+#  ylim(0,800)+
+ # xlim(20,100)+
+  geom_smooth(method="loess", colour=color[1], se=F)+
+  labs(x="Review score",y="Daily price (USD)")+
+  theme_bg()
+
+# Create log of review scores
+#listings_clean <- listings_clean %>%
+ # mutate(ln_review_scores_rating = log(review_scores_rating))
+# Regression 1) ln price - num of review scores
+summary(lm(price_ln ~ review_scores_rating,data=listings_clean))
+# Regression 2) ln price - log num of review scores
+#summary(lm(price_ln ~ ln_review_scores_rating,data=listings_clean))
+#leave as is
 
 ```
+### Feature engineering (interactions)
+# fix amenities first 
+```{r, echo=FALSE, include=FALSE}
+
+#################################################
+# Look for interactions
+################################################
+#Look up room type interactions
+p1 <- price_diff_by_variables2(listings_clean, "f_room_type", "a_Childfriendly", "Room type")
+
+p2 <- price_diff_by_variables2(listings_clean, "f_room_type", "f_property_type", "Room type", "Property type")
+#Look up canelation policy
+#p3 <- price_diff_by_variables2(listings_clean, "f_cancellation_policy", "d_familykidfriendly", "Cancellation policy", "Family kid friendly")
+#p4 <- price_diff_by_variables2(listings_clean, "f_cancellation_policy", "d_tv", "Cancellation policy", "TV")
+#Look up property type
+p5 <- price_diff_by_variables2(listings_clean, "f_property_type", "a_cats", "Property type", "Cats")
+p6 <- price_diff_by_variables2(listings_clean, "f_property_type", "a_dogs", "Property type", "Dogs")
+
+g_interactions <- plot_grid(p1, p2, p3, p4, p5, p6, nrow=3, ncol=2)
+g_interactions
+
+
+# dummies suggested by graphs
+X1  <- c("f_room_type*f_property_type",  "f_room_type*d_familykidfriendly")
+
+# Additional interactions of factors and dummies
+X2  <- c("d_airconditioning*f_property_type", "d_cats*f_property_type", "d_dogs*f_property_type")
+X3  <- c(paste0("(f_property_type + f_room_type + f_cancellation_policy + f_bed_type) * (",
+                paste(amenities, collapse=" + "),")"))
+
+```
+```{r, echo=FALSE, include=FALSE}
+write.csv(listings_clean, paste0(data_out, "airbnb_cph_work_book.csv"), row.names = F)
+```
+
+
 ### Descriptives of final data set
 
-### seperate data into train, test and holdout 
+```{r, echo=FALSE, include=FALSE}
+
+N=nrow(listings_clean)
+
+#####################################
+# Look at some descriptive statistics
+#####################################
+
+#How is the average price changing in my district by `property_type`, `room_type` and the `bed_type`?
+listings_clean %>%
+  group_by(f_property_type, f_room_type) %>%
+  dplyr::summarize(mean_price = mean(price_n, na.rm=TRUE))
+
+
+Hmisc::describe(listings_clean$price_n)
+```
+
+### seperate data into holdout and work data set  
 
 ```{r, echo=FALSE, include=FALSE}
+# create a holdout set (20% of observations)
+smp_size <- floor(0.2 * nrow(listings_clean))
+
+# Set the random number generator
+set.seed(123456)
+
+# create ids:
+# 1) seq_len: generate regular sequences
+# 2) sample: select random rows from a table
+holdout_ids <- sample(seq_len(nrow(listings_clean)), size = smp_size)
+listings_clean$holdout <- 0
+listings_clean$holdout[holdout_ids] <- 1
+
+#Hold-out set Set
+data_holdout <- listings_clean %>% filter(holdout == 1)
+
+#Working data set
+data_work <- listings_clean %>% filter(holdout == 0)
+
 # see slide 56 again 
 # use only ~80% as working data, rest is hold ou
 # Split These 80% again into train and test (80/20)?
 ```
 
+### seperate data into train and test data set  
+
+```{r}
+
+```
+
 ä### set up models:
+
+
+TODO:
+
+train and test
+look up LASSO old files
+amenities code!!! für itneractions
+
 ```{r, echo=FALSE, include=FALSE}
 #Model 1: OLS(very similar to M7 vom slides singe this model was best in Terms of RMSE (test)). Use as external validity check & also try model 8 compar and Choose best
 
 # Dp LASSO TO "SKIP" Modelling choice 
 
+
+# Set lasso tuning parameters
+n_folds = 5
+train_control <- trainControl(method = "cv", number = n_folds)
+
+tune_grid <- expand.grid("alpha" = c(1), "lambda" = seq(0.05, 1, by = 0.05))
+
+# change! LAssO over all variables? 
+formula <- formula(paste0("price_n ~ ", paste(setdiff(vars_model_8, "price_n"), collapse = " + ")))
+
+
+
+```
+
+
+
+
+```{r, echo=FALSE, include=FALSE}
 # Model 2: Random forest or Boosting 
 
 # Model 3: Choose freely - Lasso? Or Boosting / RF bot Chosen so far
-
+#model_result_plot_levels
 ```
 
 # Task 1
