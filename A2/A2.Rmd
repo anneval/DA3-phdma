@@ -226,7 +226,7 @@ listings_clean <- listings_clean %>%
     n_days_since = as.numeric(as.Date(calendar_last_scraped,format="%Y-%m-%d") -
                                 as.Date(first_review ,format="%Y-%m-%d")))
 
-summary(listings_clean)
+#summary(listings_clean)
 ```
 
  
@@ -534,9 +534,6 @@ listings_work <- listings_clean %>% filter(holdout == 0)
 # see slide 56 again 
 # use only ~80% as working data, rest is hold ou
 # Split These 80% again into train and test (80/20)?
-
-
-
 ```
 
 ### seperate data into train and test data set  
@@ -551,24 +548,115 @@ reviews <- c("f_number_of_reviews","n_review_scores_rating", "flag_review_scores
 poly_lev <- c("accommodates2", "n_days_since2", "n_days_since3")
 
 modellev1 <- paste0(" ~ ",paste(c(basic_lev,reviews,poly_lev,X1,X2,amenities),collapse = " + "))
-vars_model_8 <- c("price_n", basic_lev,reviews,poly_lev,amenities,X1,X2)
+```
+### set up models:
 
-modellev7 <- paste0(" ~ ",paste(c(basic_lev,reviews,poly_lev,X1,amenities),collapse = " + "))
+```{r}
+#OLS
+##############################
+#      cross validation      #
+##############################
+
+## N = 5
+n_folds=5
+# Create the folds
+set.seed(123456)
+
+folds_i <- sample(rep(1:n_folds, length.out = nrow(listings_work) ))
+# Create results
+model_results_cv <- list()
+
+#for (i in (1:8)){
+  model_name <- "modellev1"
+ # model_pretty_name <- paste0("(",i,")")
+
+  yvar <- "price_ln"
+  xvars <- c("accommodates + beds  + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3  + f_room_type*a_Childfriendly + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly")
+  formula <- price_ln ~ accommodates + beds  + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3  + f_room_type*a_Childfriendly + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly
+
+  # Initialize values
+  rmse_train <- c()
+  rmse_test <- c()
+
+  model_work_data <- lm(formula,data = listings_work)
+  BIC <- BIC(model_work_data)
+  nvars <- model_work_data$rank -1
+  r2 <- summary(model_work_data)$r.squared
+
+  # Do the k-fold estimation
+  for (k in 1:n_folds) {
+    test_i <- which(folds_i == k)
+    # Train sample: all except test_i
+    listings_train <- listings_work[-test_i, ]
+    # Test sample
+    listings_test <- listings_work[test_i, ]
+    # Estimation and prediction
+    model <- lm(formula,data = listings_train)
+    prediction_train <- predict(model, newdata = listings_train)
+    prediction_test <- predict(model, newdata = listings_test)
+
+    # Criteria evaluation
+    rmse_train[k] <- mse_lev(prediction_train, listings_train$price_ln)**(1/2)
+    rmse_test[k] <- mse_lev(prediction_test, listings_test$price_ln)**(1/2)
+
+  }
+
+  
+  model_results_cv[[model_name]] <- list(yvar=yvar,xvars=xvars,formula=formula,model_work_data=model_work_data,
+                                         rmse_train = rmse_train,rmse_test = rmse_test,BIC = BIC,
+                                         model_name = model_name, nvars = nvars, r2 = r2)
+
+print(model_results_cv$modellev1)
 
 
-formula <- paste0("price_n", modellev7)
+t1 <- imap(model_results_cv,  ~{
+  as.data.frame(.x[c("rmse_test", "rmse_train")]) %>%
+    dplyr::summarise_all(.funs = mean) %>%
+    mutate("model_name" = .y , "model_pretty_name" = .x[["model_name"]] ,
+           "nvars" = .x[["nvars"]], "r2" = .x[["r2"]], "BIC" = .x[["BIC"]])
+}) %>%
+  bind_rows()
+t1
+column_names <- c("Model", "N predictors", "R-squared", "BIC", "Training RMSE",
+                 "Test RMSE")
+library(xtable)
+output <- paste0(use_case_dir,"output/")
+
+t14_2 <- t1 %>%
+  select("model_pretty_name", "nvars", "r2" , "BIC", "rmse_train", "rmse_test")
+colnames(t14_2) <- column_names
+#print(xtable(t14_2, type = "latex", digits=c(0,0,0,2,0,2,2)), file = paste0(output, "ch14_table_fit_level.tex"),
+ #     include.rownames=FALSE, booktabs=TRUE, floating = FALSE)
+
+#### nur bei meheren Modellen?
+# RMSE training vs test graph
+t1_levels <- t1 %>%
+  dplyr::select("nvars", "rmse_train", "rmse_test") %>%
+  gather(var,value, rmse_train:rmse_test) %>%
+  mutate(nvars2=nvars+1) %>%
+  mutate(var = factor(var, levels = c("rmse_train", "rmse_test"),
+                      labels = c("RMSE Training","RMSE Test")))
+
+model_result_plot_levels <- ggplot(data = t1_levels,
+                                   aes(x = factor(nvars2), y = value, color=factor(var), group = var)) +
+  geom_line(size=1,show.legend=FALSE, na.rm = TRUE) +
+  scale_color_manual(name="",
+                     values=c(color[2],color[1])) +
+  scale_y_continuous(name = "RMSE", limits = c(0, 1), breaks = seq(0,1, 02)) +
+  scale_x_discrete( name = "Number of coefficients", expand=c(0.01, 0.01)) +
+  geom_dl(aes(label = var),  method = list("last.points", dl.trans(x=x-1), cex=0.4)) +
+  #scale_colour_discrete(guide = 'none') +
+  theme_bg()
+model_result_plot_levels
 
 ```
 
-ä### set up models:
-
-
 TODO:
 
-train and test<??
-look up LASSO old files
-amenities code!!! für itneractions
+train and test<?? für RMSE auch??? 
+doch OLS? 
 
+RF morgen !!! 
 ```{r, echo=FALSE, include=FALSE, warning=F}
 #Model 1: OLS(very similar to M7 vom slides singe this model was best in Terms of RMSE (test)). Use as external validity check & also try model 8 compar and Choose best
 
@@ -584,7 +672,7 @@ set.seed(1234)
 
 listings_clean$bathrooms
 
-lasso_model <- caret::train(price_n ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + f_room_type*f_property_type + f_room_type*a_Childfriendly + a_Petfriendly*f_property_type + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly,
+lasso_model <- caret::train(price_ln ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + f_room_type*f_property_type + f_room_type*a_Childfriendly + a_Petfriendly*f_property_type + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly,
                       data = listings_work,
                       method = "glmnet",
                       preProcess = c("center", "scale"),
@@ -615,6 +703,10 @@ print(lasso_cv_rmse[1, 1])
 ```
 
 
+# OLS
+```{r}
+
+```
 
 
 ```{r, echo=FALSE, include=FALSE}
