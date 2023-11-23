@@ -20,6 +20,15 @@ knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/S
 ```{r,include=FALSE}
 # Clear memory
 rm(list=ls())
+
+library(rattle)
+library(tidyverse)
+library(caret)
+library(ranger)
+library(Hmisc)
+library(knitr)
+library(kableExtra)
+library(xtable)
 ```
 
 ```{r, echo=FALSE, include=FALSE}
@@ -35,12 +44,38 @@ source("ch00-tech-prep/da_helper_functions.R")
 ```{r, echo=FALSE, include=FALSE}
 # Load data 
 # Copenhagen 24 September, 2023 
-listings <- read.csv(paste0(data_dir,"/airbnb/assignment/listings_cph.csv"), sep = ",", header = T, stringsAsFactors = F)
+listings_Sep <- read.csv(paste0(data_dir,"/airbnb/assignment/listings_cph_SEP23.csv"), sep = ",", header = T, stringsAsFactors = F)
+
+listings_Dec <- read.csv(paste0(data_dir,"/airbnb/assignment/listings_cph_DEC22.csv"), sep = ",", header = T, stringsAsFactors = F)
 
 #Dates? For task 2 
 #calender <- read.csv(paste0(data_dir,"/airbnb/assignment/calendar_cph.csv"), sep = ",", header = T, stringsAsFactors = F)
 
 #reviews <- read.csv(paste0(data_dir,"/airbnb/assignment/reviews_cph.csv"), sep = ",", header = T)
+
+check_equal_columns <- function(df1, df2) {
+  cols_df1 <- names(df1)
+  cols_df2 <- names(df2)
+  
+  if (all.equal(cols_df1, cols_df2)) {
+    cat("Both data frames have the same columns.\n")
+    return(TRUE)
+  } else {
+    cat("The data frames have different columns.\n")
+    return(FALSE)
+  }
+}
+check_equal_columns(listings_Sep, listings_Dec)
+
+# Add a new column to each dataframe to identify their origin
+listings_Sep$origin <- "Sep 23"
+listings_Dec$origin <- "Dec 22"
+
+# Combine the data frames
+listings <- rbind(listings_Sep, listings_Dec)
+
+# Print the combined data frame
+print(listings)
 
 use_case_dir <- "A2/"
 data_out <- use_case_dir
@@ -204,9 +239,15 @@ summary(as.factor(listings_clean$property_type))
 
 listings_clean <- listings_clean %>%
   mutate(f_property_type = factor(property_type)) %>%
-  filter(!f_property_type %in% c("Barn", "Entire cabin","Boat","Hut","Private room in boat","Dome","Farm 
-                               stay","Private room in castle","Private room in hut","Camper/RV","Houseboat","Private
-                               room in cabin"))
+  filter(f_property_type %in% c("Entire rental unit","Entire home","Entire loft","Entire serviced apartment","Entire villa","Entire condo","Private room in condo","Private room in rental unit"))
+  
+  
+#  c("Barn", "Entire cabin","Boat","Hut","Private room in boat","Dome","Farm 
+                             #  stay","Private room in castle","Private room in hut","Camper/RV","Houseboat","#Private
+                               #room in cabin",))
+
+
+summary(as.factor(listings_clean$property_type))
 
 #Room type as factor
 table(listings_clean$room_type)
@@ -260,9 +301,9 @@ summary(as.factor(listings_clean$f_room_type))
 
 p3_roomtype <- ggplot(data = listings_clean, aes(x = f_room_type, y = price_n)) +
   stat_boxplot(aes(group = f_room_type), geom = "errorbar", width = 0.3,
-               color = c(color[2],color[1], color[3], color[4]), size = 0.5, na.rm=T)+
+               color = c(color[2],color[1]), size = 0.5, na.rm=T)+
   geom_boxplot(aes(group = f_room_type),
-               color = c(color[2],color[1], color[3], color[4]), fill = c(color[2],color[1], color[3], color[4]),
+               color = c(color[2],color[1]), fill = c(color[2],color[1]),
                size = 0.5, width = 0.6, alpha = 0.3, na.rm=T, outlier.shape = NA) +
   scale_y_continuous(expand = c(0.01,0.01),limits = c(0,2500), breaks = seq(0,2500,500)) +
   labs(x = "Room type",y = "Price (DKK)")+
@@ -494,6 +535,10 @@ write.csv(listings_clean, paste0(data_out, "airbnb_cph_work_book.csv"), row.name
 
 ```{r, echo=FALSE, include=FALSE}
 
+# for task 1 we only need the data from September 2023 
+listings_clean <- listings_clean[listings_clean$origin == "Sep 23",]
+# use Dec 22 later! 
+
 N=nrow(listings_clean)
 
 #####################################
@@ -507,6 +552,14 @@ listings_clean %>%
 
 
 Hmisc::describe(listings_clean$price_n)
+
+
+skimr::skim(listings_clean)
+summary(listings_clean$price_n)
+Hmisc::describe(listings_clean$price_n)
+describe(listings_clean$f_room_type)
+describe(listings_clean$f_property_type)
+table(listings_clean$f_number_of_reviews)
 ```
 
 ### seperate data into holdout and work data set  
@@ -571,8 +624,8 @@ model_results_cv <- list()
  # model_pretty_name <- paste0("(",i,")")
 
   yvar <- "price_ln"
-  xvars <- c("accommodates + beds  + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3  + f_room_type*a_Childfriendly + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly")
-  formula <- price_ln ~ accommodates + beds  + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3  + f_room_type*a_Childfriendly + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly
+  xvars <- c("accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + f_room_type*f_property_type + f_room_type*a_Childfriendly + a_Petfriendly*f_property_type + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly")
+  formula <-price_ln ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + f_room_type*f_property_type + f_room_type*a_Childfriendly + a_Petfriendly*f_property_type + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly
 
   # Initialize values
   rmse_train <- c()
@@ -630,24 +683,24 @@ colnames(t14_2) <- column_names
 
 #### nur bei meheren Modellen?
 # RMSE training vs test graph
-t1_levels <- t1 %>%
-  dplyr::select("nvars", "rmse_train", "rmse_test") %>%
-  gather(var,value, rmse_train:rmse_test) %>%
-  mutate(nvars2=nvars+1) %>%
-  mutate(var = factor(var, levels = c("rmse_train", "rmse_test"),
-                      labels = c("RMSE Training","RMSE Test")))
+#t1_levels <- t1 %>%
+#  dplyr::select("nvars", "rmse_train", "rmse_test") %>%
+  #gather(var,value, rmse_train:rmse_test) %>%
+#  mutate(nvars2=nvars+1) %>%
+ # mutate(var = factor(var, levels = c("rmse_train", "rmse_test"),
+                  #    labels = c("RMSE Training","RMSE Test")))
 
-model_result_plot_levels <- ggplot(data = t1_levels,
-                                   aes(x = factor(nvars2), y = value, color=factor(var), group = var)) +
-  geom_line(size=1,show.legend=FALSE, na.rm = TRUE) +
-  scale_color_manual(name="",
-                     values=c(color[2],color[1])) +
-  scale_y_continuous(name = "RMSE", limits = c(0, 1), breaks = seq(0,1, 02)) +
-  scale_x_discrete( name = "Number of coefficients", expand=c(0.01, 0.01)) +
-  geom_dl(aes(label = var),  method = list("last.points", dl.trans(x=x-1), cex=0.4)) +
+#model_result_plot_levels <- ggplot(data = t1_levels,
+                                 #  aes(x = factor(nvars2), y = value, color=factor(var), group = var)) +
+ # geom_line(size=1,show.legend=FALSE, na.rm = TRUE) +
+#  scale_color_manual(name="",
+                     #values=c(color[2],color[1])) +
+  #scale_y_continuous(name = "RMSE", limits = c(0, 1), breaks = seq(0,1, 02)) +
+  #scale_x_discrete( name = "Number of coefficients", expand=c(0.01, 0.01)) +
+ # geom_dl(aes(label = var),  method = list("last.points", dl.trans(x=x-1), cex=0.4)) +
   #scale_colour_discrete(guide = 'none') +
-  theme_bg()
-model_result_plot_levels
+  #theme_bg()
+#model_result_plot_levels
 
 ```
 
@@ -664,13 +717,13 @@ RF morgen !!!
 
 # Set lasso tuning parameters
 n_folds = 5
+
 train_control <- trainControl(method = "cv", number = n_folds)
 
 tune_grid <- expand.grid("alpha" = c(1), "lambda" = seq(0.05, 1, by = 0.05))
 # change! LAssO over all variables? 
 set.seed(1234)
 
-listings_clean$bathrooms
 
 lasso_model <- caret::train(price_ln ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + f_room_type*f_property_type + f_room_type*a_Childfriendly + a_Petfriendly*f_property_type + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly,
                       data = listings_work,
@@ -703,17 +756,166 @@ print(lasso_cv_rmse[1, 1])
 ```
 
 
-# OLS
-```{r}
+```{r, echo=FALSE, include=FALSE}
+# Model 2: Random forest or Boosting
+train_indices <- as.integer(createDataPartition(listings_clean$price_n, p = 0.7, list = FALSE))
+listings_clean_train <- listings_clean[train_indices, ]
+listings_clean_holdout <- listings_clean[-train_indices, ]
+
+dim(listings_clean_train)
+dim(listings_clean_holdout)
+
+# do 5-fold CV
+train_control <- trainControl(method = "cv",
+                              number = 5,
+                              verboseIter = FALSE)
+
+
+# set tuning
+tune_grid <- expand.grid(
+  .mtry = c(5, 7, 9),
+  .splitrule = "variance",
+  .min.node.size = c(5, 10)
+)
+
+# simpler model for model A (1)
+set.seed(1234)
+system.time({
+rf_model_1 <- train(
+ price_ln ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + f_room_type*f_property_type + f_room_type*a_Childfriendly + a_Petfriendly*f_property_type + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly,
+  data = listings_clean_train,
+  method = "ranger",
+  trControl = train_control,
+  tuneGrid = tune_grid,
+  importance = "impurity"
+)
+})
+rf_model_1
+
+# set tuning for benchamrk model (2)
+tune_grid <- expand.grid(
+  .mtry = c(8, 10, 12),
+  .splitrule = "variance",
+  .min.node.size = c(5, 10, 15)
+)
+
+set.seed(1234)
+system.time({
+rf_model_2 <- train(
+   price_ln ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + f_room_type*f_property_type + f_room_type*a_Childfriendly + a_Petfriendly*f_property_type + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly,
+  data = listings_clean_train,
+  method = "ranger",
+  trControl = train_control,
+  tuneGrid = tune_grid,
+  importance = "impurity"
+)
+})
+
+rf_model_2
+
+
+# evaluate random forests -------------------------------------------------
+
+results <- resamples(
+  list(
+    model_1  = rf_model_1,
+    model_2  = rf_model_2
+    
+  )
+)
+summary(results)
+
+
+# Show Model B rmse shown with all the combinations
+rf_tuning_modelB <- rf_model_2$results %>%
+  dplyr::select(mtry, min.node.size, RMSE) %>%
+  dplyr::rename(nodes = min.node.size) %>%
+  spread(key = mtry, value = RMSE)
+
+kable(x = rf_tuning_modelB, format = "latex", digits = 2, caption = "CV RMSE") %>%
+  add_header_above(c(" ", "vars" = 3)) %>%
+  cat(.,file= paste0(output,"rf_tuning_modelB.tex"))
+
+
+# Turning parameter choice 1
+result_1 <- matrix(c(
+                     rf_model_1$finalModel$mtry,
+                     rf_model_2$finalModel$mtry,
+                     rf_model_1$finalModel$min.node.size,
+                     rf_model_2$finalModel$min.node.size
+                   
+
+                     ),
+                    nrow=2, ncol=2,
+                    dimnames = list(c("Model A", "Model B"),
+                                    c("Min vars","Min nodes"))
+                   )
+kable(x = result_1, format = "latex", digits = 3) %>%
+  cat(.,file= paste0(output,"rf_models_turning_choices.tex"))
+
+# Turning parameter choice 2
+result_2 <- matrix(c(mean(results$values$`model_1~RMSE`),
+                     mean(results$values$`model_2~RMSE`)),
+nrow=2, ncol=1,
+dimnames = list(c("Model A", "Model B"),
+                c(results$metrics[2]))
+)
+
+
+kable(x = result_2, format = "latex", digits = 3) %>%
+  cat(.,file= paste0(output,"rf_models_rmse.tex"))
 
 ```
-
-
-```{r, echo=FALSE, include=FALSE}
-# Model 2: Random forest or Boosting 
-
+## interaction raus??
+## model evaluation
+## reestimate on entire work and eval (predict) on holdout
+## predict on new dates 
+ 
+```{r, echo=FALSE, include=FALSE, warning=F}
 # Model 3: Choose freely - Lasso? Or Boosting / RF bot Chosen so far
+# Boosting
+
+# GBM  -------------------------------------------------------
+gbm_grid <-  expand.grid(interaction.depth = c(1, 5, 10), # complexity of the tree
+                         n.trees = (4:10)*50, # number of iterations, i.e. trees
+                         shrinkage = 0.1, # learning rate: how quickly the algorithm adapts
+                         n.minobsinnode = 20 # the minimum number of training set samples in a node to commence splitting
+)
+
+
 #model_result_plot_levels
+library(gbm)
+set.seed(1234)
+system.time({
+  gbm_model <- train(price_ln ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + f_room_type*f_property_type + f_room_type*a_Childfriendly + a_Petfriendly*f_property_type + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly,
+                     data = listings_clean_train,
+                     method = "gbm",
+                     trControl = train_control,
+                     verbose = FALSE,
+                     tuneGrid = gbm_grid)
+})
+gbm_model
+
+# the next will be in final model, loads of tuning
+ gbm_grid2 <-  expand.grid(interaction.depth = c(1, 3, 5, 7, 9, 11), # complexity of the tree
+                           n.trees = (1:10)*50, # number of iterations, i.e. trees
+                           shrinkage = c(0.02, 0.05, 0.1, 0.15, 0.2), # learning rate: how quickly the algorithm adapts
+                           n.minobsinnode = c(5,10,20,30) # the minimum number of training set samples in a node to commence splitting
+)
+
+
+#set.seed(1234)
+system.time({
+  gbm_model2 <- train(price_ln ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + f_room_type*f_property_type + f_room_type*a_Childfriendly + a_Petfriendly*f_property_type + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly,
+                      data = listings_clean_train,
+                      method = "gbm",
+                      trControl = train_control,
+                      verbose = FALSE,
+                      tuneGrid = gbm_grid2)
+})
+gbm_model2
+
+
 ```
 
 # Task 1
@@ -729,11 +931,42 @@ print(lasso_cv_rmse[1, 1])
 ### • Have 3 different models and compare performance
 ### • Argue for your choice of models
 ### • One model must be OLS another must Random Forest or any boosting algorithm , the third could be either or stg different
+```{r}
+# evaluation
 
-```{r, echo=FALSE, include=FALSE}
-# target variables prices - take log? look at distributions 
+
+# and get prediction rmse and add to next summary table
+
+# ---- compare these models
+
+final_models <-
+  list("OLS" = ols_model,
+  "LASSO (model w/ interactions)" = lasso_model,
+  "CART" = cart_model,
+  "Random forest (smaller model)" = rf_model_1,
+  "Random forest" = rf_model_2,
+  "Random forest (auto tuned)" = rf_model_2auto,
+  "GBM (basic tuning)"  = gbm_model,
+  "GBM (broad tuning)" = gbm_model2)
+
+results <- resamples(final_models) %>% summary()
+
+
+# Save output --------------------------------------------------------
+# Model selection is carried out on this CV RMSE
+
+result_4 <- imap(final_models, ~{
+  mean(results$values[[paste0(.y,"~RMSE")]])
+}) %>% unlist() %>% as.data.frame() %>%
+  rename("CV RMSE" = ".")
+
+kable(x = result_4, format = "latex", digits = 3, booktabs=TRUE, linesep = "") %>%
+  cat(.,file= paste0(output,"horse_race_of_models_cv_rmse.tex"))
+
+
 
 ```
+
 
 # Tasks 2
 ## • Please pick two dates , one before and one after lockdowns in that city.
@@ -746,6 +979,22 @@ print(lasso_cv_rmse[1, 1])
 # get other older data set from inside Airbnb e.g.
 # 29 December, 2022
 
+newdata_DEC22 <- listings_clean[listings_clean$origin == "DEC 22",]
+
+# predict on "new data", same as predict on hold out set 
+
+
+# evaluate preferred model on the holdout set -----------------------------
+
+result_5 <- map(final_models, ~{
+  RMSE(predict(.x, newdata = data_holdout), data_holdout[["price"]])
+}) %>% unlist() %>% as.data.frame() %>%
+  rename("Holdout RMSE" = ".")
+
+kable(x = result_5, format = "latex", digits = 3, booktabs=TRUE, linesep = "") %>%
+  cat(.,file= paste0(output,"horse_race_of_models_houldout_rmse.tex"))
+
+
 ```
 
 # Tasks 3
@@ -756,3 +1005,43 @@ print(lasso_cv_rmse[1, 1])
 ## • This is worth relatively few points , do it only if everything else is already done
 
 ### extra add: graph on cv rmse
+
+
+
+# Shaply values
+```{r}
+## SHAP VALUES ##
+## Note: development version only
+
+# devtools::install_github('ModelOriented/treeshap')
+
+library(treeshap)
+
+#define one-hot encoding function
+dummy <- dummyVars(" ~ .", data=data_holdout, fullRank=T, sep = NULL)
+
+#perform one-hot encoding on data frame
+data_holdout_ohe <- data.frame(predict(dummy, newdata=data_holdout))
+
+# replace "." character to " " to match model object names
+names(data_holdout_ohe) <- gsub(x = names(data_holdout_ohe),
+                                pattern = "\\.", 
+                                replacement = " ")  
+
+# unify model for treeshap
+rf_model_unified <- ranger.unify(rf_model_2$finalModel, data_holdout_ohe)
+
+treeshap_res <- treeshap(rf_model_unified, data_holdout_ohe[1:500, ])
+
+
+## Download treeshap_fit.rds from OSF: https://osf.io/6p7r8
+treeshap_res %>% write_rds("ch16-airbnb-random-forest/treeshap_fit.rds")
+
+plot_contribution(treeshap_res, obs = 12)
+
+plot_feature_importance(treeshap_res, max_vars = 10)
+
+
+treeshap_inter <- treeshap(rf_model_unified, data_holdout_ohe[1:100, ], interactions = T)
+```
+
