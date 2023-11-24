@@ -8,6 +8,10 @@ output:
   html_document:
   df_print: paged
 ---
+<!-- SOME NOTES --> # for comments later I do not want to be shown in pdf 
+
+## clean up test/treain/hold out....
+
 
 # CHat GPT Link:
 # https://chat.openai.com/share/c7ed8e6b-ffa8-46f0-97e4-672bff890d60
@@ -73,9 +77,6 @@ listings_Dec$origin <- "Dec 22"
 
 # Combine the data frames
 listings <- rbind(listings_Sep, listings_Dec)
-
-# Print the combined data frame
-print(listings)
 
 use_case_dir <- "A2/"
 data_out <- use_case_dir
@@ -157,7 +158,6 @@ listings_clean <- listings_clean %>%
 
 # therefore group manually most important ones 
 
-
 # Extract amenities from the text and create dummy variables
 extract_and_group_amenities <- function(data) {
   data %>%
@@ -238,8 +238,9 @@ listings_clean <- listings_clean %>%
 summary(as.factor(listings_clean$property_type))
 
 listings_clean <- listings_clean %>%
-  mutate(f_property_type = factor(property_type)) %>%
-  filter(f_property_type %in% c("Entire rental unit","Entire home","Entire loft","Entire serviced apartment","Entire villa","Entire condo","Private room in condo","Private room in rental unit"))
+  filter(property_type %in% c("Entire rental unit","Entire home","Entire loft","Entire serviced apartment","Entire villa","Entire condo","Private room in condo","Private room in home","Private room in rental unit","Private room in townhouse","Entire townhouse")) %>%
+  mutate(f_property_type = factor(property_type))
+  
   
   
 #  c("Barn", "Entire cabin","Boat","Hut","Private room in boat","Dome","Farm 
@@ -279,6 +280,7 @@ p1_lnprice <- ggplot(listings_clean, aes(price_ln)) +
   ylab("Count") +
   xlab("Log price") +
   theme_bg()
+
 p1_lnprice
 
 
@@ -535,8 +537,14 @@ write.csv(listings_clean, paste0(data_out, "airbnb_cph_work_book.csv"), row.name
 
 ```{r, echo=FALSE, include=FALSE}
 
+#umdrehen erst JUNE data !!! (pre and post lockdown)
+
 # for task 1 we only need the data from September 2023 
-listings_clean <- listings_clean[listings_clean$origin == "Sep 23",]
+listings_clean_SEP <- listings_clean[listings_clean$origin == "Sep 23",]
+
+listings_clean <- listings_clean[listings_clean$origin == "Dec 22",]
+
+
 # use Dec 22 later! 
 
 N=nrow(listings_clean)
@@ -603,7 +611,7 @@ poly_lev <- c("accommodates2", "n_days_since2", "n_days_since3")
 modellev1 <- paste0(" ~ ",paste(c(basic_lev,reviews,poly_lev,X1,X2,amenities),collapse = " + "))
 ```
 ### set up models:
-
+### se OLS all models again
 ```{r}
 #OLS
 ##############################
@@ -623,9 +631,9 @@ model_results_cv <- list()
   model_name <- "modellev1"
  # model_pretty_name <- paste0("(",i,")")
 
-  yvar <- "price_ln"
+  yvar <- "price_n"
   xvars <- c("accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + f_room_type*f_property_type + f_room_type*a_Childfriendly + a_Petfriendly*f_property_type + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly")
-  formula <-price_ln ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + f_room_type*f_property_type + f_room_type*a_Childfriendly + a_Petfriendly*f_property_type + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly
+  formula <-price_n ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + f_room_type*f_property_type + f_room_type*a_Childfriendly + a_Petfriendly*f_property_type + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly
 
   # Initialize values
   rmse_train <- c()
@@ -702,14 +710,33 @@ colnames(t14_2) <- column_names
   #theme_bg()
 #model_result_plot_levels
 
+
+# OLS with dummies for area
+# using model B
+n_folds = 5
+
+train_control <- trainControl(method = "cv", number = n_folds)
+set.seed(1234)
+system.time({
+ols_model <- train(
+  formula,
+  data = listings_train,
+  method = "lm",
+  trControl = train_control
+)
+})
+
+ols_model_coeffs <-  ols_model$finalModel$coefficients
+ols_model_coeffs_df <- data.frame(
+  "variable" = names(ols_model_coeffs),
+  "ols_coefficient" = ols_model_coeffs
+) %>%
+  mutate(variable = gsub("`","",variable))
+
+summary(ols_model)
+
 ```
 
-TODO:
-
-train and test<?? für RMSE auch??? 
-doch OLS? 
-
-RF morgen !!! 
 ```{r, echo=FALSE, include=FALSE, warning=F}
 #Model 1: OLS(very similar to M7 vom slides singe this model was best in Terms of RMSE (test)). Use as external validity check & also try model 8 compar and Choose best
 
@@ -725,7 +752,7 @@ tune_grid <- expand.grid("alpha" = c(1), "lambda" = seq(0.05, 1, by = 0.05))
 set.seed(1234)
 
 
-lasso_model <- caret::train(price_ln ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + f_room_type*f_property_type + f_room_type*a_Childfriendly + a_Petfriendly*f_property_type + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly,
+lasso_model <- caret::train(price_n ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + f_room_type*f_property_type + f_room_type*a_Childfriendly + a_Petfriendly*f_property_type + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly,
                       data = listings_work,
                       method = "glmnet",
                       preProcess = c("center", "scale"),
@@ -758,17 +785,17 @@ print(lasso_cv_rmse[1, 1])
 
 ```{r, echo=FALSE, include=FALSE}
 # Model 2: Random forest or Boosting
-train_indices <- as.integer(createDataPartition(listings_clean$price_n, p = 0.7, list = FALSE))
-listings_clean_train <- listings_clean[train_indices, ]
-listings_clean_holdout <- listings_clean[-train_indices, ]
+train_indices <- as.integer(createDataPartition(listings_work$price_n, p = 0.7, list = FALSE))
+listings_clean_train <- listings_work[train_indices, ]
+listings_clean_holdout <- listings_work[-train_indices, ]
 
 dim(listings_clean_train)
-dim(listings_clean_holdout)
+dim(listings_clean_holdout)# test here rather 
 
 # do 5-fold CV
-train_control <- trainControl(method = "cv",
-                              number = 5,
-                              verboseIter = FALSE)
+#train_control <- trainControl(method = "cv",
+  #                            number = 5,
+ #                             verboseIter = FALSE)
 
 
 # set tuning
@@ -782,7 +809,7 @@ tune_grid <- expand.grid(
 set.seed(1234)
 system.time({
 rf_model_1 <- train(
- price_ln ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + f_room_type*f_property_type + f_room_type*a_Childfriendly + a_Petfriendly*f_property_type + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly,
+ price_n ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly,
   data = listings_clean_train,
   method = "ranger",
   trControl = train_control,
@@ -802,7 +829,7 @@ tune_grid <- expand.grid(
 set.seed(1234)
 system.time({
 rf_model_2 <- train(
-   price_ln ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + f_room_type*f_property_type + f_room_type*a_Childfriendly + a_Petfriendly*f_property_type + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly,
+   price_n ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly,
   data = listings_clean_train,
   method = "ranger",
   trControl = train_control,
@@ -887,33 +914,16 @@ gbm_grid <-  expand.grid(interaction.depth = c(1, 5, 10), # complexity of the tr
 library(gbm)
 set.seed(1234)
 system.time({
-  gbm_model <- train(price_ln ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + f_room_type*f_property_type + f_room_type*a_Childfriendly + a_Petfriendly*f_property_type + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly,
+  gbm_model <- train(price_n ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly,
                      data = listings_clean_train,
                      method = "gbm",
                      trControl = train_control,
                      verbose = FALSE,
                      tuneGrid = gbm_grid)
 })
+
 gbm_model
 
-# the next will be in final model, loads of tuning
- gbm_grid2 <-  expand.grid(interaction.depth = c(1, 3, 5, 7, 9, 11), # complexity of the tree
-                           n.trees = (1:10)*50, # number of iterations, i.e. trees
-                           shrinkage = c(0.02, 0.05, 0.1, 0.15, 0.2), # learning rate: how quickly the algorithm adapts
-                           n.minobsinnode = c(5,10,20,30) # the minimum number of training set samples in a node to commence splitting
-)
-
-
-#set.seed(1234)
-system.time({
-  gbm_model2 <- train(price_ln ~ accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + f_room_type*f_property_type + f_room_type*a_Childfriendly + a_Petfriendly*f_property_type + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly,
-                      data = listings_clean_train,
-                      method = "gbm",
-                      trControl = train_control,
-                      verbose = FALSE,
-                      tuneGrid = gbm_grid2)
-})
-gbm_model2
 
 
 ```
@@ -942,12 +952,10 @@ gbm_model2
 final_models <-
   list("OLS" = ols_model,
   "LASSO (model w/ interactions)" = lasso_model,
-  "CART" = cart_model,
   "Random forest (smaller model)" = rf_model_1,
   "Random forest" = rf_model_2,
-  "Random forest (auto tuned)" = rf_model_2auto,
-  "GBM (basic tuning)"  = gbm_model,
-  "GBM (broad tuning)" = gbm_model2)
+  "GBM (basic tuning)"  = gbm_model)
+#,  "GBM (broad tuning)" = gbm_model2)
 
 results <- resamples(final_models) %>% summary()
 
@@ -979,20 +987,31 @@ kable(x = result_4, format = "latex", digits = 3, booktabs=TRUE, linesep = "") %
 # get other older data set from inside Airbnb e.g.
 # 29 December, 2022
 
-newdata_DEC22 <- listings_clean[listings_clean$origin == "DEC 22",]
-
 # predict on "new data", same as predict on hold out set 
+
+# create final_modes
 
 
 # evaluate preferred model on the holdout set -----------------------------
 
 result_5 <- map(final_models, ~{
-  RMSE(predict(.x, newdata = data_holdout), data_holdout[["price"]])
+  RMSE(predict(.x, newdata = listings_clean_holdout), listings_clean_holdout[["price_n"]])
 }) %>% unlist() %>% as.data.frame() %>%
-  rename("Holdout RMSE" = ".")
+  rename("Comparison RMSE" = ".")
 
 kable(x = result_5, format = "latex", digits = 3, booktabs=TRUE, linesep = "") %>%
-  cat(.,file= paste0(output,"horse_race_of_models_houldout_rmse.tex"))
+  cat(.,file= paste0(output,"Comparison_models_houldout_rmse.tex"))
+
+
+# evaluate preferred model on new data set -----------------------------
+
+result_6 <- map(final_models, ~{
+  RMSE(predict(.x, newdata = listings_clean_SEP), listings_clean_SEP[["price_n"]])
+}) %>% unlist() %>% as.data.frame() %>%
+  rename("Comparison RMSE" = ".")
+
+kable(x = result_5, format = "latex", digits = 3, booktabs=TRUE, linesep = "") %>%
+  cat(.,file= paste0(output,"Comparison_models_houldout_rmse.tex"))
 
 
 ```
@@ -1006,6 +1025,147 @@ kable(x = result_5, format = "latex", digits = 3, booktabs=TRUE, linesep = "") %
 
 ### extra add: graph on cv rmse
 
+```{r}
+# use RF model since performed the best!
+# first need a function to calculate grouped varimp
+group.importance <- function(rf.obj, groups) {
+  var.imp <- as.matrix(sapply(groups, function(g) {
+    sum(importance(rf.obj)[g], na.rm = TRUE)
+  }))
+  colnames(var.imp) <- "MeanDecreaseGini"
+  return(var.imp)
+}
+
+# variable importance plot
+# 1) full varimp plot, full
+# 2) varimp plot grouped
+# 3) varimp plot , top 10
+# 4) varimp plot  w copy, top 10
+
+
+rf_model_2_var_imp <- importance(rf_model_2$finalModel)/1000
+rf_model_2_var_imp_df <-
+  data.frame(varname = names(rf_model_2_var_imp),imp = rf_model_2_var_imp) %>%
+  mutate(varname = gsub("f_neighbourhood_cleansed", "Borough:", varname) ) %>%
+  mutate(varname = gsub("f_room_type", "Room type:", varname) ) %>%
+  arrange(desc(imp)) %>%
+  mutate(imp_percentage = imp/sum(imp))
+##############################
+# 1) full varimp plot, above a cutoff
+##############################
+# to have a quick look
+plot(varImp(rf_model_2))
+
+cutoff = 600
+rf_model_2_var_imp_plot <- ggplot(rf_model_2_var_imp_df[rf_model_2_var_imp_df$imp>cutoff,],
+                                  aes(x=reorder(varname, imp), y=imp_percentage)) +
+  geom_point(color=color[1], size=1.5) +
+  geom_segment(aes(x=varname,xend=varname,y=0,yend=imp_percentage), color=color[1], size=1) +
+  ylab("Importance (Percent)") +
+  xlab("Variable Name") +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme_bg() +
+  theme(axis.text.x = element_text(size=6), axis.text.y = element_text(size=6),
+        axis.title.x = element_text(size=6), axis.title.y = element_text(size=6))
+rf_model_2_var_imp_plot
+#save_fig("rf_varimp1",output, "large")
+save_fig("ch16-figure-1-rf-varimp-base",output, "large")
+
+##############################
+# 2) full varimp plot, top 10 only
+##############################
+# have a version with top 10 vars only
+rf_model_2_var_imp_plot_b <- ggplot(rf_model_2_var_imp_df[1:10,], aes(x=reorder(varname, imp), y=imp_percentage)) +
+  geom_point(color=color[1], size=1) +
+  geom_segment(aes(x=varname,xend=varname,y=0,yend=imp_percentage), color=color[1], size=0.75) +
+  ylab("Importance (Percent)") +
+  xlab("Variable Name") +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme_bg() +
+  theme(axis.text.x = element_text(size=4), axis.text.y = element_text(size=4),
+        axis.title.x = element_text(size=4), axis.title.y = element_text(size=4))
+rf_model_2_var_imp_plot_b
+#save_fig("rf_varimp1_b",output, "small")
+save_fig("ch16-figure-2b-rf-varimp-top10",output, "small")
+
+##############################
+# 2) varimp plot grouped
+##############################
+# grouped variable importance - keep binaries created off factors together
+
+varnames <- rf_model_2$finalModel$xNames
+f_neighbourhood_cleansed_varnames <- grep("f_neighbourhood_cleansed",varnames, value = TRUE)
+f_cancellation_policy_varnames <- grep("f_cancellation_policy",varnames, value = TRUE)
+f_bed_type_varnames <- grep("f_bed_type",varnames, value = TRUE)
+f_property_type_varnames <- grep("f_property_type",varnames, value = TRUE)
+f_room_type_varnames <- grep("f_room_type",varnames, value = TRUE)
+
+groups <- list(f_neighbourhood_cleansed=f_neighbourhood_cleansed_varnames,
+               f_cancellation_policy = f_cancellation_policy_varnames,
+               f_bed_type = f_bed_type_varnames,
+               f_property_type = f_property_type_varnames,
+               f_room_type = f_room_type_varnames,
+               f_bathroom = "f_bathroom",
+               n_days_since = "n_days_since",
+               n_accommodates = "n_accommodates",
+               n_beds = "n_beds")
+
+rf_model_2_var_imp_grouped <- group.importance(rf_model_2$finalModel, groups)
+rf_model_2_var_imp_grouped_df <- data.frame(varname = rownames(rf_model_2_var_imp_grouped),
+                                            imp = rf_model_2_var_imp_grouped[,1])  %>%
+  mutate(imp_percentage = imp/sum(imp))
+
+rf_model_2_var_imp_grouped_plot <-
+  ggplot(rf_model_2_var_imp_grouped_df, aes(x=reorder(varname, imp), y=imp_percentage)) +
+  geom_point(color=color[1], size=1) +
+  geom_segment(aes(x=varname,xend=varname,y=0,yend=imp_percentage), color=color[1], size=0.7) +
+  ylab("Importance (Percent)") +   xlab("Variable Name") +
+  coord_flip() +
+  # expand=c(0,0),
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+theme_bg() +
+  theme(axis.text.x = element_text(size=4), axis.text.y = element_text(size=4),
+        axis.title.x = element_text(size=4), axis.title.y = element_text(size=4))
+rf_model_2_var_imp_grouped_plot
+#save_fig("rf_varimp_grouped1",output, "small")
+save_fig("ch16-figure-2a-rf-varimp-group",output, "small")
+```
+
+
+```{r}
+#########################################################################################
+# Partial Dependence Plots -------------------------------------------------------
+#########################################################################################
+pdp_n_acc <- pdp::partial(rf_model_2, pred.var = "accommodates", pred.grid = distinct_(listings_holdout, "accommodates"), train = listings_train)
+pdp_n_acc_plot <- pdp_n_acc %>%
+  autoplot( ) +
+  geom_point(color=color[1], size=2) +
+  geom_line(color=color[1], size=1) +
+  ylab("Predicted price") +
+  xlab("Accommodates (persons)") +
+  scale_x_continuous(limit=c(1,7), breaks=seq(1,7,1))+
+theme_bg()
+pdp_n_acc_plot
+#save_fig("rf_pdp_n_accom", output, "small")
+save_fig("ch16-figure-3a-rf-pdp-n-accom", output, "small")
+
+#describe(data_holdout_w_prediction$accommodates)
+
+
+pdp_n_roomtype <- pdp::partial(rf_model_2, pred.var = "f_room_type", pred.grid = distinct_(listings_holdout, "f_room_type"), train = listings_train)
+pdp_n_roomtype_plot <- pdp_n_roomtype %>%
+  autoplot( ) +
+  geom_point(color=color[1], size=2) +
+  ylab("Predicted price") +
+  xlab("Room type") +
+ # scale_y_continuous(limits=c(60,120), breaks=seq(60,120, by=10)) +
+  theme_bg()
+pdp_n_roomtype_plot
+#save_fig("rf_pdp_roomtype", output, "small")
+save_fig("ch16-figure-3b-rf-pdp-roomtype", output, "small")
+```
 
 
 # Shaply values
@@ -1018,18 +1178,31 @@ kable(x = result_5, format = "latex", digits = 3, booktabs=TRUE, linesep = "") %
 library(treeshap)
 
 #define one-hot encoding function
-dummy <- dummyVars(" ~ .", data=data_holdout, fullRank=T, sep = NULL)
+
+#dummy <- dummyVars(" ~ .", data=listings_train, fullRank=T, sep = NULL)
+
+
+dummy <- dummyVars(" ~  accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + number_of_reviews + review_scores_rating + flag_review_scores_rating + accommodates2 + n_days_since2 + n_days_since3 + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly", data=listings_train, fullRank=T, sep = NULL)
 
 #perform one-hot encoding on data frame
-data_holdout_ohe <- data.frame(predict(dummy, newdata=data_holdout))
+data_holdout_ohe <- data.frame(predict(dummy, newdata=listings_clean_train))
 
 # replace "." character to " " to match model object names
 names(data_holdout_ohe) <- gsub(x = names(data_holdout_ohe),
                                 pattern = "\\.", 
                                 replacement = " ")  
 
+# both are 90...
+
+var_importance <- importance(rf_model_2$finalModel)
+# Display the variable names and their importance scores
+count(var_importance)
+
 # unify model for treeshap
 rf_model_unified <- ranger.unify(rf_model_2$finalModel, data_holdout_ohe)
+
+#var_importance <- importance(rf_model_2$finalModel)
+#print(var_importance)
 
 treeshap_res <- treeshap(rf_model_unified, data_holdout_ohe[1:500, ])
 
@@ -1041,7 +1214,52 @@ plot_contribution(treeshap_res, obs = 12)
 
 plot_feature_importance(treeshap_res, max_vars = 10)
 
-
 treeshap_inter <- treeshap(rf_model_unified, data_holdout_ohe[1:100, ], interactions = T)
+
+```
+
+
+
+
+
+
+```{r}
+ library(ranger)
+ data_fifa <- fifa20$data[!colnames(fifa20$data) %in%
+                            c('work_rate', 'value_eur', 'gk_diving', 'gk_handling',
+                             'gk_kicking', 'gk_reflexes', 'gk_speed', 'gk_positioning')]
+ data <- na.omit(cbind(data_fifa, target = fifa20$target))
+
+ rf <- ranger::ranger(target~., data = data, max.depth = 10, num.trees = 10)
+ unified_model <- ranger.unify(rf, data)
+ shaps <- treeshap(unified_model, data[1:2,])
+ plot_contribution(shaps, obs = 1)
+```
+
+```{r}
+model_variable_names <- rf_model_2$coefnames
+
+new_data_variable_names <- colnames(data_holdout_ohe)
+missing_variables <- setdiff(rf_model_2$coefnames, new_data_variable_names)
+if (length(missing_variables) > 0) {
+  stop(paste("Error: Missing variables in new data:", toString(missing_variables)))
+}
+
+# Subset new data to include only variables used in the model
+#new_data_subset <- data_holdout_ohe[, model_variable_names]
+
+
+# Identify the indices of the columns you want to change
+indices_to_change <- which(colnames(data_holdout_ohe) %in% c("neighbourhood_cleansedBrnshj Husum", "neighbourhood_cleansedVesterbro Kongens Enghave"))
+
+
+# Create a vector of new column names for the selected columns
+new_names <- c("neighbourhood_cleansedBrnshj-Husum", "neighbourhood_cleansedVesterbro-Kongens Enghave")
+
+# Change the column names only for the selected columns
+names(data_holdout_ohe)[indices_to_change] <- new_names
+# Predict using the model and the subsetted new data
+predictions <- predict(your_rf_model, data = new_data_subset)
+
 ```
 
