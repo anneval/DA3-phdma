@@ -1,0 +1,238 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{lmodern}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same} % disable monospaced font for URLs
+\hypersetup{
+  pdftitle={Assignment 2 - Airbnb prediction models},
+  pdfauthor={Anne Valder},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Assignment 2 - Airbnb prediction models}
+\usepackage{etoolbox}
+\makeatletter
+\providecommand{\subtitle}[1]{% add subtitle to \maketitle
+  \apptocmd{\@title}{\par {\large #1 \par}}{}{}
+}
+\makeatother
+\subtitle{Course: ECBS6067 - Prediction with Machine Learning for
+Economists}
+\author{Anne Valder}
+\date{2023-12-02}
+
+\begin{document}
+\maketitle
+
+\textbf{The report below summarizes pricing strategies for small and
+mid-size apartments in Copenhagen. Using a data-driven approach, I
+determine that the average price for apartments hosting 2 to 6 guests is
+300 DKK per night, as predicted by the best-performing model. The
+driving factors influencing apartment prices are the number of beds and
+the neighborhood.} The first part of the report delves into data
+preparation and pre-processing. Subsequently, the three distinct price
+prediction models, along with all modeling decisions, are explained.
+This is followed by a comparison of the results with predicted apartment
+prices in London. In addition, to further assess the predictive power of
+the models out of sample, predictions are made not only on a holdout set
+but also on an additional data set covering a different time frame,
+essentially mimicking live data. Finally, the report provides a detailed
+evaluation of the model performance of the best-performing machine
+learning model, utilizing variance-important measures such as Shapely
+values and partial dependence plots. \textbf{Data Preparation:} The data
+for apartments in Copenhagen is taken from
+\href{http://insideairbnb.com/get-the-data/}{Inside Airbnb}. The
+selected data sets include the review date 24 September, 2023 and the
+review date 29 December, 2022. After joining the data sets, I proceed
+with the \emph{sample design} as follows. First, I drop variables that
+are of no use to the prediction exercise, e.g.~variables containing
+urls, or specifics about the host etc. Next, I make sure that all
+variables are cleaned (i.e.~remove characters or symbols) and of the
+correct type and class for the prediction exercise (e.g.~conversion to
+binary, numeric and factors). Moreover, I encode the `price' variable to
+have the right format (no commas for thousands). Furthermore, I
+transform the variable `amenity', which originally contains a listing of
+all kinds of amenities a certain Airbnb has, into dummy variables. In
+order to prevent to obtain over 2000 dummy variables I group the most
+important amenities together and create approximately 15 dummies. In
+order to ensure that the sample relates to the policy question at hand I
+filter for apartments that can house only 2 to 6 people and that
+correspond to ``standard'' property types for representative Airbnb
+prices. To circumvent that the analysis is distorted by errors I drop
+extreme values by making sure that the minimum number of nights is at
+leas equal to one. At last I create the variable `days since first
+review' which allows me to analyse approximately for how long the
+apartments have been used as a Airbnbs.
+
+In terms of \emph{label engineering} I make sure that minimum and
+maximum values are reasonable and drop extreme values above 15.000 DKK
+(i.e.~2000 Euro per night) which are likely to be errors after carefully
+considering the characteristics of those high-priced Airbnbs. Moreover,
+I check whether a log-transformation is feasible, since it might be
+interesting to analyse relative changes rather than changes per monetary
+unit. The two graphs in the appendix however show that transforming the
+target variable to logs does not alter the shape of the distribution
+significantly.Therefore, I continue to use the target variable in
+levels.
+
+\textbf{Feature engineering:}
+
+\textbf{Models:}
+
+\begin{itemize}
+\tightlist
+\item
+  Have 3 different models and compare performance
+\item
+  Argue for your choice of models
+\end{itemize}
+
+\textbf{Model 1: OLS}
+
+\begin{itemize}
+\tightlist
+\item
+  Modelling Choices
+\end{itemize}
+
+\textbf{Model 2: Random Forest}
+
+\begin{itemize}
+\tightlist
+\item
+  Modelling Choices
+\end{itemize}
+
+\textbf{Model 3: Boosting Algorithm}
+
+\begin{itemize}
+\tightlist
+\item
+  Modelling Choices
+\end{itemize}
+
+\textbf{Model evaluation 1}
+
+\textbf{Task 2: Model evaluation 2 with mimicked live data}
+
+\begin{itemize}
+\tightlist
+\item
+  Please pick two dates , one before and one after lockdowns in that
+  city.
+\item
+  Carry out the exercise before the lockdown
+\item
+  Take your selected model and use it on the post lockdown date
+\item
+  Compare the predictive power of the model . Discuss briefly in the
+  report
+\end{itemize}
+
+\textbf{Task 3: Model evaluation 3 Machine Learning and visualization:}
+
+\begin{itemize}
+\tightlist
+\item
+  Consider your ML model (RF or Boosting
+\item
+  Explain features ' contribution to predicted values on average , using
+  Shapley values
+\item
+  You shall use a SHAP method
+\item
+  You may use graphs , but the emphasis is on the discussion part.
+\item
+  This is worth relatively few points , do it only if everything else is
+  already done
+\item
+  extra add: graph on cv rmse?
+\end{itemize}
+
+\hypertarget{references-adjust}{%
+\subsection{References (Adjust)}\label{references-adjust}}
+
+ChatGPT, Filter Excluded Property Types, November 21, 2023. Retrieved
+from:
+\url{https://chat.openai.com/share/c7ed8e6b-ffa8-46f0-97e4-672bff890d60}
+
+Békés,G., Kézdi,G.(2021).R, Python and Stata code for Data Analysis for
+Business, Economics, and Policy, ch13-used-cars-reg, GitHub repository,
+\url{https://github.com/gabors-data-analysis/da_case_studies/tree/master/ch14-used-cars-log}
+
+Békés, G., \& Kézdi, G. (2021). Data analysis for business, economics,
+and policy. Cambridge University Press, chapter 13.
+
+\hypertarget{appendix}{%
+\subsection{Appendix}\label{appendix}}
+
+\begin{verbatim}
+## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+\end{verbatim}
+
+\begin{verbatim}
+## Warning: Removed 180 rows containing non-finite values (`stat_bin()`).
+\end{verbatim}
+
+\begin{verbatim}
+## Warning: Removed 2 rows containing missing values (`geom_bar()`).
+\end{verbatim}
+
+\includegraphics[width=0.5\linewidth]{A2_files/figure-latex/figures-side-1}
+\includegraphics[width=0.5\linewidth]{A2_files/figure-latex/figures-side-2}
+
+\end{document}
