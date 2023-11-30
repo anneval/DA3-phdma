@@ -51,6 +51,20 @@
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 \setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage{float}
+\usepackage{colortbl}
+\usepackage{pdflscape}
+\usepackage{tabu}
+\usepackage{threeparttable}
+\usepackage{threeparttablex}
+\usepackage[normalem]{ulem}
+\usepackage{makecell}
+\usepackage{xcolor}
 \ifLuaTeX
   \usepackage{selnolig}  % disable illegal ligatures
 \fi
@@ -93,79 +107,106 @@ but also on an additional data set covering a different time frame,
 essentially mimicking live data. Finally, the report provides a detailed
 evaluation of the model performance of the best-performing machine
 learning model, utilizing variance-important measures such as Shapely
-values and partial dependence plots. \textbf{Data Preparation:} The data
-for apartments in Copenhagen is taken from
-\href{http://insideairbnb.com/get-the-data/}{Inside Airbnb}. The
-selected data sets include the review date 24 September, 2023 and the
-review date 29 December, 2022. After joining the data sets, I proceed
-with the \emph{sample design} as follows. First, I drop variables that
-are of no use to the prediction exercise, e.g.~variables containing
-urls, or specifics about the host etc. Next, I make sure that all
-variables are cleaned (i.e.~remove characters or symbols) and of the
+values and partial dependence plots.\textbackslash{}
+
+\textbf{Data Preparation:}The data for apartments in Copenhagen is taken
+from \href{http://insideairbnb.com/get-the-data/}{Inside Airbnb}. The
+two selected data sets include the review date 24 September, 2023 and
+the review date 29 December, 2022. After joining the data sets, I
+proceed with the \emph{sample design} as follows. First, I drop
+variables that are of no use to the prediction exercise, e.g.~variables
+containing urls, or specifics about the host etc. Next, I make sure that
+all variables are cleaned (i.e.~remove characters or symbols) and of the
 correct type and class for the prediction exercise (e.g.~conversion to
 binary, numeric and factors). Moreover, I encode the `price' variable to
 have the right format (no commas for thousands). Furthermore, I
 transform the variable `amenity', which originally contains a listing of
 all kinds of amenities a certain Airbnb has, into dummy variables. In
 order to prevent to obtain over 2000 dummy variables I group the most
-important amenities together and create approximately 15 dummies. In
-order to ensure that the sample relates to the policy question at hand I
-filter for apartments that can house only 2 to 6 people and that
-correspond to ``standard'' property types for representative Airbnb
-prices. To circumvent that the analysis is distorted by errors I drop
-extreme values by making sure that the minimum number of nights is at
-leas equal to one. At last I create the variable `days since first
-review' which allows me to analyse approximately for how long the
-apartments have been used as a Airbnbs.
+important amenities together and create approximately 15 dummies. To
+ensure that the sample relates to the policy question at hand I filter
+for apartments that can house only 2 to 6 people and that correspond to
+``standard'' property types for representative Airbnb prices. To
+circumvent that the analysis is distorted by errors I drop extreme
+values by making sure that the minimum number of nights is at least
+equal to one. At last, I create the variable `days since first review'
+which allows me to analyse approximately for how long a apartment has
+been used as a Airbnb i.e.~a proxy for age.
 
-In terms of \emph{label engineering} I make sure that minimum and
-maximum values are reasonable and drop extreme values above 15.000 DKK
+In terms of \emph{label engineering} I assure that minimum and maximum
+values are reasonable and drop extreme values above 15.000 DKK
 (i.e.~2000 Euro per night) which are likely to be errors after carefully
 considering the characteristics of those high-priced Airbnbs. Moreover,
 I check whether a log-transformation is feasible, since it might be
 interesting to analyse relative changes rather than changes per monetary
-unit. The two graphs in the appendix however show that transforming the
+unit. However, the two graphs in the appendix show that transforming the
 target variable to logs does not alter the shape of the distribution
-significantly.Therefore, I continue to use the target variable in
+significantly. Therefore, I continue to use the target variable in
 levels.
 
-\textbf{Feature engineering:}
+Next, I turn to the \emph{feature engineering:} choices. First, I
+inspect \emph{missing values}. Here I drop variables if they contain to
+many missing values and are not of importance for further analysis
+(e.g.~calender updated and license). Other variables like `bathrooms' or
+`bedrooms', I impute with the help of descriptive variables like
+`bathroom text' or approximate with the variable `number of beds' and
+`accommodates'. Some variables that contain only a few missing variables
+get the missing values replaced with the median of the non-missing
+values (e.g.~n\_days\_since, review).
 
-\textbf{Models:}
+In the following I consider th \emph{functional form} of some of the
+predictors. However, these feature modifications are only relevant for
+the OLS (LASSO) model. The other two (machine-learning) models are
+non-parametric algorithms, which should be able to find interactions
+between variables and non-linear behavior. After visual (see examples in
+appendix) and some basic regression analysis I add squared, cubic and
+log terms for the following variables: accommodates, beds,
+number\_of\_reviews, n\_days\_since, and review\_scores\_rating.
 
-\begin{itemize}
-\tightlist
-\item
-  Have 3 different models and compare performance
-\item
-  Argue for your choice of models
-\end{itemize}
+Last, I consider the \emph{interactions of predictors}. Again this is
+only relevant for the parametric OLS (LASSO) model.I assume interactions
+with f\_property\_type, f\_room\_type and accommodates and visualize
+those (see box plots in appendix). The interaction follows the believe,
+the impact of room type on the response variable (e.g., price) varies
+depending on the specific property type, an interaction term can capture
+these differential effects. For example, the effect of upgrading to a
+higher room type might have different implications for prices in
+different property types (e.g., apartments vs.~houses). Moreover, I
+include interactions between each f\_property\_type or f\_room\_type and
+all the amenity dummies, similar as to the London example. The final
+data set (including data for review date September 23 only) thus
+consists of 99 variables with 11880 observations. Regarding the target
+variable the mean price per night of an Airbnb in Copenhagen is 1184
+DKK, the maximum is 15000 DKK and the minimum price is 75DKK.Further
+summary statistics of the final data set can be found in the markdown
+file in the chunk: Summary statistics.
 
-\textbf{Model 1: OLS}
-
-\begin{itemize}
-\tightlist
-\item
-  Modelling Choices
-\end{itemize}
-
-\textbf{Model 2: Random Forest}
-
-\begin{itemize}
-\tightlist
-\item
-  Modelling Choices
-\end{itemize}
-
-\textbf{Model 3: Boosting Algorithm}
-
-\begin{itemize}
-\tightlist
-\item
-  Modelling Choices
-\end{itemize}
-
-\textbf{Model evaluation 1}
+\textbf{Models:} I chose to conduct the analysis using first an
+\emph{LASSO model}, second a \emph{Random forest model} and last a
+\emph{Boosting algorithm}. In the following I will go trough each model
+argue for its choice and modelling decisions and then compare their
+performance. To begin the prediction exercise I start by separating my
+data set several times. First, I filter so that it only contain the data
+from the first review date (29 December, 2022). Second, I separate the
+data into a holdout set for evaluation and a working data set to
+estimate the three different models. The working data set gets further
+divided into a training and a test set for cross validation when
+`calibrating' the right model parameters. This gets done automatically
+via the `train' function in the caret package, when used with
+cross-validation (method = ``cv''). The first model is the \emph{LASSO
+model}. I chose it in order to not fully depend on domain knowledge and
+to not be too concerned with variable selection but instead let the
+model itself choose the most important predictors automatically.
+Moreover, this way potential overfitting is avoided. I set a tuning grid
+to do cross validation and choose the value for lambda (between 0.5 and
+1), the parameter that sets the strength of the variable selection. The
+larger the lambda the more aggressive is the selection and thus fewer
+variables are left in the regression. The best performing LASSO model
+has a lambda of\ldots{} From all possible predictors (including
+interactions, polynomials etc.) the model shrinks the weakest
+coefficients to zero to reduce variance and ends up picking 61 out of 74
+predictors (see `lasso\_coeffs\_nz' in the LASSO chunk in the markdown
+file). The second model is the \emph{Random forest}.
 
 \textbf{Task 2: Model evaluation 2 with mimicked live data}
 
@@ -224,15 +265,18 @@ and policy. Cambridge University Press, chapter 13.
 ## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
 \end{verbatim}
 
-\begin{verbatim}
-## Warning: Removed 180 rows containing non-finite values (`stat_bin()`).
-\end{verbatim}
-
-\begin{verbatim}
-## Warning: Removed 2 rows containing missing values (`geom_bar()`).
-\end{verbatim}
-
 \includegraphics[width=0.5\linewidth]{A2_files/figure-latex/figures-side-1}
 \includegraphics[width=0.5\linewidth]{A2_files/figure-latex/figures-side-2}
+
+\begin{verbatim}
+## `geom_smooth()` using formula = 'y ~ x'
+## `geom_smooth()` using formula = 'y ~ x'
+\end{verbatim}
+
+\includegraphics[width=0.5\linewidth]{A2_files/figure-latex/figures-side2-1}
+\includegraphics[width=0.5\linewidth]{A2_files/figure-latex/figures-side2-2}
+
+\includegraphics[width=0.5\linewidth]{A2_files/figure-latex/figures-side3-1}
+\includegraphics[width=0.5\linewidth]{A2_files/figure-latex/figures-side3-2}
 
 \end{document}
