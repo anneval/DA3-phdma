@@ -95,24 +95,25 @@ Economists}
 \textbf{The report below summarizes pricing strategies for small and
 mid-size apartments in Copenhagen. Using a data-driven approach, I
 determine that the average price for apartments hosting 2 to 6 guests is
-300 DKK per night, as predicted by the best-performing model. The
-driving factors influencing apartment prices are the number of beds and
-the neighborhood.} The first part of the report delves into data
-preparation and pre-processing. Subsequently, the three distinct price
-prediction models, along with all modeling decisions, are explained.
-This is followed by a comparison of the results with predicted apartment
-prices in London. In addition, to further assess the predictive power of
-the models out of sample, predictions are made not only on a holdout set
-but also on an additional data set covering a different time frame,
-essentially mimicking live data. Finally, the report provides a detailed
-evaluation of the model performance of the best-performing machine
-learning model, utilizing variance-important measures such as Shapely
-values and partial dependence plots.\textbackslash{}
+1166 DKK (= 156 Euro) per night, as predicted by the best-performing
+model. The driving factor influencing apartment prices on average the
+most is the number of people an Airbnb can accommodate.} The first part
+of the report delves into data preparation and pre-processing.
+Subsequently, the three distinct price prediction models, along with all
+modeling decisions, are explained. This is followed by a comparison of
+the results with predicted apartment prices in London. In addition, to
+further assess the predictive power of the models out of sample,
+predictions are made not only on a holdout set but also on an additional
+data set covering a different time frame, essentially mimicking live
+data. Finally, the report provides a detailed evaluation of the model
+performance of the best-performing machine learning model, utilizing
+variance-important measures such as Shapely values and partial
+dependence plots.
 
-\textbf{Data Preparation:}The data for apartments in Copenhagen is taken
-from \href{http://insideairbnb.com/get-the-data/}{Inside Airbnb}. The
-two selected data sets include the review date 24 September, 2023 and
-the review date 29 December, 2022. After joining the data sets, I
+\textbf{Data Preparation:} The data for apartments in Copenhagen is
+taken from \href{http://insideairbnb.com/get-the-data/}{Inside Airbnb}.
+The two selected data sets include the review date 24 September, 2023
+and the review date 29 December, 2022. After joining the data sets, I
 proceed with the \emph{sample design} as follows. First, I drop
 variables that are of no use to the prediction exercise, e.g.~variables
 containing urls, or specifics about the host etc. Next, I make sure that
@@ -181,7 +182,7 @@ DKK, the maximum is 15000 DKK and the minimum price is 75DKK.Further
 summary statistics of the final data set can be found in the markdown
 file in the chunk: Summary statistics.
 
-\textbf{Models:} I chose to conduct the analysis using first an
+\textbf{Model selection:} I chose to conduct the analysis using first an
 \emph{LASSO model}, second a \emph{Random forest model} and last a
 \emph{Boosting algorithm}. In the following I will go trough each model
 argue for its choice and modelling decisions and then compare their
@@ -193,73 +194,248 @@ estimate the three different models. The working data set gets further
 divided into a training and a test set for cross validation when
 `calibrating' the right model parameters. This gets done automatically
 via the `train' function in the caret package, when used with
-cross-validation (method = ``cv''). The first model is the \emph{LASSO
-model}. I chose it in order to not fully depend on domain knowledge and
-to not be too concerned with variable selection but instead let the
-model itself choose the most important predictors automatically.
-Moreover, this way potential overfitting is avoided. I set a tuning grid
-to do cross validation and choose the value for lambda (between 0.5 and
-1), the parameter that sets the strength of the variable selection. The
-larger the lambda the more aggressive is the selection and thus fewer
-variables are left in the regression. The best performing LASSO model
-has a lambda of\ldots{} From all possible predictors (including
-interactions, polynomials etc.) the model shrinks the weakest
-coefficients to zero to reduce variance and ends up picking 61 out of 74
-predictors (see `lasso\_coeffs\_nz' in the LASSO chunk in the markdown
-file). The second model is the \emph{Random forest}.
+cross-validation (method = ``cv'').
 
-\textbf{Task 2: Model evaluation 2 with mimicked live data}
+The first model is the \emph{LASSO model}. I chose it in order to not
+fully depend on domain knowledge and to not be too concerned with
+variable selection but instead let the model itself choose the most
+important predictors automatically. Moreover, this way potential
+overfitting is avoided. I set a tuning grid to do cross validation and
+choose the value for lambda (between 0.5 and 1), the parameter that sets
+the strength of the variable selection. The larger the lambda the more
+aggressive is the selection and thus fewer variables are left in the
+regression. The best performing LASSO model has a lambda of 0.75. From
+all possible predictors (including interactions, polynomials etc.) the
+model shrinks the weakest coefficients to zero to reduce variance and
+ends up picking 61 out of 74 predictors and (see `lasso\_coeffs\_nz' in
+the LASSO chunk in the markdown file) and has a RMSE of 725.6417.
 
-\begin{itemize}
-\tightlist
-\item
-  Please pick two dates , one before and one after lockdowns in that
-  city.
-\item
-  Carry out the exercise before the lockdown
-\item
-  Take your selected model and use it on the post lockdown date
-\item
-  Compare the predictive power of the model . Discuss briefly in the
-  report
-\end{itemize}
+The second model is the \emph{Random forest model}. It seems promising
+because there is a large number of possible predictors, which gives the
+Random forest many opportunities for randomly selecting m variables to
+split on in the first step (i.e.decorrelation). This will lead to more
+differently looking bagged trees. Aggregating those leads then to more
+reduction in variance and thus a more robust outcome, increased
+stability and less overfitting. Moreover, using this model there is no
+need to make decisions regarding functional form, interaction, variable
+selection. In addition, the Random forest needs relatively little
+tuning. I again set the tuning parameters (number of trees, number of
+variables checked for a spit, and depth of trees (size)) by trying out
+several combinations via five-fold cross validation. In the
+cross-validation process I try out 3 different values (5, 7, 9) for the
+parameter `mtry' (number of variables randomly sampled as candidates at
+each split). Usually the parameter roughly equals the square root of the
+number of variables. In this case the number of predictors is 26, so I
+set the starting value to be equal to its square root which is
+approximately 5.09. The next parameter,`.min.node.size' specifies the
+minimum size of terminal nodes (leaves) in the trees. Here I also chose
+3 different values to try out, since smaller value allows the model to
+create more complex trees, potentially capturing more details in the
+data, but at the same time it may also lead to overfitting. A larger
+value results in simpler trees, which may generalize better to new data
+but might miss some patterns in the training data. The `ntree'
+parameter, number of trees to grow in the forest, is left at its default
+value of 500. More trees can increase model performance, but it also
+requires more computational resources. Last, I set the splitting rule
+for building the trees to be variance reduction, since this splitting
+rule is less sensitive towards outliers and because I have a regression
+with a continuous target variable. The best performing model (according
+to the RMSE) uses: mtry = 9, splitrule = variance and min.node.size = 5
+and has a RMSE of 679.6966
 
-\textbf{Task 3: Model evaluation 3 Machine Learning and visualization:}
+The last model I consider to predict Airbnb pricing in Copenhagen is a
+\emph{Boosting Algorithm}, or more specific gradient boosting using the
+gbm library. Similarly to the Random forest it is an ensemble method
+based on trees. However,it differs from Random forest by building
+sequential trees that depend on each other and in the end combines
+results from many weak and imperfect trees to make the final strong
+prediction. Ensemble approaches often leads to improved predictive
+performance compared to individual models since they capture diverse
+patterns and reduce overfitting. Overall its a flexible model that is
+capable of capturing complex, nonlinear relationships in the data. In
+the case of predicting Airbnb prices, there may be intricate
+interactions and dependencies between various features (e.g.,
+neighborhood, amenities, property type) that boosting models can model
+effectively. In addition, Boosting models are less sensitive to outliers
+(i.e.~here unusual or extreme listings) compared to other algorithms.
+Similar tp before I begin by fine-tuning the model to the specific
+characteristics of the Airbnb data set using cross-validation. Compared
+to Random forest there is a greater emphasis on tuning with Boosting.
+The first parameter `interaction.depth' guides the complexity of the
+tree. It represents the maximum depth of an individual tree. In this
+case, I try three different values (1, 5, and 10) since there is a
+trade-off between model complexity and interpretability. Lower values
+(e.g.~1) are chosen when the relationships in the data are suspected to
+be relatively simple. This leads to shallow trees, which can be
+computationally efficient and less prone to overfitting. Slightly larger
+values (e.g.~5) are appropriate for data sets with moderately complex
+relationships and balance between model complexity and computational
+efficiency. Higher values indicate (e.g.~10) that relationships in your
+data are highly intricate and nonlinear but are prone to over fit. The
+next parameter, `n.trees' specifies the number of boosting iterations or
+trees, here I cross validate over a sequence from 200 to 700 with a step
+size of 50. The parameter depends on the trade-off between model
+performance and training time. The third parameter of interest is
+`shrinkage' or the learning rate, this parameter controls the
+contribution of each tree to the final prediction. A lower value results
+in a more robust model but requires more trees. It is set to 0.1, which
+is a common starting value. Last, the parameter `n.minobsinnode', the
+minimum number of training set samples required in a node to initiate a
+split during the construction of a tree, is set to 20. As it helps
+control the size of the tree nodes there is again a trade-off between
+model complexity and interpretability. Small values lead to complex
+trees and potential overfitting vice versa for large values. A value of
+20 is commonly used in practice. The RMSE is used to select the optimal
+model using the smallest value. The final values used for the best model
+are n.trees = 200, interaction.depth = 10, shrinkage = 0.1 and
+n.minobsinnode = 20. It has a RMSE of 697.9551.
 
-\begin{itemize}
-\tightlist
-\item
-  Consider your ML model (RF or Boosting
-\item
-  Explain features ' contribution to predicted values on average , using
-  Shapley values
-\item
-  You shall use a SHAP method
-\item
-  You may use graphs , but the emphasis is on the discussion part.
-\item
-  This is worth relatively few points , do it only if everything else is
-  already done
-\item
-  extra add: graph on cv rmse?
-\end{itemize}
+After being split into train and test data set during cross-validation
+the best model of LASSO, Random forest and Boosting gets reevaluated on
+the working data set. The results are shown in table 1. We can see in
+column 1 that out of the three models according to the RMSE (for the
+work data set) the best performing one is model 2 - the Random forest.
+It has a RMSE of: 679.6966 which is substantially lower than those of
+the other two models. Also in terms of other evaluation methods like the
+mean absolute error or the R-squared model 2 performs best. The second
+best is the Boosting algorithm and the last the LASSO. Moreover, from a
+practical perspective Random forest is the most convenient model as it
+is fully automatic, needs little tuning and works very fast compared to
+more complex Machine Learning algorithms like Boosting. Table 2 shows
+the results for reevaluating the three models on the hold-out data set.
+In terms of the performance ranking nothing changes and the Random
+forest model remains the winner. It is unexpected though that the RMSEs
+in the hold out set are lower for all three models, usually the opposite
+is the case since the model has to generalize to new, unseen data. The
+lower holdout RMSE might be due to the randomness involved in splitting
+the data into work and holdout sets which can lead to variability in
+performance metrics. Other explanations are model simplicity or
+outliers. Compared to the results from the London case study (slide 51)
+where the RMSE for the different models are all between 45 and 50, the
+RMSEs are substantially larger. Also the differences between the RMSE of
+the three models are quite big, compared to the results from the London
+case study. However, the absolute value of the RMSE does not have any
+meaning and the two data sets for London and Copenhagen differ in many
+regards. Furthermore, I believe the large size of the RMSE comes from
+the fact that in this data set the price is given in DKK instead of
+Euro, which is 7,46 times as much. It would be a good robustness check
+to transform the prices into EUR an recalculate the models.
 
-\hypertarget{references-adjust}{%
-\subsection{References (Adjust)}\label{references-adjust}}
+\textbf{Model evaluation with mimicked live data}: Next, I evaluate the
+three models again but this time on the `new' data set which has
+September 2023 as a reference date. I do this to further investigate the
+out of sample prediction performance of the three models. Using the
+September data set is a way to mimic live data which we cannot access in
+another way. The results in column 3 of table 1 show that again in terms
+of the performance ranking nothing changes and the Random forest model
+remains the model with the lowest RMSE of 728.6335. The LASSO model
+remains the worst performing model with a RMSE of 773.9909. As expected
+from theory the RMSEs of the `unseen' data set are larger than the RMSE
+of the holdout data set and the working data set. Which leads to the
+conclusion that the predictive power of the models decreases when using
+`live' data. The problem of the lower holdout RMSE seems not to prevail
+here if a different `unseen' data set is used.
 
-ChatGPT, Filter Excluded Property Types, November 21, 2023. Retrieved
-from:
-\url{https://chat.openai.com/share/c7ed8e6b-ffa8-46f0-97e4-672bff890d60}
+\begin{table}
 
-Békés,G., Kézdi,G.(2021).R, Python and Stata code for Data Analysis for
-Business, Economics, and Policy, ch13-used-cars-reg, GitHub repository,
-\url{https://github.com/gabors-data-analysis/da_case_studies/tree/master/ch14-used-cars-log}
+\caption{\label{tab:unnamed-chunk-22}RMSE for all data sets}
+\centering
+\begin{tabular}[t]{l|r|r|r}
+\hline
+  & Work set RMSE & Holdout set RMSE & September RMSE\\
+\hline
+LASSO (model w/ interactions) & 725.64 & 705.01 & 773.99\\
+\hline
+Random forest & 674.63 & 669.31 & 726.10\\
+\hline
+GBM & 702.20 & 695.72 & 768.17\\
+\hline
+\end{tabular}
+\end{table}
 
-Békés, G., \& Kézdi, G. (2021). Data analysis for business, economics,
-and policy. Cambridge University Press, chapter 13.
+\textbf{Model evaluation and visualization Random Forest:} Since Machine
+Learning methods are often seen as ``black-box'' models, and we often do
+not really know how an actual prediction is created I want to further
+investigate why the Random forest model was the best performing model in
+all scenarios discussed above. One way to do this is by looking at the
+features' contribution to predicted values on average i.e.~variable
+importance using variance importance plots and Shapley values.
+Understanding what factors influence Airbnb prices the most can help
+users and hosts to make informed decisions. First, looking at graph x
+which displays the 10 most important features (in percentage terms) of
+the Random forest we can see that the variables `accommodates',`beds'\&
+`n\_days\_since' contribute the most. Together these three variables
+explain about 30\% of the prediction performance. The variables
+`review\_score\_rating' and `neigborhood\_cleansedIndre By' also appear
+to be influential. For all other variables the importance lays below 6\%
+and diminishes rather quickly. The results are similar to the London
+case study, where also `accommodates' was the most important variable.
+Grouping the factor variables together and recalculating the variable
+importance indicates no change in the importance ordering (see Appendix
+graph x). In addition, graph x in the appendix displays the importance
+of all features in the model above a cutoff (for readability). Here
+again we see the typical shape that three to four variables are quite
+important in explaining the prediction outcome and the others contribute
+relatively little. Turning to the Shaeply values, a local model agnostic
+approach, which calculates marginal importance of the variables. In
+detail, the Shapley plot x puts the baseline value (= sample mean of
+price\_n: 1494.67) on the horizontal axis and shows how each feature
+adds (or subtracts) for a given observation. It illustrates that
+`neigborhood\_cleansedIndre By' has the highest relative importance by
+adding a value of +277.42 to the sample mean. This outcome seems
+reasonable since the neighborhood Indre By in Copenhagen, is very
+central, close to the harbor and close to most of the touristic
+hot-spots. Further, the graph highlights that the features
+`accommodates',`beds'\& `n\_days\_since are again important. However,
+now we can see in much more detail how each of their contributions
+distributes to the prediction. For example if an Airbnb can accommodate
+3 people, the sample mean of price\_n drops by -70.64. If the Airbnb has
+two beds, the first review is older than 10 year or the review score
+rating is equal to 5 there is a positive effect on the sample mean of
+the Airbnb price. An even deeper analysis between each value of a
+predictor and the predicted values gives us the Partial dependence plot
+(see Appendix, graph for the most important feature 'accommodates').
+Even more insights could be obtained from an analysis across sub
+samples. This is however neglected here due to space \& time
+constraints.
+
+\includegraphics[width=0.5\linewidth]{A2_files/figure-latex/figures-VARIMP-1}
 
 \hypertarget{appendix}{%
 \subsection{Appendix}\label{appendix}}
+
+\begin{table}
+
+\caption{\label{tab:unnamed-chunk-30}Metrics all}
+\centering
+\begin{tabular}[t]{lrrr}
+\toprule
+  & LASSO (model w/ interactions) & Random forest & GBM\\
+\midrule
+MAE.Min. & 354.82 & 331.29 & 356.98\\
+MAE.1st.Qu. & 363.58 & 351.31 & 371.67\\
+MAE.Median & 377.40 & 354.51 & 374.93\\
+MAE.Mean & 371.44 & 357.11 & 372.03\\
+MAE.3rd.Qu. & 380.32 & 369.37 & 377.78\\
+MAE.Max. & 381.07 & 379.08 & 378.78\\
+MAE.NA.s & 0.00 & 0.00 & 0.00\\
+RMSE.Min. & 609.56 & 538.38 & 627.05\\
+RMSE.1st.Qu. & 703.95 & 600.36 & 691.17\\
+RMSE.Median & 738.75 & 604.25 & 708.04\\
+RMSE.Mean & 725.64 & 674.63 & 702.20\\
+RMSE.3rd.Qu. & 742.04 & 779.61 & 719.08\\
+RMSE.Max. & 833.90 & 850.54 & 765.68\\
+RMSE.NA.s & 0.00 & 0.00 & 0.00\\
+Rsquared.Min. & 0.17 & 0.26 & 0.22\\
+Rsquared.1st.Qu. & 0.21 & 0.26 & 0.24\\
+Rsquared.Median & 0.21 & 0.28 & 0.29\\
+Rsquared.Mean & 0.22 & 0.32 & 0.28\\
+Rsquared.3rd.Qu. & 0.23 & 0.40 & 0.30\\
+Rsquared.Max. & 0.28 & 0.42 & 0.34\\
+Rsquared.NA.s & 0.00 & 0.00 & 0.00\\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{verbatim}
 ## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
@@ -278,5 +454,10 @@ and policy. Cambridge University Press, chapter 13.
 
 \includegraphics[width=0.5\linewidth]{A2_files/figure-latex/figures-side3-1}
 \includegraphics[width=0.5\linewidth]{A2_files/figure-latex/figures-side3-2}
+
+\includegraphics[width=0.5\linewidth]{A2_files/figure-latex/figures-side4-1}
+\includegraphics[width=0.5\linewidth]{A2_files/figure-latex/figures-side4-2}
+
+\includegraphics[width=0.5\linewidth]{A2_files/figure-latex/figures-side5-1}
 
 \end{document}
