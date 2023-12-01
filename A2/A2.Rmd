@@ -8,8 +8,7 @@ output:
   html_document:
   df_print: paged
 ---
-<!-- TO DO: clean up test/train/hold out ML part....
-Transform DKK to EUR SEE if RMSE drops, plots for results?3Ms--> 
+
 ```{r setup, include=FALSE}
 # Set options for markdown
 knitr::opts_chunk$set(echo = TRUE)
