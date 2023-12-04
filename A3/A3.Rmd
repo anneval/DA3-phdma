@@ -12,6 +12,11 @@ output:
 ```{r, include=FALSE}
 # Clear memory
 rm(list=ls())
+
+# set global chunk options
+knitr::opts_chunk$set(include = FALSE, fig.align = 'center', cache = TRUE,
+                      warning = FALSE, message = FALSE, echo = FALSE)
+
 ```
 
 ```{r setup, include=FALSE}
@@ -48,6 +53,9 @@ library(treeshap)
 ```{r,include=FALSE}
 bisnode <- read_csv(paste(data_in,"cs_bisnode_panel.csv", sep = "/")) # 287829 obs. of 48 variables 
 ```
+
+
+
 
 <!-- Data summary  --> 
 ```{r, include=FALSE}
