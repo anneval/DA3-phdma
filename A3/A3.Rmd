@@ -1,0 +1,46 @@
+---
+title: "Assignment 3 - Finding fast growing firms"
+subtitle: "Course: ECBS6067 - Prediction with Machine Learning for Economists"
+author: "Anja Hanh & Anne Valder"
+date: "2023-12-14"
+output:
+  pdf_document: default
+  html_document:
+  df_print: paged
+---
+
+```{r, include=FALSE}
+# Clear memory
+rm(list=ls())
+```
+
+```{r setup, include=FALSE}
+# Set options for markdown
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies') # adjust 
+```
+
+<!-- Set directory, load functions and theme  --> 
+```{r, include=FALSE}
+#getwd()
+source("set-data-directory.R")
+source("ch00-tech-prep/theme_bg.R")
+source("ch00-tech-prep/da_helper_functions.R")
+```
+
+```{r,include=FALSE, warning=FALSE}
+#load libraries
+library(tidyverse)
+library(caret)
+library(ranger)
+library(Hmisc)
+library(knitr)
+library(modelsummary)
+library(treeshap)
+# add
+```
+
+<!-- Load data  --> 
+```{r,include=FALSE}
+
+```
