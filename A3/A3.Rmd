@@ -17,7 +17,7 @@ rm(list=ls())
 ```{r setup, include=FALSE}
 # Set options for markdown
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies') # adjust 
+knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies') # adjust @Anja, set to source theme, directory, & helper functions
 ```
 
 <!-- Set directory, load functions and theme  --> 
@@ -26,6 +26,10 @@ knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/S
 source("set-data-directory.R")
 source("ch00-tech-prep/theme_bg.R")
 source("ch00-tech-prep/da_helper_functions.R")
+
+
+data_in <- paste(data_dir,"bisnode-firms","clean/", sep = "/")
+#use_case_dir <- "ch17-predicting-firm-exit/"
 ```
 
 ```{r,include=FALSE, warning=FALSE}
@@ -42,5 +46,63 @@ library(treeshap)
 
 <!-- Load data  --> 
 ```{r,include=FALSE}
+bisnode <- read_csv(paste(data_in,"cs_bisnode_panel.csv", sep = "/")) # 287829 obs. of 48 variables 
+```
+
+<!-- Data summary  --> 
+```{r, include=FALSE}
 
 ```
+
+<!-- Data preparation  --> 
+<!-- Sample design  --> 
+
+```{r, include=FALSE}
+
+```
+
+<!-- Label engineering  --> 
+
+```{r, include=FALSE}
+
+```
+
+<!-- Feature engineering  --> 
+
+```{r, include=FALSE}
+# missing values
+# interactions (irrelevant ML?)
+# functional form (irrelevant ML?)
+```
+
+<!-- Preparation for prediction & CV  --> 
+```{r,include=FALSE}
+
+set.seed(123456)
+
+work_indices <- as.integer(createDataPartition(bisnode$default, p = 0.8, list = FALSE))
+bisnode_work <- bisnode[train_indices, ]
+bisnode_holdout <- bisnode[-train_indices, ]
+
+dim(bisnode_work)
+dim(bisnode_holdout)
+
+# separation into train and test automatically via cross-validation using caret package
+
+n_folds = 5
+train_control <- trainControl(method = "cv",
+                              number = n_folds,
+                              verboseIter = TRUE)
+```
+
+
+<!-- Task1.1: Model 1 - Logit  --> 
+<!-- Task1.1: Model 2 - Random forest  --> 
+<!-- Task1.1: Model 3 - ?  -->
+<!-- Task1.1: Evaluation  -->
+
+<!-- Task1.2: Loss function design -->
+
+<!-- Task2: 2 Samples (service & manufacturing)  --> 
+
+
