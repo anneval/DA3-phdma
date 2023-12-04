@@ -81,6 +81,7 @@ bisnode <- read_csv(paste(data_in,"cs_bisnode_panel.csv", sep = "/")) # 287829 o
 # missing values
 # interactions (irrelevant ML?)
 # functional form (irrelevant ML?)
+# select and store variables for each model (paste formulas)
 ```
 
 <!-- Preparation for prediction & CV  --> 
@@ -100,17 +101,54 @@ dim(bisnode_holdout)
 n_folds = 5
 train_control <- trainControl(method = "cv",
                               number = n_folds,
-                              verboseIter = TRUE)
+                              classProbs = TRUE, # computing probabilities during training
+                              summaryFunction = twoClassSummaryExtended, # from da_helper_functions.R
+                              savePredictions = TRUE # save the predictions for each fold
+                              )
+# train_control$verboseIter <- TRUE # add that for RF
+
 ```
 
 
 <!-- Task1.1: Model 1 - Logit  --> 
 <!-- Task1.1: Model 2 - Random forest  --> 
-<!-- Task1.1: Model 3 - ?  -->
+<!-- Task1.1: Model 3 - Logit LASSO??  -->
 <!-- Task1.1: Evaluation  -->
+```{r}
+# No loss function
+# RMSE (AUC also?based on default classification threshold 0.5?)
+```
+
 
 <!-- Task1.2: Loss function design -->
+<!-- Task1.2: For each of the three models: predict probabilities, look for the optimal classification threshold, calculate expected loss with your loss function  -->
+<!-- Task1.2: Pick model with smallest expected loss -->
+```{r}
 
-<!-- Task2: 2 Samples (service & manufacturing)  --> 
+```
 
+<!-- Task1.3: Show a confusion table (on a selected fold or holdout set) -->
+<!-- Task1.3: Discuss results, evaluate how useful your model may be -->
+```{r}
 
+```
+
+<!-- Task2.1: 2 Samples (service & manufacturing)  --> 
+
+```{r}
+
+```
+<!-- Task2.2: Define single loss function (Same loss function as before?) but use for samples separately (pick one prediction model) --> 
+
+```{r}
+
+```
+
+<!-- Task2.3: Compare the model performance across two samples -->
+
+```{r}
+
+```
+
+<!-- Task3.1: Use some methods to interpret your random forest probability model (Shapley, PDP) --> 
+<!-- Task3.2: Create a shiny (flexdashboard) app for the project where you can show (1) how key variables influence the prediction (!Shapley) and (2) show expected loss based on different thresholds. -->
