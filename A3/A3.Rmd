@@ -21,8 +21,13 @@ knitr::opts_chunk$set(include = FALSE, fig.align = 'center', cache = TRUE,
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies') # adjust @Anja, set to source theme, directory, & helper functions
+knitr::opts_knit$set(root.dir = 'C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies') # adjust @Anja, set to source theme, directory, & helper functions
+
+# store different directories here:
+# C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
+# C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies
+# 
+
 ```
 
 <!-- Set directory, load functions and theme  --> 
@@ -54,24 +59,49 @@ library(treeshap)
 bisnode <- read_csv(paste(data_in,"cs_bisnode_panel.csv", sep = "/")) # 287829 obs. of 48 variables 
 ```
 
-
-
-
 <!-- Data summary  --> 
 ```{r, include=FALSE}
+# count missing values
+colSums(is.na(bisnode))
 
 ```
 
 <!-- Data preparation  --> 
+
+```{r}
+
+
+
+
+
+```
+
 <!-- Sample design  --> 
 
 ```{r, include=FALSE}
+####################################
+# Sample design
+####################################
+
+# drop variables with many NAs
+bisnode <- bisnode %>%
+  select(-c(COGS, finished_prod, net_dom_sales, net_exp_sales, wages, D))
+# potentially also drop unused years (e.g. 2016)
 
 ```
 
 <!-- Label engineering  --> 
 
 ```{r, include=FALSE}
+####################################
+# Label engineering
+####################################
+
+# add all missing year and company combinations
+bisnode <- bisnode %>%
+  complete(year, comp_id)
+
+
 
 ```
 
@@ -112,11 +142,11 @@ train_control <- trainControl(method = "cv",
 
 <!-- Task1.1: Model 1 - Logit  --> 
 <!-- Task1.1: Model 2 - Random forest  --> 
-<!-- Task1.1: Model 3 - Logit LASSO??  -->
+<!-- Task1.1: Model 3 - Logit LASSO?? / Classification Tree?  -->
 <!-- Task1.1: Evaluation  -->
 ```{r}
 # No loss function
-# RMSE (AUC also?based on default classification threshold 0.5?)
+# RMSE (AUC also?based on threshold that corresponds to prevalence of pos/neg in dataset)
 ```
 
 
