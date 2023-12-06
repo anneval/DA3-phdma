@@ -1,7 +1,7 @@
 ---
 title: "Assignment 3 - Finding fast growing firms"
 subtitle: "Course: ECBS6067 - Prediction with Machine Learning for Economists"
-author: "Anja Hanh & Anne Valder"
+author: "Anja Hahn, Teresa Huebel & Anne Valder"
 date: "2023-12-14"
 output:
   pdf_document: default
@@ -17,16 +17,18 @@ rm(list=ls())
 knitr::opts_chunk$set(include = FALSE, fig.align = 'center', cache = TRUE,
                       warning = FALSE, message = FALSE, echo = FALSE)
 
+options(scipen = 999)
+
 ```
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies') # adjust @Anja, set to source theme, directory, & helper functions
+knitr::opts_knit$set(root.dir = 'C:/Users/AnjaHahn/OneDrive - DataScience Service GmbH/WU/Courses/CEU Prediction with Machine Learning for Economists/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
 # C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies
-# 
+# C:/Users/AnjaHahn/OneDrive - DataScience Service GmbH/WU/Courses/CEU Prediction with Machine Learning for Economists/da_case_studies
 
 ```
 
