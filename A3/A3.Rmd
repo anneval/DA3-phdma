@@ -51,6 +51,7 @@ library(Hmisc)
 library(knitr)
 library(modelsummary)
 library(treeshap)
+library(summarytools)
 # add
 ```
 
@@ -64,6 +65,16 @@ bisnode <- read_csv(paste(data_in,"cs_bisnode_panel.csv", sep = "/")) # 287829 o
 # count missing values
 colSums(is.na(bisnode))
 
+# look at data
+bisnode %>% glimpse()
+
+# look at character variables
+bisnode %>%
+  group_by(gender) %>%
+  summarise(n = n(), mean = mean(sales))
+
+# overall summary statistics
+# descr(bisnode)
 
 ```
 
@@ -71,7 +82,18 @@ colSums(is.na(bisnode))
 
 ```{r}
 
+# convert character variables to one-hot-encoding
+bisnode <- bisnode %>% 
+  mutate_if(is.character, as.factor)
+dmy <- dummyVars("~ gender + origin + region_m", data = bisnode, fullRank = TRUE)
 
+new_dat <- data.frame(predict(dmy, newdata = bisnode))
+# @Anne: From your experience with A2, will the column names with "." make trouble now that we one-hot-encode in the beginning?
+
+# add new variables to data and discard old
+bisnode <- cbind(bisnode, new_dat)
+bisnode <- bisnode %>%
+  select(-c("gender", "origin", "region_m"))
 
 
 
@@ -83,6 +105,11 @@ colSums(is.na(bisnode))
 ####################################
 # Sample design
 ####################################
+# collect "weird stuff" here:
+# Company with ID 12212152320 had a massive explosion from 2012 to 2013 (0 to 63 employees etc) - how to treat?
+
+
+
 # add all missing year and company combinations
 bisnode <- bisnode %>%
   complete(year, comp_id)
@@ -159,7 +186,7 @@ plot_labor_avg
 
 
 ###################################
-# Creation of different labels
+# Creation of different labels: sales
 ###################################
 
 # YoY relative sales growth
@@ -176,6 +203,10 @@ bisnode <- bisnode %>%
   mutate(d1_sales_mil_log = sales_mil_log - Lag(sales_mil_log) ) %>%
   ungroup()
 
+
+###################################
+# Visualization sales growth
+
 # make histogram that shows both sales growth and d1_sales_mil_log
 plot_sales_growth_both <- ggplot(bisnode, aes(x = sales_growth)) +
   geom_histogram(aes(fill = "Percentage Change"), bins = 100, color = color.outline, alpha = 0.5) +
@@ -189,6 +220,10 @@ plot_sales_growth_both
 # It makes a difference whether relative growth is measured in log(diff) or percentage change
 # since logdiff is an inaccurate approximation for high changes this is especially relevant for high growth firms
 
+
+###################################
+# Creation of different labels: employment
+###################################
 # YoY relative employee growth
 bisnode <- bisnode %>%
   group_by(comp_id) %>%
@@ -202,6 +237,16 @@ bisnode <- bisnode %>%
   arrange(year) %>%
   mutate(d1_labor_avg_log = ln_labor_avg - Lag(ln_labor_avg) ) %>%
   ungroup()
+
+# birch index (weighted index of absolute and relative employment growth)
+bisnode <- bisnode %>%
+  group_by(comp_id) %>%
+  arrange(year) %>%
+  mutate(birch_ind = ((labor_avg - lag(labor_avg)) * (labor_avg/lag(labor_avg) - 1)) ) %>%
+  ungroup()
+
+###################################
+# Visualization employment growth
 
 #make histogram that shows both employee growth and d1_labor_avg_log
 plot_labor_growth_both <- ggplot(bisnode, aes(x = labor_growth)) +
