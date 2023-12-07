@@ -92,10 +92,9 @@ dmy <- dummyVars("~ gender + origin + region_m", data = bisnode, fullRank = TRUE
 new_dat <- data.frame(predict(dmy, newdata = bisnode))
 # @Anne: From your experience with A2, will the column names with "." make trouble now that we one-hot-encode in the beginning?
 
-# add new variables to data and discard old
+# add new variables to data
 bisnode <- cbind(bisnode, new_dat)
-bisnode <- bisnode %>%
-  select(-c("gender", "origin", "region_m"))
+
 
 
 
@@ -289,6 +288,10 @@ plot_labor_growth_both
 # interactions (irrelevant ML?)
 # functional form (irrelevant ML?)
 # select and store variables for each model (paste formulas)
+
+# discard variables not needed anymore
+bisnode <- bisnode %>%
+  select(-c("gender", "origin", "region_m"))
 ```
 
 <!-- Preparation for prediction & CV  --> 
