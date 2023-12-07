@@ -293,6 +293,27 @@ plot_labor_growth_both
 <!-- Feature engineering  --> 
 
 ```{r, include=FALSE}
+# industry category codes (2-digit NACE)
+bisnode <- bisnode %>%
+  mutate(ind2_cat = ind2 %>%
+           ifelse(. > 56, 60, .)  %>%
+           ifelse(. < 26, 20, .) %>%
+           ifelse(. < 55 & . > 35, 40, .) %>%
+           ifelse(. == 31, 30, .) %>%
+           ifelse(is.na(.), 99, .)
+           )
+
+# firm characteristics
+bisnode <- bisnode %>%
+  mutate(age = (year-founded_year) %>% # maybe remove again if computed earlier
+           ifelse(. < 0, 0, .),
+         age2 = age^2,
+         foreign_management = as.numeric(foreign >= 0.5),
+         multiple_ceo = as.numeric(ceo_count > 1),
+         ceo_age = (year-birth_year))
+
+# amort
+
 # missing values
 # interactions (irrelevant ML?)
 # functional form (irrelevant ML?)
