@@ -66,6 +66,8 @@ bisnode <- read_csv(paste(data_in,"cs_bisnode_panel.csv", sep = "/")) # 287829 o
 ```{r, include=FALSE}
 # count missing values
 colSums(is.na(bisnode))
+colSums(is.na(bisnode))/nrow(bisnode)*100
+
 
 # look at data
 bisnode %>% glimpse()
@@ -120,12 +122,17 @@ bisnode <- bisnode %>%
   select(-c(COGS, finished_prod, net_dom_sales, net_exp_sales, wages, D))
 # potentially also drop unused years (e.g. 2016)
 
-# find the years with the least missing values
+# find the years with the least missing sales values
 bisnode %>%
   group_by(year) %>%
   summarise(missing = sum(is.na(sales))) %>%
   arrange(missing)
 # biggest sample would be 2013-2014
+# NAs of all variables per year 
+bisnode %>%
+  group_by(year) %>%
+  summarise(across(everything(), ~ mean(is.na(.)) * 100, .names = "na_share_{.col}")) %>%
+  ungroup()
 
 # generate status_alive, we only want to analyse active firms
 bisnode  <- bisnode %>%
@@ -133,6 +140,7 @@ bisnode  <- bisnode %>%
            as.numeric(.))
 
 # generate different variations to display sales
+# @Teresa - maybe have that under label engineering?
 bisnode <- bisnode %>%
   filter(status_alive == TRUE) %>% # only look at firms that have some sales
   mutate(ln_sales = log(sales), # if we want to include firms not_alive need to specially treat 0
@@ -148,6 +156,7 @@ bisnode <- bisnode %>%
   filter(!(sales_mil < 0.001))
 
 # generate different variations to display labor_avg
+# @Teresa - maybe have that under label engineering?(together with data visualization below?)
 bisnode <- bisnode %>%
   mutate(ln_labor_avg = ifelse(labor_avg > 0, log(labor_avg), 0))
 ```
