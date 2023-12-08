@@ -86,10 +86,18 @@ bisnode %>%
 
 ```{r}
 
+# re-code one character variable
+bisnode <- bisnode %>%
+  mutate(urban_m = case_when(
+      urban_m == 1 ~ "capital_city",
+      urban_m == 2 ~ "other_big_city",
+      urban_m == 3 ~ "other"))
+
 # convert character variables to one-hot-encoding
 bisnode <- bisnode %>% 
   mutate_if(is.character, as.factor)
-dmy <- dummyVars("~ gender + origin + region_m", data = bisnode, fullRank = TRUE)
+dmy <- dummyVars("~ gender + origin + region_m + urban_m", data = bisnode, fullRank = TRUE)
+# @Teresa - warum hier fullRank = TRUE? ich hätte gefühlsmäßig FALSE genommen, hab aber jetzt auch nicht wirklich viel darüber gefunden
 
 new_dat <- data.frame(predict(dmy, newdata = bisnode))
 # @Anne: From your experience with A2, will the column names with "." make trouble now that we one-hot-encode in the beginning?
@@ -293,15 +301,19 @@ plot_labor_growth_both
 <!-- Feature engineering  --> 
 
 ```{r, include=FALSE}
-# industry category codes (2-digit NACE)
+###################################
+# new variables
+
+# group some industry category codes (2-digit NACE)
+# use ChatGPT to suggest similar groups (maximum of 5 groups)
 bisnode <- bisnode %>%
-  mutate(ind2_cat = ind2 %>%
-           ifelse(. > 56, 60, .)  %>%
-           ifelse(. < 26, 20, .) %>%
-           ifelse(. < 55 & . > 35, 40, .) %>%
-           ifelse(. == 31, 30, .) %>%
-           ifelse(is.na(.), 99, .)
-           )
+  mutate(ind2_cat = case_when(
+    ind2 < 10 ~ "primary_extractive",
+    ind2 >= 10 & ind2 < 40 ~ "manufact_utilities",
+    ind2 > 40 & ind2 < 84 ~ "services",
+    ind2 >= 84 & ind2 < 90 ~ "public_health_edu",
+    ind2 >= 90 ~ "arts"
+  ))
 
 # firm characteristics
 bisnode <- bisnode %>%
@@ -310,14 +322,121 @@ bisnode <- bisnode %>%
          age2 = age^2,
          foreign_management = as.numeric(foreign >= 0.5),
          multiple_ceo = as.numeric(ceo_count > 1),
-         ceo_age = (year-birth_year))
+         ceo_age = (year-round(birth_year))) # avoid digits for years
 
-# amort
+###################################
+# plausibility checks of relevant numeric variables
+for (var in c("age", "ceo_age", "ceo_count", "inoffice_days",
+             "curr_assets", "curr_liab", "extra_exp", "extra_inc",
+             "extra_profit_loss", "fixed_assets", "inc_bef_tax",
+             "intang_assets", "inventories", "liq_assets", "material_exp",
+             "personnel_exp", "profit_loss_year", "share_eq", "subscribed_cap",
+             "tang_assets")){
+  print(paste(paste0(var, 
+                     ": min:", 
+                     min(bisnode[, var], na.rm = TRUE), 
+                     "; max:"),
+              max(bisnode[, var], na.rm = TRUE)))
+}
+
+###################################
+# problematic data
+# age CEO cannot be negative, also some too young
+bisnode <- bisnode %>%
+  mutate(ceo_age = ifelse(ceo_age < 18, NA, ceo_age)) # overwrite implausible ones with NA for now
+
+# impute age CEO and calculate new variable
+bisnode <- bisnode %>%
+  mutate(flag_missing_age = as.numeric(is.na(ceo_age)),
+         ceo_age = round(ifelse(is.na(ceo_age), mean(ceo_age, na.rm = TRUE), ceo_age)),
+         ceo_young = as.numeric(ceo_age < 40 & !is.na(ceo_age)),
+         ceo_old = as.numeric(ceo_age > 75 & !is.na(ceo_age)))
+
+ 
+# there cannot be negative financial variables
+zero <- c("curr_liab", "curr_assets", "extra_exp", "extra_inc", "fixed_assets",
+          "intang_assets", "inventories", "liq_assets", "material_exp",
+          "personnel_exp", "subscribed_cap", "tang_assets") #share_eq?
+
+# flag negative ones
+for (var in zero){
+  aux <- paste0(var, "_flag_error")
+  bisnode[, aux] <- as.numeric(bisnode[, var] < 0)
+}
+
+# flag any negative assets (extra variable)
+bisnode <- bisnode %>%
+  mutate(flag_asset_problem = ifelse(intang_assets < 0 | curr_assets < 0 | fixed_assets < 0, 1, 0)) # flag negative ones
+
+# set negative ones to zeros
+bisnode <- bisnode %>%
+  mutate_at(vars(zero), funs(ifelse(. < 0, 0, .)))
+
+
+###################################
+# new variables and 
+# variable transformation
+
+# generate total assets
+bisnode <- bisnode %>%
+  mutate(total_assets = intang_assets + curr_assets + fixed_assets)
+
+# compute relative variables (sales as reference)
+bisnode <- bisnode %>%
+  mutate_at(vars("extra_exp", "extra_inc", "extra_profit_loss", 
+                 "inc_bef_tax", "inventories", "material_exp",
+                 "profit_loss_year", "personnel_exp"),
+            funs("relative" = ./sales))
+
+# compute relative variables (total assets as reference)
+bisnode <- bisnode %>%
+  mutate_at(vars("intang_assets", "curr_liab", "fixed_assets", 
+                 "liq_assets", "curr_assets", "share_eq", 
+                 "subscribed_cap", "tang_assets"),
+            funs("relative" = ifelse(total_assets == 0, 0, ./total_assets)))
+
+
+###################################
+# creating flags and winsorizing tails
+# continue here:
+
+data <- data %>%
+  mutate_at(vars(zero), funs("flag_high"= as.numeric(.> 1))) %>%
+  mutate_at(vars(zero), funs(ifelse(.> 1, 1, .)))
+
+
+# for vars that could be any, but are mostly between -1 and 1
+any <-  c("extra_profit_loss_pl", "inc_bef_tax_pl", "profit_loss_year_pl", "share_eq_bs")
+
+data <- data %>%
+  mutate_at(vars(any), funs("flag_low"= as.numeric(.< -1))) %>%
+  mutate_at(vars(any), funs(ifelse(.< -1, -1, .))) %>%
+  mutate_at(vars(any), funs("flag_high"= as.numeric(.> 1))) %>%
+  mutate_at(vars(any), funs(ifelse(.> 1, 1, .))) %>%
+  mutate_at(vars(any), funs("flag_zero"= as.numeric(.== 0))) %>%
+  mutate_at(vars(any), funs("quad"= .^2))
+
+
+# dropping flags with no variation
+variances<- data %>%
+  select(contains("flag")) %>%
+  apply(2, var, na.rm = TRUE) == 0
+
+data <- data %>%
+  select(-one_of(names(variances)[variances]))
+
 
 # missing values
 # interactions (irrelevant ML?)
 # functional form (irrelevant ML?)
 # select and store variables for each model (paste formulas)
+
+# one-hot encode
+dmy <- dummyVars("~ ind2_cat", data = bisnode, fullRank = FALSE) # or true?
+new_dat <- data.frame(predict(dmy, newdata = bisnode))
+# add new variables to data
+bisnode <- cbind(bisnode, new_dat)
+
 
 # discard variables not needed anymore
 bisnode <- bisnode %>%
