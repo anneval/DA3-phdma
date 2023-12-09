@@ -308,6 +308,36 @@ plot_labor_growth_both
 ####### Question:  0-1 new employees or in general? If there are any with 0 employees we should get rid of them anyways or?
 ```
 
+
+
+<!-- Feature engineering COMMENTS  --> 
+
+```{r}
+# I would also add a variable 'new' (see above and line 117). But yes maybe age and new both to sample design
+# industry codes look good!
+
+
+# why did we not add these?  
+#gender_m = factor(gender, levels = c("female", "male", "mix")),
+#m_region_loc = factor(region_m, levels = c("Central", "East", "West")))
+
+# function help check variables: summary(as.factor(bisnode$ceo_age)) # its also a bit weird they are not orderd should be the case for a numerical variable; maybe some error in calculation? above 90 also seems unlikely or?
+
+# # Q: why are tangible assets not included in Gabors code?
+## Just a guess but I think tangible assets (production sides, machines etc) depending on firm category not that relevant for firm? I think he wanted to put more emphasize on the financial side/ worth. 
+
+
+# ceo_young < 25 why did we chose another threshold? 
+# do has he did for imputation? data <- data %>%
+ # mutate(ceo_age = ifelse(ceo_age < 25, 25, ceo_age) %>%
+      #     ifelse(. > 75, 75, .) %>%
+       #    ifelse(is.na(.), mean(., na.rm = TRUE), .),
+       #  ceo_young = as.numeric(ceo_age < 40))
+
+# # sales?? line 503 maybe do grpah and basic lm to see which terms (squares etc) to include or? 
+```
+
+
 <!-- Feature engineering  --> 
 
 ```{r, include=FALSE}
@@ -485,8 +515,8 @@ data <- data %>%
 
 
 # missing values
-# interactions (irrelevant ML?)
-# functional form (irrelevant ML?)
+# interactions (irrelevant ML?) yes
+# functional form (irrelevant ML?) yes
 # select and store variables for each model (paste formulas)
 
 # one-hot encode
