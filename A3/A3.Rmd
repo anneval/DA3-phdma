@@ -23,7 +23,7 @@ options(scipen = 999)
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies')
+knitr::opts_knit$set(root.dir = 'C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
@@ -97,6 +97,7 @@ bisnode <- bisnode %>%
   mutate_if(is.character, as.factor)
 dmy <- dummyVars("~ gender + origin + region_m + urban_m", data = bisnode, fullRank = TRUE)
 # @Teresa - warum hier fullRank = TRUE? ich hätte gefühlsmäßig FALSE genommen, hab aber jetzt auch nicht wirklich viel darüber gefunden
+# t: with fullRank = TRUE one variable is dropped to avoid multicollinearity
 
 new_dat <- data.frame(predict(dmy, newdata = bisnode))
 # @Anne: From your experience with A2, will the column names with "." make trouble now that we one-hot-encode in the beginning? Kann sein sollte aber kein Problem sein, können wir im Zweifel dann vor Shapeley umformatieren :)
@@ -122,6 +123,7 @@ bisnode <- bisnode %>%
 
 # drop variables with many NAs
 # Question from Anne: do we need to drop net_dom_sales, net_exp_sales or can we somehow impute would also make a good growth indicator export/ domestic sales or? also wages
+# t: don't think imputation makes sense with more than 90% missing values
 bisnode <- bisnode %>%        
   select(-c(COGS, finished_prod, net_dom_sales, net_exp_sales, wages, D))
 # potentially also drop unused years (e.g. 2016), yes I would drop it I guess he had good reasons to do it.
@@ -144,8 +146,9 @@ bisnode  <- bisnode %>%
            as.numeric(.))
 
 # generate different variations to display sales
-# @Teresa - maybe have that under label engineering?
-# Question Anne:   mutate(sales = ifelse(sales < 0, 1, sales), warum macht er aus sales einfach einen dummy?
+# @Teresa - maybe have that under label engineering? t: only moved it up because I use it to filter sales_mil below, but true it doesn't really fit here...
+# Question Anne:   mutate(sales = ifelse(sales < 0, 1, sales), warum macht er aus sales einfach einen dummy? T: ich glaub die Zeile war weil er dann den Log nimmt und keine 0 haben wollte,
+# nachdem wir aber schon davor nach status_alive gefiltert haben, brauche wir das nicht, denke ich
 bisnode <- bisnode %>%
   filter(status_alive == TRUE) %>% # only look at firms that have some sales
   mutate(ln_sales = log(sales), # if we want to include firms not_alive need to specially treat 0
@@ -218,14 +221,21 @@ plot_labor_avg
 bisnode <- bisnode %>%
   group_by(comp_id) %>%
   arrange(year) %>%
-  mutate(sales_growth = (sales/lag(sales) -1)) %>%
+  mutate(sales_growth = (lead(sales)/sales -1)) %>%
   ungroup()
 
 # YoY sales growth as logdiff
 bisnode <- bisnode %>%
   group_by(comp_id) %>%
   arrange(year) %>%
-  mutate(d1_sales_mil_log = sales_mil_log - Lag(sales_mil_log) ) %>%
+  mutate(d1_sales_mil_log = lead(sales_mil_log) - sales_mil_log ) %>%
+  ungroup()
+
+# 2-year ahead average annual sales growth as percentage change
+bisnode <- bisnode %>%
+  group_by(comp_id) %>%
+  arrange(year) %>%
+  mutate(sales_growth_2y = (lead(sales, n = 2L)/sales -1)/2) %>%
   ungroup()
 
 ###################################
@@ -254,21 +264,21 @@ plot_sales_growth_both
 bisnode <- bisnode %>%
   group_by(comp_id) %>%
   arrange(year) %>%
-  mutate(labor_growth = (labor_avg/lag(labor_avg) - 1)) %>%
+  mutate(labor_growth = (lead(labor_avg)/labor_avg - 1)) %>%
   ungroup()
 
 # YoY employee growth as logdiff
 bisnode <- bisnode %>%
   group_by(comp_id) %>%
   arrange(year) %>%
-  mutate(d1_labor_avg_log = ln_labor_avg - Lag(ln_labor_avg) ) %>%
+  mutate(d1_labor_avg_log = lead(ln_labor_avg) - ln_labor_avg ) %>%
   ungroup()
 
 # birch index (weighted index of absolute and relative employment growth)
 bisnode <- bisnode %>%
   group_by(comp_id) %>%
   arrange(year) %>%
-  mutate(birch_ind = ((labor_avg - lag(labor_avg)) * (labor_avg/lag(labor_avg) - 1)) ) %>%
+  mutate(birch_ind = ((lead(labor_avg) - labor_avg) * (lead(labor_avg)/labor_avg - 1)) ) %>%
   ungroup()
 
 ###################################
@@ -283,8 +293,16 @@ plot_labor_growth_both <- ggplot(bisnode, aes(x = labor_growth)) +
   scale_fill_manual(values = c("Percentage Change" = color[1], "Log-Differences" = color[2]), 
                     name = "Growth Measures") +
   scale_x_log10() #+
- # theme_bg()
+  # theme_bg()
 plot_labor_growth_both
+
+# make histogram of birch index
+plot_birch_ind <- ggplot(bisnode, aes(x = birch_ind)) +
+  geom_histogram(bins = 100, fill = color[1], color = color.outline, alpha = 0.8) +
+  labs(x = "Birch Index", y = "Frequency") +
+  theme_bg() +
+  scale_x_log10()
+plot_birch_ind
 
 ####################################
 # notes on growth
