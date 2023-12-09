@@ -348,6 +348,7 @@ for (var in c("age", "ceo_age", "ceo_count", "inoffice_days",
                      "; max:"),
               max(bisnode[, var], na.rm = TRUE)))
 }
+rm(var)
 
 ###################################
 # problematic data
@@ -355,14 +356,6 @@ for (var in c("age", "ceo_age", "ceo_count", "inoffice_days",
 bisnode <- bisnode %>%
   mutate(ceo_age = ifelse(ceo_age < 18, NA, ceo_age)) # overwrite implausible ones with NA for now
 
-# impute age CEO and calculate new variable
-bisnode <- bisnode %>%
-  mutate(flag_missing_age = as.numeric(is.na(ceo_age)),
-         ceo_age = round(ifelse(is.na(ceo_age), mean(ceo_age, na.rm = TRUE), ceo_age)),
-         ceo_young = as.numeric(ceo_age < 40 & !is.na(ceo_age)),
-         ceo_old = as.numeric(ceo_age > 75 & !is.na(ceo_age)))
-
- 
 # there cannot be negative financial variables
 zero <- c("curr_liab", "curr_assets", "extra_exp", "extra_inc", "fixed_assets",
           "intang_assets", "inventories", "liq_assets", "material_exp",
@@ -376,7 +369,7 @@ for (var in zero){
 
 # flag any negative assets (extra variable)
 bisnode <- bisnode %>%
-  mutate(flag_asset_problem = ifelse(intang_assets < 0 | curr_assets < 0 | fixed_assets < 0, 1, 0)) # flag negative ones
+  mutate(flag_asset_problem = ifelse(intang_assets < 0 | curr_assets < 0 | fixed_assets < 0, 1, 0))
 
 # set negative ones to zeros
 bisnode <- bisnode %>%
@@ -384,56 +377,111 @@ bisnode <- bisnode %>%
 
 
 ###################################
+# NA analysis and imputation
+colSums(is.na(bisnode))/nrow(bisnode)*100
+
+# drop missing important variables
+# drop about 20%
+bisnode <- bisnode %>%
+  filter(!is.na(liq_assets), # representative of missing assets data
+         !is.na(foreign), # representative of missing CEO data
+         !is.na(ind), # representative of industry data
+         !is.na(region_m)) # geographical info
+
+# impute important ones
+# ceo age
+bisnode <- bisnode %>%
+  mutate(flag_missing_ceo_age = as.numeric(is.na(ceo_age)),
+         ceo_age = round(ifelse(is.na(ceo_age), mean(ceo_age, na.rm = TRUE), ceo_age)))
+
+# number of employees
+# not sure if needed bc reflected in response?
+bisnode <- bisnode %>%
+  mutate(flag_miss_labor_avg = as.numeric(is.na(labor_avg)),
+         labor_avg = ifelse(is.na(labor_avg), mean(labor_avg, na.rm = TRUE), labor_avg))
+
+# sales?
+# not sure if needed bc reflected in response?
+
+# still existing NAs
+for (var in names(bisnode)){
+  
+  if(any(is.na(bisnode[, var]))){
+    print(paste0(var, ":", sum(is.na(bisnode[, var]))/nrow(bisnode)))
+  }
+}
+
+
+
+###################################
 # new variables and 
 # variable transformation
 
+# impute age CEO and calculate new variable
+bisnode <- bisnode %>%
+  mutate(ceo_young = as.numeric(ceo_age < 40 & !is.na(ceo_age)),
+         ceo_old = as.numeric(ceo_age > 75 & !is.na(ceo_age)))
+
 # generate total assets
 bisnode <- bisnode %>%
-  mutate(total_assets = intang_assets + curr_assets + fixed_assets)
+  mutate(total_assets = intang_assets + curr_assets + fixed_assets) # Q: why are tangible assets not included in Gabors code?
 
 # compute relative variables (sales as reference)
 bisnode <- bisnode %>%
   mutate_at(vars("extra_exp", "extra_inc", "extra_profit_loss", 
                  "inc_bef_tax", "inventories", "material_exp",
                  "profit_loss_year", "personnel_exp"),
-            funs("relative" = ./sales))
+            funs("rel" = ./sales))
 
 # compute relative variables (total assets as reference)
 bisnode <- bisnode %>%
   mutate_at(vars("intang_assets", "curr_liab", "fixed_assets", 
                  "liq_assets", "curr_assets", "share_eq", 
                  "subscribed_cap", "tang_assets"),
-            funs("relative" = ifelse(total_assets == 0, 0, ./total_assets)))
+            funs("rel" = ifelse(total_assets == 0, 0, ./total_assets)))
 
 
 ###################################
 # creating flags and winsorizing tails
-# continue here:
 
-data <- data %>%
-  mutate_at(vars(zero), funs("flag_high"= as.numeric(.> 1))) %>%
-  mutate_at(vars(zero), funs(ifelse(.> 1, 1, .)))
+# overwrite selected variables with relative ones
+zero <- paste0(zero, "_rel")
 
+# flag very high observations and set them to 1
+bisnode <- bisnode %>%
+  mutate_at(vars(zero), funs("flag_high"= as.numeric(. > 1))) %>%
+  mutate_at(vars(zero), funs(ifelse(. > 1, 1, .)))
 
-# for vars that could be any, but are mostly between -1 and 1
-any <-  c("extra_profit_loss_pl", "inc_bef_tax_pl", "profit_loss_year_pl", "share_eq_bs")
+# for vars that could be any (also negative), but are mostly between -1 and 1
+any <-  c("extra_profit_loss_rel", "inc_bef_tax_rel", "profit_loss_year_rel", "share_eq_rel")
 
-data <- data %>%
-  mutate_at(vars(any), funs("flag_low"= as.numeric(.< -1))) %>%
-  mutate_at(vars(any), funs(ifelse(.< -1, -1, .))) %>%
-  mutate_at(vars(any), funs("flag_high"= as.numeric(.> 1))) %>%
-  mutate_at(vars(any), funs(ifelse(.> 1, 1, .))) %>%
-  mutate_at(vars(any), funs("flag_zero"= as.numeric(.== 0))) %>%
-  mutate_at(vars(any), funs("quad"= .^2))
-
+# add flags and set tails to -1/1 and add quadratics
+bisnode <- bisnode %>%
+  mutate_at(vars(any), funs("flag_low" = as.numeric(. < -1))) %>%
+  mutate_at(vars(any), funs(ifelse(. < -1, -1, .))) %>%
+  mutate_at(vars(any), funs("flag_high" = as.numeric(. > 1))) %>%
+  mutate_at(vars(any), funs(ifelse(. > 1, 1, .))) %>%
+  mutate_at(vars(any), funs("flag_zero" = as.numeric(. == 0))) %>%
+  mutate_at(vars(any), funs("quad" = .^2))
 
 # dropping flags with no variation
-variances<- data %>%
+variances <- bisnode %>%
   select(contains("flag")) %>%
   apply(2, var, na.rm = TRUE) == 0
-
-data <- data %>%
+bisnode <- bisnode %>%
   select(-one_of(names(variances)[variances]))
+
+
+# sales??
+data <- data %>%
+  mutate(flag_low_d1_sales_mil_log = ifelse(d1_sales_mil_log < -1.5, 1, 0),
+         flag_high_d1_sales_mil_log = ifelse(d1_sales_mil_log > 1.5, 1, 0),
+         d1_sales_mil_log_mod = ifelse(d1_sales_mil_log < -1.5, -1.5,
+                                       ifelse(d1_sales_mil_log > 1.5, 1.5, d1_sales_mil_log)),
+         d1_sales_mil_log_mod_sq = d1_sales_mil_log_mod^2
+         )
+
+
 
 
 # missing values
@@ -451,6 +499,16 @@ bisnode <- cbind(bisnode, new_dat)
 # discard variables not needed anymore
 bisnode <- bisnode %>%
   select(-c("gender", "origin", "region_m"))
+
+# create factors
+data <- data %>%
+  mutate(urban_m = factor(urban_m, levels = c(1,2,3)),
+         ind2_cat = factor(ind2_cat, levels = sort(unique(data$ind2_cat))))
+
+data <- data %>%
+  mutate(default_f = factor(default, levels = c(0,1)) %>%
+           recode(., `0` = 'no_default', `1` = "default"))
+
 ```
 
 <!-- Preparation for prediction & CV  --> 
