@@ -23,7 +23,7 @@ options(scipen = 999)
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/AnjaHahn/OneDrive - DataScience Service GmbH/WU/Courses/CEU Prediction with Machine Learning for Economists/da_case_studies')
+knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
@@ -68,7 +68,6 @@ bisnode <- read_csv(paste(data_in,"cs_bisnode_panel.csv", sep = "/")) # 287829 o
 colSums(is.na(bisnode))
 colSums(is.na(bisnode))/nrow(bisnode)*100
 
-
 # look at data
 bisnode %>% glimpse()
 
@@ -78,7 +77,7 @@ bisnode %>%
   summarise(n = n(), mean = mean(sales))
 
 # overall summary statistics
-# descr(bisnode)
+ #descr(bisnode)
 
 ```
 
@@ -100,13 +99,10 @@ dmy <- dummyVars("~ gender + origin + region_m + urban_m", data = bisnode, fullR
 # @Teresa - warum hier fullRank = TRUE? ich hätte gefühlsmäßig FALSE genommen, hab aber jetzt auch nicht wirklich viel darüber gefunden
 
 new_dat <- data.frame(predict(dmy, newdata = bisnode))
-# @Anne: From your experience with A2, will the column names with "." make trouble now that we one-hot-encode in the beginning?
+# @Anne: From your experience with A2, will the column names with "." make trouble now that we one-hot-encode in the beginning? Kann sein sollte aber kein Problem sein, können wir im Zweifel dann vor Shapeley umformatieren :)
 
 # add new variables to data
 bisnode <- cbind(bisnode, new_dat)
-
-
-
 
 ```
 
@@ -118,17 +114,17 @@ bisnode <- cbind(bisnode, new_dat)
 ####################################
 # collect "weird stuff" here:
 # Company with ID 12212152320 had a massive explosion from 2012 to 2013 (0 to 63 employees etc) - how to treat?
-
-
+## did they exit before? Maybe we have to add a variable that indicate newly established firms?
 
 # add all missing year and company combinations
 bisnode <- bisnode %>%
   complete(year, comp_id)
 
 # drop variables with many NAs
-bisnode <- bisnode %>%
+# Question from Anne: do we need to drop net_dom_sales, net_exp_sales or can we somehow impute would also make a good growth indicator export/ domestic sales or? also wages
+bisnode <- bisnode %>%        
   select(-c(COGS, finished_prod, net_dom_sales, net_exp_sales, wages, D))
-# potentially also drop unused years (e.g. 2016)
+# potentially also drop unused years (e.g. 2016), yes I would drop it I guess he had good reasons to do it.
 
 # find the years with the least missing sales values
 bisnode %>%
@@ -149,6 +145,7 @@ bisnode  <- bisnode %>%
 
 # generate different variations to display sales
 # @Teresa - maybe have that under label engineering?
+# Question Anne:   mutate(sales = ifelse(sales < 0, 1, sales), warum macht er aus sales einfach einen dummy?
 bisnode <- bisnode %>%
   filter(status_alive == TRUE) %>% # only look at firms that have some sales
   mutate(ln_sales = log(sales), # if we want to include firms not_alive need to specially treat 0
@@ -167,6 +164,17 @@ bisnode <- bisnode %>%
 # @Teresa - maybe have that under label engineering?(together with data visualization below?)
 bisnode <- bisnode %>%
   mutate(ln_labor_avg = ifelse(labor_avg > 0, log(labor_avg), 0))
+
+# Anne: I agree, I think I would put every modification in terms of sales/ labor_avg (wage) into section label engineering
+## (but only a formal thing not so important)
+
+
+## I think we should add firm age, also relevant in regard of command line 117. 
+# Something like this:
+#data <- data %>%
+ # mutate(age = (year - founded_year) %>%
+  #         ifelse(. < 0, 0, .),
+   #      new = as.numeric(age <= 1)
 ```
 
 
@@ -177,7 +185,8 @@ bisnode <- bisnode %>%
 plot_sales <-  ggplot(bisnode, aes(x = sales)) +
   geom_histogram(bins = 100, fill = color[1], color = color.outline, alpha = 0.8) +
   scale_x_log10() +
-  labs(x = "Sales (log)", y = "Frequency")
+  labs(x = "Sales (log)", y = "Frequency")+
+  theme_bg() #Anne: I added his theme I think he likes that :D 
 plot_sales
 
 # visualize labor_avg
@@ -185,11 +194,11 @@ plot_labor_avg <- bisnode %>% filter(labor_avg > 0) %>%
   ggplot(aes(x = labor_avg)) +
   geom_histogram(bins = 100, fill = color[1], color = color.outline, alpha = 0.8) +
   labs(x = "Average Number of Employees", y = "Frequency") +
-  xlim(0, 5)
+  xlim(0, 5) +
+    theme_bg() #Anne: I added his theme I think he likes that :D 
 plot_labor_avg
 # in codebook: N/12 --- (annual average / 12, it's not ideal, sorry) 
 # what does this mean?
-
 
 ```
 
@@ -201,8 +210,6 @@ plot_labor_avg
 ####################################
 # Label engineering
 ####################################
-
-
 ###################################
 # Creation of different labels: sales
 ###################################
@@ -221,7 +228,6 @@ bisnode <- bisnode %>%
   mutate(d1_sales_mil_log = sales_mil_log - Lag(sales_mil_log) ) %>%
   ungroup()
 
-
 ###################################
 # Visualization sales growth
 
@@ -233,11 +239,13 @@ plot_sales_growth_both <- ggplot(bisnode, aes(x = sales_growth)) +
   scale_x_log10() +
   labs(x = "Sales growth (log)", y = "Frequency") +
   scale_fill_manual(values = c("Percentage Change" = color[1], "Log-Differences" = color[2]), 
-                    name = "Growth Measures")
+                    name = "Growth Measures") +
+  theme_bg()#Anne: I added his theme I think he likes that :D 
+
 plot_sales_growth_both
 # It makes a difference whether relative growth is measured in log(diff) or percentage change
 # since logdiff is an inaccurate approximation for high changes this is especially relevant for high growth firms
-
+# Anne: Percentage change gives us a more normal distribution though or?
 
 ###################################
 # Creation of different labels: employment
@@ -274,7 +282,8 @@ plot_labor_growth_both <- ggplot(bisnode, aes(x = labor_growth)) +
   labs(x = "Employee growth (log)", y = "Frequency") +
   scale_fill_manual(values = c("Percentage Change" = color[1], "Log-Differences" = color[2]), 
                     name = "Growth Measures") +
-  scale_x_log10()
+  scale_x_log10() #+
+ # theme_bg()
 plot_labor_growth_both
 
 ####################################
@@ -289,13 +298,14 @@ plot_labor_growth_both
 # cutoff:
 # classify as "fast" if they meet a combination of the above?
 # OECD definition: 20% average growth in sales or employees over 3 years
-# do the same but only with 2 years?
+# do the same but only with 2 years? Anne: sounds good and justified to me!
+
 # in literature it has been suggested to use fastest growing percintile 8e.g. to 5% of firms)
 # see: https://www.diva-portal.org/smash/get/diva2:605658/FULLTEXT01.pdf
 # rather than hard cutoff --> but not meaningful for us if we want to compare growth in different industries
 # a lot of firms with 0-1 employees: might need a lower absolute threshold for growth such that tiny firms that
 # add one extra employee are not classified as fast growing?
-
+####### Question:  0-1 new employees or in general? If there are any with 0 employees we should get rid of them anyways or?
 ```
 
 <!-- Feature engineering  --> 
