@@ -362,17 +362,6 @@ plot_birch_ind
 ###################################
 # new variables
 
-# group some industry category codes (2-digit NACE)
-# use ChatGPT to suggest similar groups (maximum of 5 groups)
-bisnode <- bisnode %>%
-  mutate(ind2_cat = case_when(
-    ind2 < 10 ~ "primary_extractive",
-    ind2 >= 10 & ind2 < 40 ~ "manufact_utilities",
-    ind2 > 40 & ind2 < 84 ~ "services",
-    ind2 >= 84 & ind2 < 90 ~ "public_health_edu",
-    ind2 >= 90 ~ "arts"
-  ))
-
 # firm characteristics
 bisnode <- bisnode %>%
   mutate(age = (year-founded_year) %>% # maybe remove again if computed earlier
@@ -415,7 +404,8 @@ for (var in zero){
   bisnode[, aux] <- as.numeric(bisnode[, var] < 0)
 }
 
-# flag any negative assets (extra variable)
+# flag any negative assets 
+# (extra variable for calculating total assets later)
 bisnode <- bisnode %>%
   mutate(flag_asset_problem = ifelse(intang_assets < 0 | curr_assets < 0 | fixed_assets < 0, 1, 0))
 
@@ -429,12 +419,15 @@ bisnode <- bisnode %>%
 colSums(is.na(bisnode))/nrow(bisnode)*100
 
 # drop missing important variables
-# drop about 20%
+# drops about 20%
 bisnode <- bisnode %>%
   filter(!is.na(liq_assets), # representative of missing assets data
          !is.na(foreign), # representative of missing CEO data
-         !is.na(ind), # representative of industry data
-         !is.na(region_m)) # geographical info
+         !is.na(ind), # representative of industry data (removes many NACE 2-digit categories)
+         !is.na(region_m), # geographical info
+         !is.na(age),
+         !is.na(material_exp)) 
+
 
 # impute important ones
 # ceo age
@@ -455,17 +448,26 @@ bisnode <- bisnode %>%
 for (var in names(bisnode)){
   
   if(any(is.na(bisnode[, var]))){
-    print(paste0(var, ":", sum(is.na(bisnode[, var]))/nrow(bisnode)))
+    print(paste0(var, ":", sum(is.na(bisnode[, var]))/nrow(bisnode)*100))
   }
 }
-
-
+rm(var)
 
 ###################################
 # new variables and 
 # variable transformation
 
-# impute age CEO and calculate new variable
+# group some industry category codes (2-digit NACE)
+# after NA removal, categories have decreased considerably to
+# manufactoring and services industries
+table(bisnode$ind2)
+bisnode <- bisnode %>%
+  mutate(ind2_cat = factor(case_when(
+    ind2 >= 10 & ind2 < 34 ~ "manufacturing",
+    ind2 >= 55 & ind2 < 57 ~ "services"
+  )))
+
+# calculate new age ceo variable
 bisnode <- bisnode %>%
   mutate(ceo_young = as.numeric(ceo_age < 40 & !is.na(ceo_age)),
          ceo_old = as.numeric(ceo_age > 75 & !is.na(ceo_age)))
@@ -489,7 +491,7 @@ bisnode <- bisnode %>%
             funs("rel" = ifelse(total_assets == 0, 0, ./total_assets)))
 
 
-###################################
+######################################
 # creating flags and winsorizing tails
 
 # overwrite selected variables with relative ones
@@ -519,8 +521,61 @@ variances <- bisnode %>%
 bisnode <- bisnode %>%
   select(-one_of(names(variances)[variances]))
 
-
 # sales??
+# data <- data %>%
+#   mutate(sales_mil_log_sq=sales_mil_log^2)
+# data <- data %>%
+#   mutate(flag_low_d1_sales_mil_log = ifelse(d1_sales_mil_log < -1.5, 1, 0),
+#          flag_high_d1_sales_mil_log = ifelse(d1_sales_mil_log > 1.5, 1, 0),
+#          d1_sales_mil_log_mod = ifelse(d1_sales_mil_log < -1.5, -1.5,
+#                                        ifelse(d1_sales_mil_log > 1.5, 1.5, d1_sales_mil_log)),
+#          d1_sales_mil_log_mod_sq = d1_sales_mil_log_mod^2
+#          )
+
+# average employment???
+
+
+###################################
+# relationships between variables
+
+# mock data on fast growth and smaller data set (delete later)
+bisnode$fast <- ifelse(bisnode$sales_growth > 
+                         median(bisnode$sales_growth, na.rm = TRUE) &
+                         !is.na(bisnode$sales_growth), 
+                       1, 0)
+bisnode$fast[is.na(bisnode$fast)] <- 0
+bisnode_mock <- bisnode[sample(1:nrow(bisnode), 5000),]
+
+# scatterplot computation
+plots <- list()
+
+# relevant numeric vars
+vars_num <- c(zero, any, c("total_assets", "ceo_age", "age", "inoffice_days"))
+# add sales/labour var?
+
+for (var in vars_num){
+  
+  if(any(is.na(bisnode_mock[, var]))){
+    print(paste0(var, " entails NAs")) # check for lowess
+  } else{
+    plots[[var]] <- ggplot(data = bisnode_mock, aes_string(x = var, y = "fast")) +
+  geom_point(size = 0.1,  shape = 20, fill = color[2], color = color[2]) +
+  geom_smooth(method = "loess", se = F, colour = color[1], size = 1.5, span = 0.9) +
+  theme_classic()
+  }
+}
+
+plots$curr_liab_rel
+plots$personnel_exp_rel
+# add quadratics yes or no? all variables considered? winsorise more?
+
+# response vs. binary vars
+
+# interactions?
+
+# correlations between variables
+
+# drop unused factor levels
 data <- data %>%
   mutate(flag_low_d1_sales_mil_log = ifelse(d1_sales_mil_log < -1.5, 1, 0),
          flag_high_d1_sales_mil_log = ifelse(d1_sales_mil_log > 1.5, 1, 0),
@@ -543,19 +598,23 @@ new_dat <- data.frame(predict(dmy, newdata = bisnode))
 # add new variables to data
 bisnode <- cbind(bisnode, new_dat)
 
-
 # discard variables not needed anymore
 bisnode <- bisnode %>%
   select(-c("gender", "origin", "region_m"))
 
-# create factors
-data <- data %>%
-  mutate(urban_m = factor(urban_m, levels = c(1,2,3)),
-         ind2_cat = factor(ind2_cat, levels = sort(unique(data$ind2_cat))))
+# select and store variables for each model (paste formulas)
 
+
+# check remaining NAs
+
+
+
+# create factors??
 data <- data %>%
   mutate(default_f = factor(default, levels = c(0,1)) %>%
            recode(., `0` = 'no_default', `1` = "default"))
+
+# yearly data already there?
 
 ```
 
