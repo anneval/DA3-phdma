@@ -581,20 +581,7 @@ plots$personnel_exp_rel
 
 # drop unused factor levels
 data <- data %>%
-  mutate(flag_low_d1_sales_mil_log = ifelse(d1_sales_mil_log < -1.5, 1, 0),
-         flag_high_d1_sales_mil_log = ifelse(d1_sales_mil_log > 1.5, 1, 0),
-         d1_sales_mil_log_mod = ifelse(d1_sales_mil_log < -1.5, -1.5,
-                                       ifelse(d1_sales_mil_log > 1.5, 1.5, d1_sales_mil_log)),
-         d1_sales_mil_log_mod_sq = d1_sales_mil_log_mod^2
-         )
-
-
-
-
-# missing values
-# interactions (irrelevant ML?) yes See gabors file for logit interactions
-# functional form (irrelevant ML?) yes
-# select and store variables for each model (paste formulas)
+  mutate_at(vars(colnames(data)[sapply(data, is.factor)]), funs(fct_drop))
 
 # one-hot encode
 dmy <- dummyVars("~ ind2_cat", data = bisnode, fullRank = FALSE) # or true?
