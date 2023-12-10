@@ -585,7 +585,7 @@ for (var in vars_num){
 }
 
 # choose plots to show
-plots$curr_liab_rel
+plots$intang_assets_rel
 plots[[15]]
 # ?? 1, 5, 6, 7, 8, 11
 # 4, 10, 12, 13, 15
@@ -601,41 +601,35 @@ bisnode <- bisnode %>%
 binary_variables <- c("gender", "origin", "ind2", "ind", "ind2_cat", "urban_m",
                       "region_m", "ceo_old", "ceo_young")
 
+
 # loop did not work
 ggplot(bisnode, aes(x = factor(gender), fill = factor(fast))) +
 # ggplot(bisnode, aes(x = factor(ceo_old), fill = factor(fast))) +
 # ggplot(bisnode, aes(x = factor(ceo_young), fill = factor(fast))) +
     geom_bar(position = "fill", stat = "count") +
       labs(y = "Proportion", fill = "Fast Growth") +
-  theme_bg()
+  theme_bg() +
+  scale_fill_manual(values = c(color[1], color[2]))
 
 
 # interactions
-bisn
+interactions_plot <- ggplot(bisnode, aes(x = labor_avg, y = fast, color = ind2)) +
+  # ggplot(bisnode, aes(x = age, y = fast, color = ind2_cat)) +
+  theme_bw() + 
+  geom_point() + 
+  geom_point(alpha = .3, 
+             size = .9) +
+  geom_smooth(method = "lm") #+ 
+  # scale_color_manual(values = c(color[1], color[2]))
 
-# correlations between variables
-
-# factors
 # drop unused factor levels
-data <- data %>%
-  mutate_at(vars(colnames(data)[sapply(data, is.factor)]), funs(fct_drop))
-
-
-# discard variables not needed anymore
+# Gabor's code did not work here
 bisnode <- bisnode %>%
-  select(-c("gender", "origin", "region_m"))
+  mutate(across(where(is.factor), ~ droplevels(.)))
 
-# select and store variables for each model (paste formulas)
-
-
-# check remaining NAs
-datasummary_skim(data, type='numeric', histogram = TRUE)
-
-
-# create factors??
-data <- data %>%
-  mutate(default_f = factor(default, levels = c(0,1)) %>%
-           recode(., `0` = 'no_default', `1` = "default"))
+# check remaining data
+colSums(is.na(bisnode))/nrow(bisnode)*100
+# datasummary_skim(bisnode, type='numeric', histogram = TRUE)
 
 # yearly data already there?
 
@@ -644,11 +638,12 @@ data <- data %>%
 
 ```{r}
 # restrict sample to 2012 for further analysis
+# Q: Add that already to sample design?
 bisnode <- bisnode %>%
   filter(year == 2012)
 ```
 
-
+names(bisnode)
 
 
 <!-- Task1.1: Define variable groups for differnet models  --> 
@@ -656,20 +651,29 @@ bisnode <- bisnode %>%
 ```{r}
 ######  Adjust for our variables!!! Most are similar & add ours
 ## maybe Anja you have a better overview what we used
+# female? or gender variable?
+# all sales and labor vars?
+# ind2 keep?problems with one hot encoding - many vars
+# flags
+# total_assets_rel?? curr_liab_rel?? tang_assets_rel??
 
 rawvars <-  c("curr_assets", "curr_liab", "extra_exp", "extra_inc", "extra_profit_loss", "fixed_assets",
               "inc_bef_tax", "intang_assets", "inventories", "liq_assets", "material_exp", "personnel_exp",
-              "profit_loss_year", "sales", "share_eq", "subscribed_cap")
+              "profit_loss_year", "sales", "share_eq", "subscribed_cap", "tang_assets", # why tang_asset left out in gabor's code? 
+              )
 
 qualityvars <- c("balsheet_flag", "balsheet_length", "balsheet_notfullyear")
 
-engvar <- c("total_assets_bs", "fixed_assets_bs", "liq_assets_bs", "curr_assets_bs",
-            "share_eq_bs", "subscribed_cap_bs", "intang_assets_bs", "extra_exp_pl",
-            "extra_inc_pl", "extra_profit_loss_pl", "inc_bef_tax_pl", "inventories_pl",
-            "material_exp_pl", "profit_loss_year_pl", "personnel_exp_pl")
+engvar <- c("total_assets", "fixed_assets_rel", "liq_assets_rel", "curr_assets_rel",
+            "share_eq_rel", "subscribed_cap_rel", "intang_assets_rel", "extra_exp_rel",
+            "extra_inc_rel", "extra_profit_loss_rel", "inc_bef_tax_rel", "inventories_rel",
+            "material_exp_rel", "profit_loss_year_rel", "personnel_exp_rel", 
+            "curr_liab_rel", #?
+            "tang_assets_rel") # ?
 
-engvar2 <- c("extra_profit_loss_pl_quad", "inc_bef_tax_pl_quad",
-             "profit_loss_year_pl_quad", "share_eq_bs_quad")
+engvar2 <- c("extra_profit_loss_rel_quad", "inc_bef_tax_rel_quad",
+             "profit_loss_year_rel_quad", "share_eq_rel_quad", "intang_assets_rel_quad", "total_assets_quad", # instead total_assets_rel?
+             "ceo_age_quad", "inoffice_days_quad")
 
 engvar3 <- c(grep("*flag_low$", names(data), value = TRUE),
              grep("*flag_high$", names(data), value = TRUE),
@@ -679,11 +683,17 @@ engvar3 <- c(grep("*flag_low$", names(data), value = TRUE),
 d1 <-  c("d1_sales_mil_log_mod", "d1_sales_mil_log_mod_sq",
          "flag_low_d1_sales_mil_log", "flag_high_d1_sales_mil_log")
 
-hr <- c("female", "ceo_age", "flag_high_ceo_age", "flag_low_ceo_age",
-        "flag_miss_ceo_age", "ceo_count", "labor_avg_mod",
-        "flag_miss_labor_avg", "foreign_management")
+hr <- c("female", "ceo_old", "ceo_young",
+        "ceo_age",
+        "flag_miss_ceo_age", "ceo_count", "labor_avg",
+        "flag_miss_labor_avg", "foreign_management", "inoffice_days", "multiple_ceo")
 
-firm <- c("age", "age2", "new", "ind2_cat", "m_region_loc", "urban_m")
+firm <- c("age", "age2", "new")
+
+factors <- c("gender", "origin", "ind", "ind2", "ind2_cat", "region_m", "urban_m")
+
+dummy_encoded <- c("gender.male", "gender.mix", "origin.Foreign", "origin.mix", "region_m.East", "region_m.West", "urban_m.other", "urban_m.other_big_city", "ind.2", "ind.3", "ind2_cat.services")
+
 
 # interactions for logit, LASSO
 interactions1 <- c("ind2_cat*age", "ind2_cat*age2",
