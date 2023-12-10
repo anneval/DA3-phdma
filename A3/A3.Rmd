@@ -23,7 +23,7 @@ options(scipen = 999)
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies')
+knitr::opts_knit$set(root.dir = 'C:/Users/AnjaHahn/OneDrive - DataScience Service GmbH/WU/Courses/CEU Prediction with Machine Learning for Economists/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
@@ -92,18 +92,24 @@ bisnode <- bisnode %>%
       urban_m == 2 ~ "other_big_city",
       urban_m == 3 ~ "other"))
 
-# convert character variables to one-hot-encoding
+# convert character variables to factors 
 bisnode <- bisnode %>% 
   mutate_if(is.character, as.factor)
+
+# apply one-hot-encoding of factors
 dmy <- dummyVars("~ gender + origin + region_m + urban_m", data = bisnode, fullRank = TRUE)
 # @Teresa - warum hier fullRank = TRUE? ich hätte gefühlsmäßig FALSE genommen, hab aber jetzt auch nicht wirklich viel darüber gefunden
 # t: with fullRank = TRUE one variable is dropped to avoid multicollinearity
-
 new_dat <- data.frame(predict(dmy, newdata = bisnode))
 # @Anne: From your experience with A2, will the column names with "." make trouble now that we one-hot-encode in the beginning? Kann sein sollte aber kein Problem sein, können wir im Zweifel dann vor Shapeley umformatieren :)
-
 # add new variables to data
 bisnode <- cbind(bisnode, new_dat)
+
+
+# classify industry categories as factors
+bisnode <- bisnode %>%
+  mutate(across(all_of(c("ind", "ind2", "nace_main")), as.factor))
+
 
 ```
 
@@ -339,7 +345,7 @@ plot_birch_ind
 # industry codes look good!
 
 
-# why did we not add these?  
+# why did we not add these? done at the beginning
 #gender_m = factor(gender, levels = c("female", "male", "mix")),
 #m_region_loc = factor(region_m, levels = c("Central", "East", "West")))
 
@@ -449,6 +455,7 @@ bisnode <- bisnode %>%
 # not sure if needed bc reflected in response?
 
 # still existing NAs
+# 
 for (var in names(bisnode)){
   
   if(any(is.na(bisnode[, var]))){
@@ -467,8 +474,8 @@ rm(var)
 table(bisnode$ind2)
 bisnode <- bisnode %>%
   mutate(ind2_cat = factor(case_when(
-    ind2 >= 10 & ind2 < 34 ~ "manufacturing",
-    ind2 >= 55 & ind2 < 57 ~ "services"
+    ind2 %in% c("26", "27", "28", "29", "30", "33") ~ "manufacturing",
+    ind2 %in% c("55", "56") ~ "services"
   )))
 
 # calculate new age ceo variable
@@ -538,8 +545,15 @@ bisnode <- bisnode %>%
 
 # average employment???
 
+########################################
+# one-hot encoding of additional factors
+# also ind2??
+dmy <- dummyVars("~ ind + ind2_cat", data = bisnode, fullRank = TRUE)
+new_dat <- data.frame(predict(dmy, newdata = bisnode))
+# add new variables to data
+bisnode <- cbind(bisnode, new_dat)
 
-###################################
+########################################
 # relationships between variables
 
 # mock data on fast growth and smaller data set (delete later)
@@ -557,6 +571,7 @@ plots <- list()
 vars_num <- c(zero, any, c("total_assets", "ceo_age", "age", "inoffice_days"))
 # add sales/labour var?
 
+# check relationships
 for (var in vars_num){
   
   if(any(is.na(bisnode_mock[, var]))){
@@ -565,29 +580,46 @@ for (var in vars_num){
     plots[[var]] <- ggplot(data = bisnode_mock, aes_string(x = var, y = "fast")) +
   geom_point(size = 0.1,  shape = 20, fill = color[2], color = color[2]) +
   geom_smooth(method = "loess", se = F, colour = color[1], size = 1.5, span = 0.9) +
-  theme_classic()
+  theme_bg()
   }
 }
 
+# choose plots to show
 plots$curr_liab_rel
-plots$personnel_exp_rel
+plots[[15]]
+# ?? 1, 5, 6, 7, 8, 11
+# 4, 10, 12, 13, 15
+
 # add quadratics yes or no? all variables considered? winsorise more?
+quad <- c("intang_assets_rel", "inc_bef_tax_rel", "total_assets", "ceo_age", "inoffice_days")
 
-# response vs. binary vars
+bisnode <- bisnode %>%
+  mutate_at(vars(quad), funs("quad"= .^2))
 
-# interactions?
+
+# response vs. binary and factor variables
+binary_variables <- c("gender", "origin", "ind2", "ind", "ind2_cat", "urban_m",
+                      "region_m", "ceo_old", "ceo_young")
+
+# loop did not work
+ggplot(bisnode, aes(x = factor(gender), fill = factor(fast))) +
+# ggplot(bisnode, aes(x = factor(ceo_old), fill = factor(fast))) +
+# ggplot(bisnode, aes(x = factor(ceo_young), fill = factor(fast))) +
+    geom_bar(position = "fill", stat = "count") +
+      labs(y = "Proportion", fill = "Fast Growth") +
+  theme_bg()
+
+
+# interactions
+bisn
 
 # correlations between variables
 
+# factors
 # drop unused factor levels
 data <- data %>%
   mutate_at(vars(colnames(data)[sapply(data, is.factor)]), funs(fct_drop))
 
-# one-hot encode
-dmy <- dummyVars("~ ind2_cat", data = bisnode, fullRank = FALSE) # or true?
-new_dat <- data.frame(predict(dmy, newdata = bisnode))
-# add new variables to data
-bisnode <- cbind(bisnode, new_dat)
 
 # discard variables not needed anymore
 bisnode <- bisnode %>%
@@ -597,7 +629,7 @@ bisnode <- bisnode %>%
 
 
 # check remaining NAs
-
+datasummary_skim(data, type='numeric', histogram = TRUE)
 
 
 # create factors??
@@ -606,6 +638,7 @@ data <- data %>%
            recode(., `0` = 'no_default', `1` = "default"))
 
 # yearly data already there?
+
 
 ```
 
