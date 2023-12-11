@@ -383,7 +383,7 @@ bisnode <- bisnode %>%
 bisnode <- bisnode %>%
   mutate(age = (year-founded_year) %>% # maybe remove again if computed earlier
            ifelse(. < 0, 0, .),
-         age2 = age^2,
+         age_quad = age^2,
          new = as.numeric(age <= 1),
          foreign_management = as.numeric(foreign >= 0.5),
          multiple_ceo = as.numeric(ceo_count > 1),
@@ -547,7 +547,7 @@ bisnode <- bisnode %>%
 
 # sales
 bisnode <- bisnode %>%
-  mutate(sales_mil_log_sq=sales_mil_log^2)
+  mutate(sales_mil_log_quad = sales_mil_log^2)
 
 bisnode <- bisnode %>%
   mutate(flag_low_d1_sales_mil_log = ifelse(d1_sales_mil_log < -1.5, 1, 0),
@@ -587,7 +587,7 @@ for (var in vars_num){
 }
 
 # choose plots to show
-plots$extra_profit_loss_rel
+plots$sales_mil_log
 # plots$extra_exp_rel # does not work, neither: fixed_assets_rel
 plots[[6]]
 
@@ -604,7 +604,7 @@ for (var in vars_num){
   
 }
 
-glm_results$extra_profit_loss_rel
+glm_results$sales_mil_log
 
 
 ```
@@ -615,8 +615,7 @@ Asset variables do not show so much variation.
 # add quadratics for chosen variables (based on plots and glms)
 quad <- c("intang_assets_rel", "inventories_rel", "liq_assets_rel", "material_exp_rel",
           "personnel_exp_rel", "subscribed_cap_rel", "inc_bef_tax_rel", 
-          "profit_loss_year_rel", "share_eq_rel", "total_assets", "ceo_age", 
-          "age", "extra_profit_loss_rel")
+          "profit_loss_year_rel", "share_eq_rel", "total_assets", "ceo_age", "extra_profit_loss_rel")
 
 bisnode <- bisnode %>%
   mutate_at(vars(quad), funs("quad"= .^2))
@@ -663,13 +662,11 @@ colSums(is.na(bisnode))/nrow(bisnode)*100
 
 ```{r}
 #####################
-# Variables Selection
-
+# Group Variables
 
 rawvars <-  c("curr_assets", "curr_liab", "extra_exp", "extra_inc", "extra_profit_loss", 
               "fixed_assets", "inc_bef_tax", "intang_assets", "inventories", "liq_assets", 
-              "material_exp", "personnel_exp", "profit_loss_year", "sales", "share_eq", 
-              "subscribed_cap")
+              "material_exp", "personnel_exp", "profit_loss_year", "share_eq", "subscribed_cap")
 
 qualityvars <- c("balsheet_flag", "balsheet_length", "balsheet_notfullyear")
 
@@ -679,55 +676,52 @@ engvar <- c("total_assets", "fixed_assets_rel", "liq_assets_rel", "curr_assets_r
             "material_exp_rel", "profit_loss_year_rel", "personnel_exp_rel", 
             "curr_liab_rel")
 
-# add additional quadratics!!
-engvar2 <- c("extra_profit_loss_rel_quad", "inc_bef_tax_rel_quad",
-             "profit_loss_year_rel_quad", "share_eq_rel_quad", 
-             "intang_assets_rel_quad", "total_assets_quad",
-             "ceo_age_quad")
+engvar2 <- c(grep("*quad", names(bisnode), value = TRUE))
 
 engvar3 <- c(grep("*flag_low$", names(bisnode), value = TRUE),
              grep("*flag_high$", names(bisnode), value = TRUE),
              grep("*flag_error$", names(bisnode), value = TRUE),
              grep("*flag_zero$", names(bisnode), value = TRUE))
 # do not add flag_assets_problem due to missing variation
+# add two variables not grepled before
+engvar3 <- c(engvar3, c("flag_low_d1_sales_mil_log", "flag_high_d1_sales_mil_log"))
 
-# are below variables there?? more sales vars?
-d1 <-  c("d1_sales_mil_log_mod", "d1_sales_mil_log_mod_sq",
-         "flag_low_d1_sales_mil_log", "flag_high_d1_sales_mil_log")
+sales <-  c("sales_mil_log", # no flag for NA because there are none for sales_mil
+            "d1_sales_mil_log_mod", "flag_missing_d1_sales_mil_log")
 
-# more labour vars?
 hr <- c("ceo_old", "ceo_young", "ceo_age", "flag_missing_ceo_age", 
-        "ceo_count", "gender", "multiple_ceo", "origin", # have origin instead of foreign_management
-        "labor_avg", "flag_miss_labor_avg")
+        "gender", "multiple_ceo", "origin", # have origin instead of foreign_management
+        "ln_labor_avg", "flag_miss_labor_avg")
 
-firm <- c("age", "age2", "new", "urban_m", "region_m", "ind", "ind2", "ind2_cat")
+firm <- c("age", "new", "urban_m", "region_m", "ind2")
 
-# test <- c(rawvars, qualityvars, engvar, engvar2, engvar3, d1, hr, firm)
+# test <- c(rawvars, qualityvars, engvar, engvar2, engvar3, sales, hr, firm)
 # setdiff(names(bisnode), test);setdiff(test, names(bisnode))
 
 # interactions for logit, LASSO
-interactions1 <- c("ind2*age", "ind2*age2",
-                   "ind2*d1_sales_mil_log_mod", "ind2*sales_mil_log", # which sales vars??
+interactions1 <- c("ind2*age", "ind2*age_quad",
+                   "ind2*d1_sales_mil_log_mod", "ind2*sales_mil_log", 
                    "ind2*ceo_age", "ind2*origin", "ind2*gender",
-                   "ind2*urban_m", "ind2*labor_avg", "ind2*multiple_ceo") # which labour vars??
-# which sales variables?
+                   "ind2*urban_m", "ind2*ln_labor_avg", "ind2*multiple_ceo")
+
 interactions2 <- c("sales_mil_log*age", "sales_mil_log*gender",
                    "sales_mil_log*profit_loss_year_rel", "sales_mil_log*origin",
                    "sales_mil_log*multiple_ceo")
 
-# for simple logit
-# which sales vars?
-logitvars <- c("sales_mil_log", "sales_mil_log_sq", qualityvars, engvar, engvar2, engvar3, d1, hr, firm)
+####################
+# Variable Selection
 
-# for RF (no interactions, no modified features)
-# which sales vars???
-rfvars  <-  c("sales_mil", "d1_sales_mil_log", rawvars, qualityvars, hr, firm)
+# logit
+# try without interactions?
+logitvars <- c(qualityvars, engvar, engvar2, engvar3, sales, hr, firm, interactions1, interactions2)
 
-# for logit LASSO:
-# more sales vars??
-lassovars <- c(qualityvars, engvar, engvar2, engvar3, d1, hr, firm, interactions1, interactions2)
+# random forest (no interactions, no modified features)
+rfvars  <-  c("sales_mil", "d1_sales_mil_log", "flag_missing_d1_sales_mil_log", 
+              "ceo_count", "labor_avg", "ind", "ind2_cat", rawvars, qualityvars, hr, firm)
 
-# Check simplest model X1
+# for logit LASSO
+lassovars <- c("ceo_count", qualityvars, engvar, engvar2, engvar3, sales, hr, firm, interactions1, interactions2)
+
 
 ```
 
@@ -737,8 +731,8 @@ lassovars <- c(qualityvars, engvar, engvar2, engvar3, d1, hr, firm, interactions
 ```{r,include=FALSE}
 set.seed(123456)
 
-######CHANGE TARGET VAR (make interchangable!)
-work_indices <- as.integer(createDataPartition(bisnode$sales, p = 0.8, list = FALSE))
+# create work and holdout
+work_indices <- as.integer(createDataPartition(bisnode$high_growth, p = 0.8, list = FALSE))
 bisnode_work <- bisnode[work_indices, ]
 bisnode_holdout <- bisnode[-work_indices, ]
 
@@ -752,9 +746,8 @@ train_control <- trainControl(method = "cv",
                               number = n_folds,
                               classProbs = TRUE, # computing probabilities during training
                               summaryFunction = twoClassSummaryExtended, # from da_helper_functions.R
-                              savePredictions = TRUE # save the predictions for each fold
-                              )
-# train_control$verboseIter <- TRUE # add that for RF, if we want to see calculation steps
+                              savePredictions = TRUE, # save the predictions for each fold
+                              verboseIter = TRUE)
 ```
 
 <!-- Task1.1: Model 1 - Logit  --> 
