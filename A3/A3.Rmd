@@ -979,4 +979,40 @@ CV_RMSE_folds[["LASSO"]] <- logit_lasso_model$resample[,c("Resample", "RMSE")]
 ```
 
 <!-- Task3.1: Use some methods to interpret your random forest probability model (Shapley, PDP) --> 
+
+```{r}
+# ideas:
+# Feature importance plot
+varImpPlot(rf_model)
+# Install and load 'pdp' package if not already installed
+# install.packages("pdp")
+library(pdp)
+
+# Partial dependence plot for 'var1'
+partial_plot <- partial(rf_model, pred.var = "var1", grid.resolution = 100)
+plot(partial_plot)
+
+# Install and load 'vip' package if not already installed
+# install.packages("vip")
+library(vip)
+
+# Permutation feature importance
+vip(rf_model)
+
+# Install and load 'shap' package if not already installed
+# install.packages("shap")
+library(shap)
+
+# Extract SHAP values
+shap_values <- predict_contrib(rf_model, holdout_set)
+
+# Summary plot of SHAP values
+shap_summary_plot(shap_values, holdout_set)
+
+# Explanation for a specific observation (replace 'index' with the actual index)
+shap_values_single <- predict_contrib(rf_model, holdout_set[index, ])
+shap_plot(shap_values_single)
+```
+
+
 <!-- Task3.2: Create a shiny (flexdashboard) app for the project where you can show (1) how key variables influence the prediction (!Shapley) and (2) show expected loss based on different thresholds. -->
