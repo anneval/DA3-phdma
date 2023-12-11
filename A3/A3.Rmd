@@ -9,6 +9,11 @@ output:
   df_print: paged
 ---
 
+# Summary
+The goal of our analysis is to classify fast growing firms in order to identify lucrative investment opportunities. This report includes three different predictive models to predict fast growing firms. It is based on bisnode panel data and firm growth is defined by average annual percentage growth in sales over two years. We use data from 2012 to predict sales growth two years ahead. The models are logit, random forest and logit lasso. The models' predictive power is evaluated once without once with the use of a loss function. After the introduction of a loss function we identified XXX as strongest model. This model is also used on the subsets manufacturing and services In comparison, XXXX. Further results and interactive graphs can be found in the shiny app linked to this report.
+
+{{< pagebreak >}}
+
 ```{r, include=FALSE}
 # Clear memory
 rm(list=ls())
@@ -82,6 +87,9 @@ bisnode %>%
 ```
 
 
+## Sample Design
+
+We exclude some variables that have extremely high rates of missing values (above 90%) and only look at firms that are active, that is, they have some sales. What is more, our analysis is only based on firms with sales between 1000 and 10 million euros. We believe this subset presents the most attractive investment opportunities. First, very small firms with sales below 1000 EUR in sales are likely not to seek investment. Second, very large firms are well represented in various indices and any expected growth is likely to be already incorporated in the stock price.
 <!-- Sample design  --> 
 
 ```{r, include=FALSE}
@@ -92,6 +100,9 @@ bisnode %>%
 # Company with ID 12212152320 had a massive explosion from 2012 to 2013 (0 to 63 employees etc) - how to treat?
 ## did they exit before? Maybe we have to add a variable that indicate newly established firms?
 
+# add all missing year and company combinations
+bisnode <- bisnode %>%
+  complete(year, comp_id)
 
 # drop variables with many NAs
 bisnode <- bisnode %>%        
@@ -122,9 +133,6 @@ bisnode <- bisnode %>%
   filter(!(sales > 10000000)) %>%
   filter(!(sales < 1000))
 
-# add all missing year and company combinations
-bisnode <- bisnode %>%
-  complete(year, comp_id)
 ```
 
 
@@ -152,6 +160,9 @@ plot_labor_avg
 ```
 
 
+## Label Engineering
+
+We are exploring multiple alternatives as target variable to represent high growth firms. In our selection we pay attention to the following dimensions: i) the indicator to choose, ii) the measurement, iii) the time horizon, and iv) the threshold. 
 
 <!-- Label engineering  --> 
 
@@ -292,7 +303,12 @@ quantile(bisnode$sales_growth_2y_ahead, na.rm = TRUE, probs = seq(0, 1, 0.05))
 
 # define high growth firms as firms that grow with more than 30% (coincides with fastest 20% in our data set)
 bisnode <- bisnode %>%
-  mutate(high_growth = ifelse(sales_growth_2y_ahead > 0.3, 1, 0))
+  mutate(high_growth = ifelse(sales_growth_2y_ahead > 0.3, 1, 0)) %>%
+  # code NA as 0 since these firms have no sales data/below 1000 sales
+  # even if the missing values don't mean the firm exited, they are unlikely to be high growth
+  # we want to avoid false positives and excluding them would be a bigger issue!
+  mutate(high_growth = ifelse(is.na(high_growth), 0, high_growth))
+
 
 ####################################
 # notes on growth
