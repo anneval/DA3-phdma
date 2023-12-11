@@ -308,7 +308,7 @@ bisnode <- bisnode %>%
   # even if the missing values don't mean the firm exited, they are unlikely to be high growth
   # we want to avoid false positives and excluding them would be a bigger issue!
   mutate(high_growth = ifelse(is.na(high_growth), 0, high_growth))
-
+# TARGET VARIABLE: high_growth
 
 ####################################
 # notes on growth
