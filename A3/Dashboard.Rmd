@@ -22,6 +22,33 @@ output:
 
 <!-- README:  By default dashboards are standard HTML documents that can be deployed on any web server or even attached to an email message. You can optionally add Shiny components for additional interactivity and then deploy on Shiny Server or shinyapps.io. -->
 
+```{r, include=FALSE}
+# Clear memory
+rm(list=ls())
+# set global chunk options
+knitr::opts_chunk$set(include = FALSE, fig.align = 'center', cache = TRUE,
+                      warning = FALSE, message = FALSE, echo = FALSE)
+
+options(scipen = 999)
+```
+
+```{r setup, include=FALSE}
+# Set options for markdown
+knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies')
+
+# store different directories here:
+# C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
+# C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies
+# C:/Users/AnjaHahn/OneDrive - DataScience Service GmbH/WU/Courses/CEU Prediction with Machine Learning for Economists/da_case_studies
+```
+
+<!-- Set directory, load functions and theme  --> 
+```{r, include=FALSE}
+source("set-data-directory.R")
+source("ch00-tech-prep/theme_bg.R")
+source("ch00-tech-prep/da_helper_functions.R")
+```
+
 ```{r setup, include=FALSE}
 library(flexdashboard)
 library(tsbox)
@@ -35,6 +62,13 @@ library(readxl)
 library(stargazer)
 library(vars)
 ```
+
+```{r,include=FALSE}
+data_in <- paste(data_dir,"bisnode-firms", sep = "/")
+
+rf_old <- read_rds(paste(data_in,"rf_model1.rds",sep = "/")) # save in data dir!!!
+```
+
 
 # <font size="3">Bisnode</font> {data-navmenu="Key variables"}
 #### **Importance of key variables**
