@@ -351,6 +351,14 @@ bisnode <- bisnode %>%
 ```
 
 
+## Feature Engineering
+- included some new variables that were created from other variables
+- windsorized a range of variables (negative values to =0), and included flags for it
+- drop some variables 
+- impute some variables (including sales growth) --> defend decision to impute with 0 growth
+
+
+
 <!-- Feature engineering  --> 
 
 ```{r, include=FALSE}
