@@ -82,13 +82,13 @@ data_out <- use_case_dir
 
 drop_variables <- c("host_thumbnail_url","host_picture_url","listing_url","picture_url","host_url","last_scraped","description", "neighborhood_overview", "host_about", "host_response_time", "name", "host_location","neighbourhood_group_cleansed","source","license","calendar_updated") # drop similar variables to airbnb_london_cleaner.R. Either not needed or only contains NAs..
 
-listings <- listings %>% select(-drop_variables)
+listings<-listings[ , !(names(listings) %in% drop_variables)]
 
 #2) check if id variables contain at least one alphabetical character, if yes drop those
 listings$junk<-grepl("[[:alpha:]]", listings$id)
 summary(as.factor(listings$junk))
 listings <-subset(listings,junk==FALSE)
-listings <- listings %>% select(-junk) 
+listings <- listings[,-61] 
 
 #3) check all classes and variable types of data sets
 sapply(listings, class)
@@ -885,6 +885,7 @@ names(data_holdout_ohe)[indices_to_change] <- new_names
 #treeshap_inter <- treeshap(rf_model_unified, data_holdout_ohe[1:100, ], interactions = T)
 #summary(treeshap_res)
 ```
+
 ```{r, figures-VARIMP, fig.show="hold", out.width="50%", echo =FALSE, warning=FALSE}
 treeshap_res
 treeshap_featureIMP
