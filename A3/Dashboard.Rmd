@@ -1,0 +1,682 @@
+---
+title: "trendEcon AT"
+output: 
+  flexdashboard::flex_dashboard:
+    theme: journal #  yeti
+      #bg: "#101010"
+      #fg: "#FDF7F7" 
+      #primary: "#ED79F9"
+      #base_font: !expr bslib::font_google("Prompt")
+      #code_font: !expr bslib::font_google("JetBrains Mono")
+    orientation: rows
+    version: 4
+    #source_code: embed
+    vertical_layout: scroll
+    social: ["menu"]
+    navbar:
+      - {icon: "fa-github", 
+         title: "Data", 
+         href: "https://github.com/anneval/MA", align: right, target: blank}
+      - {title: "R package", href: "https://trendecon.github.io/trendecon/", align: right, target: blank}
+  
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tsbox)
+library(dygraphs)
+library(readr)
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(ggplot2)
+library(readxl)
+library(stargazer)
+library(vars)
+```
+
+
+```{r, include=FALSE}
+today <- as.character(Sys.Date())
+
+getMonth <- 'function(d){
+               var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun","Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+               return monthNames[d.getMonth()];
+               }'
+#the x values are passed as milliseconds, turn them into a date and extract month and day
+getMonthDay <- 'function(d) {
+                var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun","Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                date = new Date(d);
+                return monthNames[date.getMonth()] + " " +date.getDate(); }'
+```
+
+# Economic Indices
+### trendEcon Austria
+
+This dashboard provides daily (economic) sentiment indicators based on Google searches in Austria. The data for the Google searches are scraped from Google Trends using the `trendEcon` R-package. The project builds upon the work of [trendEcon](https://www.trendecon.org). The construction of the daily sentiment indices is part of the Master thesis: "Nowcasting GDP growth in Austria via the construction of a daily economic sentiment index using Google Trends." Next to the presentation of the daily sentiment indices, the goal is to evaluate the main indicator's (daily economic sentiment index) nowcasting performance and accuracy in a GDP pseudo-out-of-sample forecasting exercise. Several models (OLS, AR, VAR) are being compared to analyze the indicator's performance.
+
+## Row {.tabset .tabset-fade}
+
+### Daily Economic Sentiment Index
+```{r}
+keywords <- c("Wirtschaftskrise", "Kurzarbeit", "arbeitslos", "Insolvenz","Inflation") #
+Google_AT_daily <- read.csv("https://raw.githubusercontent.com/anneval/MA_data/main/raw/at/trendecon_sa.csv")
+
+economic_sentiment <- Google_AT_daily %>%
+  dplyr::select(time,value) %>%
+  ts_xts()
+
+events <- read.csv2("https://raw.githubusercontent.com/anneval/MA_Dashboard/main/docs/Events.csv")
+events$date <- as.Date(events$date)
+
+dygraph(economic_sentiment,group = "keywords")%>%
+  dyAxis("x", drawGrid = FALSE)%>%
+  dySeries("value", label = "Index")%>%
+  dyEvent(events$date, events$event, labelLoc = "bottom") %>%
+  dyRangeSelector(dateWindow = c("2006-01-01", today))%>%
+  dyOptions(useDataTimezone = TRUE)
+```
+### Monthly
+
+```{r}
+data_monthly <- economic_sentiment %>%
+  ts_frequency("month")
+ts_dygraphs(ts_c(
+  `Perceived Economic Situation` = data_monthly
+)) %>%
+  dyRangeSelector()
+```
+
+### Info
+
+###### Description
+
+The sentiment indicator for the *Perceived Economic Situation* consists of Google search terms that aim to reflect people's concerns about the current economic situation. For instance, people might search for "Wirtschaftskrise" (= economic crisis) to get information.  
+
+###### Keywords
+
+- economic crisis ("Wirtschaftskrise")
+- short-term work ("Kurzarbeit)
+- unemployed ("arbeitslos")
+- insolvency ("Insolvenz")
+
+[Download data](https://raw.githubusercontent.com/anneval/MA_data/main/raw/at/trendecon_sa.csv){target="_blank"}
+
+## Row {.tabset .tabset-fade}
+
+### Daily Consumption Sentiment Index
+```{r}
+keywords <- c("Shopping", "Klamotten", "Autokauf", "Restaurant", "Möbel")
+Consumption_AT_daily <- read.csv("https://raw.githubusercontent.com/anneval/MA_data/main/raw/at/consumption_sa.csv")
+
+consumption_sentiment <- Consumption_AT_daily %>%
+  dplyr::select(time,value) %>%
+  ts_xts()
+
+dygraph(consumption_sentiment,group = "keywords")%>%
+  dyAxis("x", drawGrid = FALSE)%>%
+  dySeries("value", label = "Index")%>%
+      dyRangeSelector(dateWindow = c("2006-01-01", today))%>%
+    #  dyEvent(events$date, events$event, labelLoc = "bottom") %>%
+      dyOptions(useDataTimezone = TRUE)
+```
+### Monthly
+
+```{r}
+data_monthly <- consumption_sentiment %>%
+  ts_frequency("month")
+ts_dygraphs(ts_c(
+  `Perceived Consumption Situation` = data_monthly
+)) %>%
+  dyRangeSelector()
+```
+### Info
+
+###### Description
+
+The sentiment indicator for the *Perceived Consumption Situation* consists of Google search terms that reflect people's consumption behavior and thus gives indications for the current economic situations. For instance, people might search for "Restaurant" to get information.  
+
+###### Keywords
+
+- shopping
+- clothing ("Klamotten")
+- car sale ("Autokauf")
+- restaurant
+- furniture ("Möbel")
+
+[Download data](https://github.com/anneval/MA_data/blob/main/raw/at/consumption_sa.csv){target="_blank"}
+
+## Row {.tabset .tabset-fade}
+
+### Daily Unemployement Sentiment Index
+```{r}
+keywords <- c("Jobagentur", "Arbeitslosengeld", "Jobcenter", "arbeitslos")
+Unemployment_AT_daily <- read.csv("https://raw.githubusercontent.com/anneval/MA_data/main/raw/at/unemployment_sa.csv")
+
+unemployment_sentiment <- Unemployment_AT_daily %>%
+ dplyr::select(time,value) %>%
+  ts_xts()
+
+dygraph(unemployment_sentiment,group = "keywords")%>%
+  dyAxis("x", drawGrid = FALSE)%>%
+  dySeries("value", label = "Index")%>%
+      dyRangeSelector(dateWindow = c("2006-01-01", today))%>%
+     # dyEvent(events$date, events$event, labelLoc = "bottom") %>%
+      dyOptions(useDataTimezone = TRUE)
+```
+### Monthly
+
+```{r}
+data_monthly <- unemployment_sentiment %>%
+  ts_frequency("month")
+ts_dygraphs(ts_c(
+  `Perceived Unemployment Situation` = data_monthly
+)) %>%
+  dyRangeSelector()
+```
+
+### Info
+
+###### Description
+
+The indicator for the *Perceived Unemployment Situation* includes search terms that reflect people’s search behavior regarding their current job situation and thus gives indications for the current unemployment situations.
+
+###### Keywords
+
+- unemployment benefit ("Arbeitslosengeld")
+- Jobcenter
+- unemployed ("arbeitslos")
+
+[Download data](https://github.com/anneval/MA_data/blob/main/raw/at/unemployment_sa.csv){target="_blank"}
+
+## Row {.tabset .tabset-fade}
+
+### Daily Housing Sentiment Index
+```{r}
+keywords <- c("Immobilienfinanzierung", "immobilienscout24", "Immobilien","Makler")
+Housing_AT_daily <- read.csv("https://raw.githubusercontent.com/anneval/MA_data/main/raw/at/housing_sa.csv")
+
+housing_sentiment <- Housing_AT_daily %>%
+  dplyr::select(time,value) %>%
+  ts_xts()
+
+dygraph(housing_sentiment,group = "keywords")%>%
+  dyAxis("x", drawGrid = FALSE)%>%
+  dySeries("value", label = "Index")%>%
+      dyRangeSelector(dateWindow = c("2006-01-01", today))%>%
+     # dyEvent(events$date, events$event, labelLoc = "bottom") %>%
+      dyOptions(useDataTimezone = TRUE)
+```
+### Monthly
+
+```{r}
+data_monthly <- housing_sentiment %>%
+  ts_frequency("month")
+ts_dygraphs(ts_c(
+  `Perceived Housing Situation` = data_monthly
+)) %>%
+  dyRangeSelector()
+```
+
+### Info
+
+###### Description
+
+The *Perceived Housing Situation* indicator includes search terms that reflect people’s search behavior regarding their current interest in the housing market and its prices and thus gives indications for the current economic situations.
+
+###### Keywords
+
+- mortgaging ("Immobilienfinanzierung")
+- immobilienscout24
+- real estate ("Immobilien")
+- real estate agent ("Makler")
+
+[Download data](https://github.com/anneval/MA_data/blob/main/raw/at/housing_sa.csv){target="_blank"}
+
+## Row
+
+# Corona Index 
+#### **Corona Indicator**
+### {style="border: 0px; background: none"}
+
+The following figure illustrates the *Daily Corona Sentiment Index*. The index includes searches for incidence, "COVID19 cases", "test center", "lockdown", and "pandemic". There is no preexisting, well-established indicator to compare this search-based indicator with. Nevertheless, it mirrors the public's perception of how good or bad the current Covid situation is developing. 
+
+## Row {.tabset .tabset-fade}
+### Daily Corona Sentiment Index
+```{r}
+keywords <- c("Inzidenz", "Coronafälle", "Testcenter", "Lockdown", "Pandemie")#
+Corona_AT_daily <- read.csv("https://raw.githubusercontent.com/anneval/MA_data/main/raw/at/corona_sa.csv", skip=2192,header = FALSE, col.names = c("time", "value"))
+
+corona_sentiment <- Corona_AT_daily[] %>%
+  dplyr::select(time,value) %>%
+  ts_xts()
+
+dygraph(corona_sentiment,group = "keywords")%>%
+  dyAxis("x", drawGrid = FALSE)%>%
+  dySeries("value", label = "Index")%>%
+      dyRangeSelector(dateWindow = c("2020-01-01", today))%>%
+      dyEvent(events$date, events$event, labelLoc = "bottom") %>%
+      dyOptions(useDataTimezone = TRUE)
+```
+### Monthly
+
+```{r}
+data_monthly <- corona_sentiment %>%
+  ts_frequency("month")
+ts_dygraphs(ts_c(
+  `Perceived Corona Situation` = data_monthly
+)) %>%
+  dyRangeSelector()
+```
+
+### Info
+
+###### Description
+
+The *Perceived Corona Situation* indicator includes search terms that reflect people's worries about the current corona situations. For instance, people might google "Inzidenz" (= incidence) to get information.
+
+###### Keywords
+
+- incidence ("Inzidenz")
+- Covid cases ("Coronafälle")
+- test center ("Testcenter")
+- Lockdown
+- pandemic ("Pandemie")
+
+[Download data](https://github.com/anneval/MA_data/blob/main/raw/at/corona_sa.csv){target="_blank"}
+
+
+# Weekly Indices
+#### **Weekly Indicators**
+### {style="border: 0px; background: none"}
+
+The following figure compares the daily economic sentiment index to three other recently developed higher frequency GDP indicators - the weekly OeNB GDP indicator, the Weekly WIFO Economic Index (WWWI), and the OECD weekly tracker of GDP growth. I temporally aggregate the DESI to the lower weekly frequency to directly compare all four indicators. The figure below plots the weekly indicators starting in January 2020. All four indicators capture the economic downturn at the end of the first quarter of 2020 due to the Covid19 outbreak. Compared to the other three indicators, the constructed Google-based DESI can identify the decline of economic activity early on.
+Moreover, the DESI depicts a more profound downfall of the economy. Over the rest of 2020, the four indicators seem to co-move. Between the end of 2020 and the beginning of 2021, the WWWI and the OECD weekly tracker diverge from the DESI and the OeNB weekly tracker. In the middle of 2021, the indices slightly converge again, with the WWWI and the OECD weekly tracker remaining on higher levels. None of the indicators can adequately capture the GDP rebound starting in the third quarter of 2020. Overall, the four indices follow a similar pattern and mostly show divergence in times of increased economic distress. This seems reasonable due to the depth of the different modeling approaches (e.g., linear or nonlinear) and the different data sources or data combinations used. 
+
+```{r,echo = FALSE}
+### Change from daily to weekly frequency
+google <- Google_AT_daily[,1:2]
+library(tsbox)
+google_w <- ts_frequency(google, to = "week") %>% ts_xts()
+
+#### OECD weekly tracker
+temp <- tempfile()
+download.file("https://github.com/NicolasWoloszko/OECD-Weekly-Tracker/raw/main/Data/weekly_tracker.xlsx",destfile = temp)
+
+oecd <- read_excel(temp, sheet = "Sheet1") 
+
+
+%>%
+  #oecd <- read_xlsx("./real_data/weekly_tracker.xlsx", sheet = "Sheet1") %>%
+  filter(region == "Austria") %>%
+  #filter(region %in% c("Austria", "Germany", "Switzerland")) %>%
+  mutate(date = as.Date(date),
+         Tracker = `Tracker (yoy)` / 100) %>%
+  filter(date >= "2020-01-01") %>%
+  rename(time = date, value = Tracker) %>%
+  dplyr::select(time, value) %>%
+  ts_xts()
+
+### OENB Weekly Tracker
+
+temp <- tempfile()
+download.file("https://www.oenb.at/dam/jcr:7c5ab44b-204d-4d45-a802-884d1019f7f5/data_on_the_weekly_GDP-indicator.csv",
+              destfile = temp)
+
+#### first weeks fehlt
+wecon_oenb <- read_delim(temp, delim = ";", escape_double = FALSE, trim_ws = TRUE) %>%
+  drop_na(Calenderweek) %>%
+  rename(time = Calenderweek, value = `Real GDP compared to pre-crisis levels`) %>%
+  dplyr::select(time, value)
+
+wecon_oenb <- ts(wecon_oenb, start = c(2020,10), frequency = 52) %>% ts_xts()
+
+
+library(lubridate)
+wecon_oenb_test <- ts(wecon_oenb, 
+   freq=365.25/7, 
+   start=decimal_date(ymd("2020-03-06"))) %>% ts_xts()
+
+wecon_oenb_test <- wecon_oenb_test %>% xts:::.drop.time()
+
+### WIFO Weekly Tracker 
+temp <- tempfile()
+download.file("https://www.wifo.ac.at/wwadocs/konjunktur/W%C3%B6chentlicherWIFOWirtschaftsindex/WIFO-Konjunkturberichterstattung_W%C3%B6chentlicherWIFOWirtschaftsindex.xlsx",
+              destfile = temp)
+
+t0 <- as.numeric(as.Date("2007-01-01"))
+t1 <- as.numeric(as.Date(Sys.Date()))
+t <- round((t1 - t0) / 7) - 3 # weeks passed since index started
+
+wwwi <- read_xlsx(temp, sheet = "WWWI",
+                  #wwwi <- read_xlsx(path = "./real_data/wwwi_wifo.xlsx", sheet = "WWWI",
+                  skip = 2, col_names = c("DATE", "VALUE", "cng_yavg", "cng_q"),
+                  #col_types = c("date", "guess", "guess", "guess"), 
+                  n_max = t) %>%
+  mutate(DATE = as.character(DATE)) %>%
+  dplyr::select(DATE, VALUE) %>%
+  rename(time = DATE, value = VALUE) %>%
+  ts_xts()
+```
+
+
+```{r,echo = FALSE}
+google_w <- google_w[time(google_w) >= "2020-01-01"]  
+wwwi <- wwwi[time(wwwi) >= "2020-01-01"]  
+oecd <- oecd[time(oecd) >= "2020-01-01"]  
+
+wecon_oenb <- wecon_oenb %>% xts:::.drop.time()
+library(lubridate)
+wwwi <- wwwi %>% ts_data.frame()
+wwwi$time <- wwwi$time %m-% days(3)
+wwwi <- wwwi %>% ts_xts()
+
+oecd <- oecd %>% ts_data.frame()
+oecd$time <- oecd$time %m-% days(2)
+oecd <- oecd %>% ts_xts()
+
+google_w <- google_w %>% ts_data.frame()
+google_w$time <- google_w$time %m-% days(2)
+google_w <- google_w %>% ts_xts()
+
+wecon_oenb_test <- wecon_oenb_test %>% ts_data.frame()
+wecon_oenb_test[1,1] <- as.Date("2020-03-06")
+wecon_oenb_test <- wecon_oenb_test %>% ts_xts()
+```
+
+## Row {.tabset .tabset-fade}
+
+### Comparison weekly indicators
+```{r ce_background, echo = FALSE}
+
+### {}
+
+### Plot
+library(dygraphs)
+ts_dygraphs(ts_c(
+  `Google DESI` = google_w * 5,
+  `WIFO WWWI` = wwwi,
+  `OECD Weekly Tracker` = oecd * 100,
+  `OENB Weekly Indicator` = wecon_oenb_test
+))  %>%
+  dySeries("Google DESI", strokeWidth=1, color = "black") %>%
+  dySeries("WIFO WWWI", strokeWidth = 1,  color = "red") %>%
+  dySeries("OECD Weekly Tracker", strokeWidth = 1,  color = "green") %>%
+  dySeries("OENB Weekly Indicator", strokeWidth = 1,  color = "steelblue") %>%
+  dyAxis("x", drawGrid = FALSE) %>%
+  dyRangeSelector()%>%
+  #dyRangeSelector(dateWindow = c(as.Date("2020-01-01"), Sys.Date()))%>%
+  dyOptions(useDataTimezone = TRUE)
+
+```
+### Monthly
+
+```{r}
+data_monthly <- ts_c(
+  `Google DESI` = google_w * 5,
+  `WIFO WWWI` = wwwi,
+  `OECD Weekly Tracker` = oecd * 100,
+  `OENB Weekly Indicator` = wecon_oenb_test
+) %>%
+ts_frequency("month")
+
+ts_dygraphs(ts_c(
+  `Perceived Housing Situation` = data_monthly)) %>%
+  dySeries("Google DESI", strokeWidth=1, color = "black") %>%
+  dySeries("WIFO WWWI", strokeWidth = 1,  color = "red") %>%
+  dySeries("OECD Weekly Tracker", strokeWidth = 1,  color = "green") %>%
+  dySeries("OENB Weekly Indicator", strokeWidth = 1,  color = "steelblue") %>%
+  dyAxis("x", drawGrid = FALSE) %>%
+  dyRangeSelector()%>%
+  #dyRangeSelector(dateWindow = c(as.Date("2020-01-01"), Sys.Date()))%>%
+  dyOptions(useDataTimezone = TRUE)
+```
+
+### Info
+
+###### Description
+
+The weekly OeNB GDP indicator has been published since May 2020 and aims to measure the economic activity through the expenditure side of GDP. The OeNB uses a set of business cycle indicators that are collected on a daily or weekly basis and calculates a new activity indicator via a bridge equation model that depicts the development of real GDP compared to the corresponding week of the previous year on a weekly basis. The higher frequency indicators include truck mileage data, payment transaction data, labor market data, electricity consumption data, mobility indicators, and financial market data. See [weekly OeNB GDP indicator](https://www.oenb.at/Publikationen/corona/bip-indikator-der-oenb.html)
+
+The WWWI is a weekly estimate of the real economic activity of the Austrian economy based on a time-series approach. It consists of 22 time series, including weekly, monthly, and quarterly indicators, covering eight GDP sub-components of the demand side of the quarterly National Accounts and nine of the production side. Weekly indicators include cashless transactions, freight transportation activity, passenger flight volumes, Google mobility data, unemployment, electricity consumption and pollutant emissions from industry, and international weekly indicators of economic activity. The WWWI uses temporal disaggregation models for historical decomposition and an ARMA-X nowcasting model for each weekly sub-indicator. In the end, the WWWI is obtained by summing up the growth contributions of the sub-indicators on the production side. See [Weekly Wifo Economic Index](https://www.wifo.ac.at/jart/prj3/wifo/main.jart?rel=en&content-id=1564766301706&reserve-mode=active)
+
+The OECD Weekly Tracker of GDP growth applies a two-step machine learning model (“neural network”) to a panel of GT data to aggregate information from search behavior related to consumption, labor markets, housing, trade, industrial activity, and economic uncertainty. The tracker provides nowcasts of year-on-year GDP growth rates with a 5-day delay. See [OECD Weekly Tracker of economic activity](https://www.oecd.org/economy/weekly-tracker-of-gdp-growth/)
+
+# <font size="3">Expanding window estimation</font> {data-navmenu="Nowcasting"}
+#### **Expanding Window estimation**
+### {style="border: 0px; background: none"}
+
+To analyze the predictive and nowcasting performance of the constructed daily sentiment index, I construct a pseudo-out-of-sample forecasting exercise to compare the in and out-of-sample GDP nowcasting ability of the daily economic sentiment index (DESI). Instead of splitting the data into a train and a validation set, I estimate all models using a recursive or expanding window strategy. Thus the initial sample size of the training data includes 19 observations or 30\% of the original data set and increases each round continuously. As this gives multiple estimations instead of only one, I account for possible changes in the data structure over time. The figures below present the graphical representation of each nowcasting model and its ability to predict GDP growth. 
+
+```{r}
+githubURL <- "https://github.com/anneval/MA_data/blob/main/All.RData?raw=true"
+#load(url(githubURL))
+
+load(file(githubURL))
+```
+
+## Row {.tabset .tabset-fade}
+### Model1
+
+Model 1: $GDP_t = \beta_0 +\beta_1 GDP_{t-1} + \epsilon_t$
+
+```{r}
+ts.plot(ts(Data[20:63,1],frequency = 4, start = c(2010,4),end = c(2021,3)),
+          ts(pred1,frequency = 4, start = c(2010,4),end = c(2021,3)),
+    col = c("black", "red"),
+    xlab = "Year", 
+    ylab = "GDP growth (%)", 
+    lwd = 1)
+legend("bottomleft", c("GDP growth", "AR(1)"), col=c("black","red"), lty=c(1),
+        xpd=TRUE, bty="b", cex=0.75)
+```
+
+-------------------------------------
+
+### Model2
+
+Model 2:  $GDP_t = \beta_0 +\beta_1 CCI_{t} +\epsilon_t$
+
+```{r}
+ts.plot(ts(Data[19:63,1],frequency = 4, start = c(2010,3)),
+          ts(pred2,frequency = 4, start = c(2010,3)),
+    col = c("black", "red"),
+    xlab = "Year", 
+    ylab = "GDP growth (%)", 
+    lwd = 1)
+legend("bottomleft", c("GDP growth", "CCI"), col=c("black","red"), lty=c(1),
+        xpd=TRUE, bty="b", cex=0.75
+      )
+```
+
+-------------------------------------
+
+### Model 3
+
+Model 3:  $GDP_t = \beta_0 +\beta_1 GT_{t,i} +\epsilon_t$
+
+```{r}
+plotexp_3 <- ts.plot(ts(Data[19:63,1],frequency = 4, start = c(2010,3)),
+          ts(pred3,frequency = 4, start = c(2010,3)),
+    col = c("black", "red"),
+    xlab = "Year", 
+    ylab = "GDP growth (%)", 
+    lwd = 1)
+legend("bottomleft", c("GDP growth", "DESI"), col=c("black","red"), lty=c(1),
+        xpd=TRUE, bty="b", cex=0.75
+      )
+```
+
+-------------------------------------
+
+### Model 4&5
+
+Model 4: $GDP_t = \beta_0 +\beta_1 GDP_{t-1} + \beta_2 CCI_{t} + \epsilon_t$
+
+Model 5: $GDP_t = \beta_0 +\beta_1 GDP_{t-1} + \beta_2 GT_{t,i} + \epsilon_t$
+
+
+```{r}
+plotexp_5 <- ts.plot(ts(Data[20:63,1],frequency = 4, start = c(2010,4)),
+          ts(pred4,frequency = 4, start = c(2010,4)),
+          ts(pred5,frequency = 4, start = c(2010,4)),
+    col = c("black", "red","blue"),
+    xlab = "Year", 
+   ylab = "GDP growth (%)", 
+    lwd = 1)
+legend("bottomleft", c("GDP growth","CCI & AR(1)" ,"DESI & AR(1)"), col=c("black","red","blue"), lty=c(1), xpd=TRUE, bty="b",cex=0.75
+       )
+```
+
+-------------------------------------
+
+### Model 6&7
+
+Model 6: $GDP_t = \beta_0 +\beta_1 GDP_{t-1} + \beta_2 CCI_{t} + \beta_3 GT_{t} + \epsilon_t$
+
+Model 7: $GDP_t = \beta_0 + \beta_1 CCI_{t} + \beta_2 GT_{t} + \epsilon_t$
+
+```{r}
+plotexp_7 <- ts.plot(ts(Data[20:63,1],frequency = 4, start = c(2010,3)),
+          ts(pred6,frequency = 4, start = c(2010,3)),
+          ts(pred7[2:45,],frequency = 4, start = c(2010,3)),
+    col = c("black", "red","blue"),
+    xlab = "Year", 
+    ylab = "GDP growth (%)", 
+    lwd = 1)
+legend("bottomleft", c("GDP growth","AR(1) & CCI & DESI", "CCI & DESI"), col=c("black","red","blue"), lty=c(1), xpd=TRUE, bty="b",cex=0.75
+       )
+```
+
+-------------------------------------
+
+## Row {.tabset .tabset-fade}
+
+### Accuracy
+
+```{r}
+comparison_MAE_OOS <- rbind("MAE_OLS_OOS" = MAE_OLS_OOS1,MAE_OLS_OOS2,MAE_OLS_OOS3,MAE_OLS_OOS4,MAE_OLS_OOS5,MAE_OLS_OOS6,MAE_OLS_OOS7)
+
+comparison_RMSE_OOS <- rbind("RMSE_OLS_OOS" = RMSE_OLS_OOS1,RMSE_OLS_OOS2,RMSE_OLS_OOS3,RMSE_OLS_OOS4,RMSE_OLS_OOS5,RMSE_OLS_OOS6,RMSE_OLS_OOS7)
+
+comparison_RMSE_IS <- rbind("RMSE_OLS_IS" = RMSE_OLS_IS1,RMSE_OLS_IS2,RMSE_OLS_IS3,RMSE_OLS_IS4,RMSE_OLS_IS5,RMSE_OLS_IS6,RMSE_OLS_IS7)
+
+ 
+comparison_OOS <- data.frame(     "RMSE_OOS" = comparison_RMSE_OOS, 
+                                  "RMSE_IS" = comparison_RMSE_IS,
+                                  "MAE_OOS" = comparison_MAE_OOS)
+
+rownames(comparison_OOS) <- c("AR(1)","CCI","DESI","AR(1) & CCI","AR(1) & DESI","AR(1) & CCI & DESI","CCI & DESI")
+
+
+
+```
+
+
+```{r, results='asis', include=F}
+print(xtable::xtable(comparison_OOS, label = "tab:accEXPW", caption = ""), type="html")
+```
+
+```{r}
+knitr::kable(comparison_OOS, digits=3,col.names = c("RMSE (OOS)","RMSE (in-sample)","MAE (OOS)") ,caption = "Expanding window OLS estimation - accuracy of the pseudo-out-of-sample forecasting.",align = "c")
+```
+
+# <font size="3">VAR(2)</font> {data-navmenu="Nowcasting"}
+#### **VAR(2)**
+### {style="border: 0px; background: none"}
+To analyze the nowcasting performance of the DESI in a multivariate time series setting , I use a Vector Autoregressive Model with two lags.
+
+Where: $\mathbf{y_{t}}= [GDP_t, CCI_t, DESI_t]$
+
+## Row {data-height=600}
+
+### Estimation Results
+
+<center>
+
+```{r, results='asis',fig.align="center"}
+library(stargazer)
+
+
+stargazer(VAR1_est$varresult, type = "html",align = T ,header = F, title = "VAR(2)",  
+          column.labels = c("GDP","CCI","DESI"), 
+          dep.var.labels = c(""), 
+          covariate.labels = c("$GDP_{t-1}$","$CCI_{t-1}$","$DESI_{t-1}$",
+                               "$GDP_{t-2$","$CCI_{t-2}$","$DESI_{t-2}$",
+                               "constant"))
+```
+### Forecast
+```{r,fig.dim = c(6, 6)}
+plot(forecast_VAR1)
+```
+
+## Row {.tabset .tabset-fade}
+
+### Model diagnostics
+
+To assure the statistical quality and fit of the VAR(2) model, the residuals should have properties similar to a white noise process. Therefore, I run 
+tests on the independence (i.e., autocorrelation), homoscedasticity (constant residual variance), and normality of the residuals (p.value threshold = 0.05):
+
+```{r, results='asis', include=F}
+MDiagnostics_table <- cbind(ser.test_VAR1_PT$serial$p.value,ser.test_VAR_BG$serial$p.value,archtestVAR1$arch.mul$p.value,Normtest_VAR1$jb.mul$JB$p.value)
+
+MDiagnostics_table <- round(MDiagnostics_table,digits = 4)
+
+H0<- c("rejected","rejected","not rejected", "rejected"
+                        )  
+
+MDiagnostics_table <- rbind(MDiagnostics_table,H0)
+
+MDiagnostics_table.names <- rbind("p-values", "Nullhypothesis"
+                        )  
+
+rownames(MDiagnostics_table)<- MDiagnostics_table.names
+colnames(MDiagnostics_table) <- cbind("Portmanteau", "Breusch-Godfrey LM","JB-Test", "ARCH-LM")
+```
+
+```{r, results='asis', include=F}
+print(xtable::xtable(MDiagnostics_table,caption="Model diagnostics results",label="Modeldiagnostics"),
+      sanitize.text.function=function(UR.table){UR.table},comment=FALSE,digits=2)
+
+```
+
+```{r}
+
+knitr::kable(MDiagnostics_table, digits=3,caption = "",align = "c")
+
+```
+#### Data
+
+GDP growth from: [OECD](https://data.oecd.org/gdp/quarterly-gdp.htm#indicator-chart) <br>
+
+CCI from: [European Comission](https://ec.europa.eu/info/business-economy-euro/indicators-statistics/economic-databases/business-and-consumer-surveys/download-business-and-consumer-survey-data/time-series_en#consumers) <br>
+
+DESI constructed with the `trendecon` R package and the [trendEcon](https://www.trendecon.org) method using data from: [Google Trends](https://trends.google.de/trends/?geo=AT) <br>
+
+### Accuracy
+
+```{r}
+acc_is_VAR1 <- acc_is_VAR1[2:5]
+acc_oos_VAR1 <- acc_oos_VAR1[-1]
+acc_Var <- rbind(acc_oos_VAR1,acc_is_VAR1)
+
+rownames(acc_Var) <- c("in-sample","out-of-sample")
+```
+
+```{r, results='asis', include=F}
+print(xtable::xtable(acc_Var, label = "tab:accVAR", caption = ""), type="html")
+```
+
+```{r}
+
+knitr::kable(acc_Var, digits=3,col.names = c("RMSE","MAE","MPE","MAPE") ,caption = "VAR(2) - accuracy measures for the GDP model (3 periods ahead).",align = "c")
+
+```
+
+```{r}
+knitr::kable(comparison_errors, digits=3,col.names = c("RMSE (OOS)","RMSE (in-sample)","MAE(OOS)") ,caption = "Expanding window VAR(2) - accuracy for the GDP model of the pseudo-out-of-sample forecasting.",align = "c")
+
+```
+
+
+
