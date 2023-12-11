@@ -70,7 +70,7 @@ listings_Dec$origin <- "Dec 22"
 # Combine the data sets
 listings <- rbind(listings_Sep, listings_Dec)
 # define for saving the data later
-use_case_dir <- "A2/"
+use_case_dir <- "/"
 data_out <- use_case_dir
 ```
 **The report below summarizes pricing strategies for small and mid-size apartments in Copenhagen. Using a data-driven approach, I determine that the average price for apartments hosting 2 to 6 guests is 1166 DKK (= 156 Euro) per night, as predicted by the best-performing model. The driving factor influencing apartment prices on average the most is the number of people an Airbnb can accommodate.** The first part of the report delves into data preparation and pre-processing. Subsequently, the three distinct price prediction models, along with all modeling decisions, are explained. This is followed by a comparison of the results with predicted apartment prices in London. In addition, to further assess the predictive power of the models out of sample, predictions are made not only on a holdout set but also on an additional data set covering a different time frame, essentially mimicking live data. Finally, the report provides a detailed evaluation of the model performance of the best-performing machine learning model, utilizing variance-important measures such as Shapely values and partial dependence plots.
@@ -609,6 +609,10 @@ system.time({
 rf_model
 
 summary(rf_model)
+data_in <- paste(data_dir,"bisnode-firms", sep = "/")
+
+saveRDS(rf_model,paste(data_in,"rf_A2.rds",sep = "/"))
+
 
 # Show Model B rmse shown with all the combinations
 rf_tuning_model <- rf_model$results %>%
@@ -765,8 +769,9 @@ rf_model_var_imp_plot <- ggplot(rf_model_var_imp_df[rf_model_var_imp_df$imp > cu
         axis.title.x = element_text(size = 6),
         axis.title.y = element_text(size = 6))
 
-#rf_model_var_imp_plot
+rf_model_var_imp_plot
 ```
+
 ```{r,echo=FALSE, include=FALSE, warning=F}
 ##############################
 # 2) full varimp plot, top 10 only
@@ -789,10 +794,6 @@ rf_model_var_imp_plot_10 <- ggplot(rf_model_var_imp_df[1:10,], aes(x = reorder(v
 #rf_model_var_imp_plot_10
 ```
 
-
-```{r, figures-VARIMP, fig.show="hold", out.width="50%", echo =FALSE, warning=FALSE}
-rf_model_var_imp_plot_10
-```
 
 ```{r,echo=FALSE, include=FALSE, warning=F}
 ##############################

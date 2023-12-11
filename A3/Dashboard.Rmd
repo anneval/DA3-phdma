@@ -17,12 +17,18 @@ output:
       - {icon: "fa-github", 
          title: "Repository", 
          href: "https://github.com/anneval/DA3-phdma/tree/main/A3", align: right, target: blank}
-  
 ---
 
 <!-- README:  By default dashboards are standard HTML documents that can be deployed on any web server or even attached to an email message. You can optionally add Shiny components for additional interactivity and then deploy on Shiny Server or shinyapps.io. -->
 
-```{r, include=FALSE}
+<!-- Task3.1: Use some methods to interpret your random forest probability model (Shapley, PDP) --> 
+
+<!-- Task3.2: Create a shiny (flexdashboard) app for the project where you can show (1) how key variables influence the prediction (!Shapley) and (2) show expected loss based on different thresholds. -->
+
+<!-- replace RF with entire date environment AND
+Replace code with graphs "ready"-->
+
+```{r global setup, include=FALSE}
 # Clear memory
 rm(list=ls())
 # set global chunk options
@@ -32,7 +38,7 @@ knitr::opts_chunk$set(include = FALSE, fig.align = 'center', cache = TRUE,
 options(scipen = 999)
 ```
 
-```{r setup, include=FALSE}
+```{r md setup, include=FALSE}
 # Set options for markdown
 knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies')
 
@@ -43,13 +49,14 @@ knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/S
 ```
 
 <!-- Set directory, load functions and theme  --> 
-```{r, include=FALSE}
+```{r helper functions, include=FALSE}
+getwd()
 source("set-data-directory.R")
 source("ch00-tech-prep/theme_bg.R")
 source("ch00-tech-prep/da_helper_functions.R")
 ```
 
-```{r setup, include=FALSE}
+```{r libraries, include=FALSE}
 library(flexdashboard)
 library(tsbox)
 library(dygraphs)
@@ -61,14 +68,22 @@ library(ggplot2)
 library(readxl)
 library(stargazer)
 library(vars)
+library(ranger)
 ```
 
-```{r,include=FALSE}
+```{r}
+# maybe eaasier version load entire data insetad of just RF
+# githubURL <- "https://github.com/anneval/MA_data/blob/main/All.RData?raw=true"
+# #load(url(githubURL))
+# 
+# load(file(githubURL))
+```
+
+```{r data,include=FALSE}
 data_in <- paste(data_dir,"bisnode-firms", sep = "/")
 
-rf_old <- read_rds(paste(data_in,"rf_model1.rds",sep = "/")) # save in data dir!!!
+rf_old <- read_rds(paste(data_in,"rf_A2.rds",sep = "/")) # save in data dir!!!
 ```
-
 
 # <font size="3">Bisnode</font> {data-navmenu="Key variables"}
 #### **Importance of key variables**
@@ -76,38 +91,223 @@ rf_old <- read_rds(paste(data_in,"rf_model1.rds",sep = "/")) # save in data dir!
 
 TEXT 
 
-```{r}
-githubURL <- "https://github.com/anneval/MA_data/blob/main/All.RData?raw=true"
-#load(url(githubURL))
+## Row {.tabset .tabset-fade}
+### Variable importance top 10 
 
-load(file(githubURL))
+```{r,echo=FALSE, include=F, warning=F}
+# use RF model since performed the best!
+# first need a function to calculate grouped varimp
+group.importance <- function(rf.obj, groups) {
+  var.imp <- as.matrix(sapply(groups, function(g) {
+    sum(importance(rf.obj)[g], na.rm = TRUE)
+  }))
+  colnames(var.imp) <- "MeanDecreaseGini"
+  return(var.imp)
+}
+
+rf_model_var_imp <- importance(rf_old$finalModel)/1000
+rf_model_var_imp_df <-
+  data.frame(varname = names(rf_model_var_imp),imp = rf_model_var_imp) %>%
+  mutate(varname = gsub("f_neighbourhood_cleansed", "Borough:", varname) ) %>%
+  mutate(varname = gsub("f_room_type", "Room type:", varname) ) %>%
+  arrange(desc(imp)) %>%
+  mutate(imp_percentage = imp/sum(imp))
+```
+
+
+```{r,echo=FALSE, include=F, warning=F}
+##############################
+# 2) full varimp plot, top 10 only
+##############################
+
+rf_model_var_imp_plot_10 <- ggplot(rf_model_var_imp_df[1:10,], aes(x = reorder(varname, imp), y = imp_percentage)) +
+  geom_point(color = color[1], size = 1) +
+  geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
+  ylab("Importance (Percent)") +
+  xlab("Variable Name") +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme_minimal() +  # Change to theme_minimal or another theme of your choice
+  theme(panel.grid.major.y = element_blank(),  # Remove horizontal grid lines only
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6),
+        axis.title.x = element_text(size = 6),
+        axis.title.y = element_text(size = 6))
+
+rf_model_var_imp_plot_10
+```
+
+```{r, include=T}
+rf_model_var_imp_plot_10
+```
+
+
+### Variable importance grouped 
+
+```{r,echo=FALSE, include=F, warning=F}
+##############################
+# 2) varimp plot grouped to (8)
+##############################
+# grouped variable importance - keep binaries created off factors together
+
+varnames <- rf_old$finalModel$xNames
+f_neighbourhood_cleansed_varnames <- grep("f_neighbourhood_cleansed",varnames, value = TRUE)
+f_property_type_varnames <- grep("f_property_type",varnames, value = TRUE)
+f_room_type_varnames <- grep("f_room_type",varnames, value = TRUE)
+
+groups <- list(f_neighbourhood_cleansed=f_neighbourhood_cleansed_varnames,
+               f_property_type = f_property_type_varnames,
+               f_room_type = f_room_type_varnames,
+               bathroom = "bathroom",
+               n_days_since = "n_days_since",
+               accommodates = "accommodates",
+               beds = "beds")
+
+rf_model_var_imp_grouped <- group.importance(rf_old$finalModel, groups)
+rf_model_var_imp_grouped_df <- data.frame(varname = rownames(rf_model_var_imp_grouped),
+                                            imp = rf_model_var_imp_grouped[,1])  %>%
+  mutate(imp_percentage = imp/sum(imp))
+
+rf_model_var_imp_grouped_plot <- ggplot(rf_model_var_imp_grouped_df, aes(x = reorder(varname, imp), y = imp_percentage)) +
+  geom_point(color = color[1], size = 1) +
+  geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
+  ylab("Importance (Percent)") +
+  xlab("Variable Name") +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme_minimal() +  # Change to theme_minimal or another theme of your choice
+  theme(panel.grid.major.y = element_blank(),  # Remove horizontal grid lines only
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6),
+        axis.title.x = element_text(size = 6),
+        axis.title.y = element_text(size = 6))
+rf_model_var_imp_grouped_plot
+```
+```{r, include=T}
+rf_model_var_imp_grouped_plot
+```
+
+### Variable importance all 
+
+```{r,echo=FALSE, include=F, warning=F}
+##############################
+# 1) full varimp plot, above a cutoff
+##############################
+
+cutoff = 600
+
+rf_model_var_imp_plot <- ggplot(rf_model_var_imp_df[rf_model_var_imp_df$imp > cutoff,],
+                                aes(x = reorder(varname, imp), y = imp_percentage)) +
+  geom_point(color = color[1], size = 1.5) +
+  geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
+  ylab("Importance (Percent)") +
+  xlab("Variable Name") +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme_minimal() +  # Change to theme_minimal or another theme of your choice
+  theme(panel.grid.major.y = element_blank(),  # Remove horizontal grid lines only
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6),
+        axis.title.x = element_text(size = 6),
+        axis.title.y = element_text(size = 6))
+
+rf_model_var_imp_plot
+```
+
+```{r, include=T}
+rf_model_var_imp_plot
 ```
 
 ## Row {.tabset .tabset-fade}
-### Variable importance
-
-```{r}
-## 2 or more versions (cutoff, top 10...)
-```
-
--------------------------------------
-
 ### Shapley
 
-```{r}
+```{r,echo=FALSE, include=FALSE, warning=F}
+## SHAP VALUES ##
+# devtools::install_github('ModelOriented/treeshap')
+
+# #define one-hot encoding function
+# dummy <- dummyVars(" ~  accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + f_number_of_reviews + review_scores_rating + flag_review_scores_rating + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly", data=listings_holdout, fullRank=T, sep = NULL)
+# 
+# #perform one-hot encoding on data frame
+# data_holdout_ohe <- data.frame(predict(dummy, newdata=listings_holdout))
+# 
+# # replace "." character to " " to match model object names
+# names(data_holdout_ohe) <- gsub(x = names(data_holdout_ohe),
+#                                 pattern = "\\.", 
+#                                 replacement = " ")  
+# 
+# # unify model for treeshap
+# rf_model_unified <- ranger.unify(rf_model$finalModel, data_holdout_ohe)
+# # when: Error in set_reference_dataset(ret, as.data.frame(data)) : 
+# # Dataset does not contain all features occurring in the model.
+# 
+# #model_variable_names <- rf_model$coefnames
+# #new_data_variable_names <- colnames(data_holdout_ohe)
+# 
+# #missing_variables <- setdiff(rf_model$coefnames, new_data_variable_names)
+# #if (length(missing_variables) > 0) {
+#  # stop(paste("Error: Missing variables in new data:", toString(missing_variables)))
+# #}
+# # if Error message (add variables from Error here manually)
+# # Identify the indices of the columns you want to change
+# indices_to_change <- which(colnames(data_holdout_ohe) %in% c("neighbourhood_cleansedBrnshj Husum", "neighbourhood_cleansedVesterbro Kongens Enghave"))
+# 
+# # Create a vector of new column names for the selected columns
+# new_names <- c("neighbourhood_cleansedBrnshj-Husum", "neighbourhood_cleansedVesterbro-Kongens Enghave")
+# 
+# # Change the column names only for the selected columns
+# names(data_holdout_ohe)[indices_to_change] <- new_names
+# 
+# ## go back to unify model for treeshap
+# 
+# #rf_model_unified <- ranger.unify(rf_model$finalModel, data_holdout_ohe)
+# 
+# #treeshap_res <- treeshap(rf_model_unified, data_holdout_ohe[1:500, ]) # delete # for calculation but excluded here for Rmd knitting 
+# 
+# #treeshap_res <- plot_contribution(treeshap_res, obs = 12)
+# 
+# #treeshap_featureIMP <- plot_feature_importance(treeshap_res, max_vars = 10)
+# 
+# #treeshap_inter <- treeshap(rf_model_unified, data_holdout_ohe[1:100, ], interactions = T)
+# #summary(treeshap_res)
+```
+
+```{r, figures-Shap, fig.show="hold", out.width="50%", echo =FALSE, warning=FALSE}
+#treeshap_res
 
 ```
 
--------------------------------------
+```{r, figures-VARIMP, fig.show="hold", out.width="50%", echo =FALSE, warning=FALSE}
 
+#treeshap_featureIMP
+```
+
+## Row {.tabset .tabset-fade}
 ### Partial dependence plot
 
 
-```{r}
+
+```{r,echo=FALSE, include=FALSE, warning=F}
+#########################################################################################
+# Partial Dependence Plots -------------------------------------------------------
+#########################################################################################
+
+
+#### add loop other predictors but also store each graph so if I change pred different graph some kind of drop down 
+
+# pdp_n_acc <- pdp::partial(rf_old, pred.var = "accomodates", pred.grid = distinct_(listings_holdout, "accommodates"), train = listings_holdout)
+# pdp_n_acc_plot <- pdp_n_acc %>%
+#   autoplot( ) +
+#   geom_point(color=color[1], size=2) +
+#   geom_line(color=color[1], size=1) +
+#   ylab("Predicted price") +
+#   xlab("Accommodates (persons)") +
+#   scale_x_continuous(limit=c(1,7), breaks=seq(1,7,1))+
+#   theme_bg()
+
+#pdp_n_acc_plot
 
 ```
-
--------------------------------------
 
 # <font size="3">Manufacturing</font> {data-navmenu="Key variables"}
 #### **Importance of key variables**
@@ -115,30 +315,55 @@ load(file(githubURL))
 
 TEXT 
 
-```{r}
-githubURL <- "https://github.com/anneval/MA_data/blob/main/All.RData?raw=true"
-#load(url(githubURL))
+## Row {.tabset .tabset-fade}
+### Variable importance top 10 
 
-load(file(githubURL))
+```{r,echo=FALSE, include=F, warning=F}
+##############################
+# 2) full varimp plot, top 10 only
+##############################
+```
+
+```{r, include=T}
+rf_model_var_imp_plot_10
+```
+
+
+### Variable importance grouped 
+
+```{r,echo=FALSE, include=F, warning=F}
+##############################
+# 2) varimp plot grouped to (8)
+##############################
+# grouped variable importance - keep binaries created off factors together
+
+```
+
+```{r, include=T}
+rf_model_var_imp_grouped_plot
+```
+
+### Variable importance all 
+
+```{r,echo=FALSE, include=F, warning=F}
+##############################
+# 1) full varimp plot, above a cutoff
+##############################
+```
+
+```{r, include=T}
+rf_model_var_imp_plot
 ```
 
 ## Row {.tabset .tabset-fade}
-### Variable importance
-
-```{r}
-## 2 or more versions (cutoff, top 10...)
-```
-
--------------------------------------
-
 ### Shapley
 
 ```{r}
 
 ```
 
--------------------------------------
 
+## Row {.tabset .tabset-fade}
 ### Partial dependence plot
 
 
@@ -146,7 +371,6 @@ load(file(githubURL))
 
 ```
 
--------------------------------------
 
 
 # <font size="3">Services</font> {data-navmenu="Key variables"}
@@ -155,30 +379,55 @@ load(file(githubURL))
 
 TEXT 
 
-```{r}
-githubURL <- "https://github.com/anneval/MA_data/blob/main/All.RData?raw=true"
-#load(url(githubURL))
+## Row {.tabset .tabset-fade}
+### Variable importance top 10 
 
-load(file(githubURL))
+```{r,echo=FALSE, include=F, warning=F}
+##############################
+# 2) full varimp plot, top 10 only
+##############################
+```
+
+```{r, include=T}
+rf_model_var_imp_plot_10
+```
+
+
+### Variable importance grouped 
+
+```{r,echo=FALSE, include=F, warning=F}
+##############################
+# 2) varimp plot grouped to (8)
+##############################
+# grouped variable importance - keep binaries created off factors together
+
+```
+
+```{r, include=T}
+rf_model_var_imp_grouped_plot
+```
+
+### Variable importance all 
+
+```{r,echo=FALSE, include=F, warning=F}
+##############################
+# 1) full varimp plot, above a cutoff
+##############################
+```
+
+```{r, include=T}
+rf_model_var_imp_plot
 ```
 
 ## Row {.tabset .tabset-fade}
-### Variable importance
-
-```{r}
-## 2 or more versions (cutoff, top 10...)
-```
-
--------------------------------------
-
 ### Shapley
 
 ```{r}
 
 ```
 
--------------------------------------
 
+## Row {.tabset .tabset-fade}
 ### Partial dependence plot
 
 
@@ -186,7 +435,7 @@ load(file(githubURL))
 
 ```
 
--------------------------------------
+
 
 
 # Threshold decision
