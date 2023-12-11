@@ -28,7 +28,7 @@ options(scipen = 999)
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies')
+knitr::opts_knit$set(root.dir = 'C:/Users/AnjaHahn/OneDrive - DataScience Service GmbH/WU/Courses/CEU Prediction with Machine Learning for Economists/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
@@ -59,6 +59,7 @@ library(knitr)
 library(modelsummary)
 library(treeshap)
 library(summarytools)
+library(pROC)
 # add
 ```
 
@@ -167,7 +168,7 @@ plot_labor_avg
 ## Label Engineering
 
 We are exploring multiple alternatives as target variable to represent high growth firms. In our selection we pay attention to the following dimensions: i) the indicator to choose, ii) the measurement, iii) the time horizon, and iv) the threshold. The literature does not yield one consensus over a definition of high growth firms, it rather points out that any decision along these dimensions depends on the goal of the analysis.[^1] We decided for relative average annual sales growth over two years for the following reasons: First, sales provided a more relevant and reliable target than number of employees. Sales data is missing only in 2.6% of cases whereas number of employees is missing in 50.9% of cases. What is more, 85% of firms had less than 1 employee on average. Second, we decided to use relative growth instead of absolute growth. This decision will favor smaller firms since high relative growth is harder to achieve for larger firms. We believe relative growth to be more relevant since it is more closely linked to our expected return on investment. To be more specific, we calculated percentage change and did not rely on log differences. Even though this decision does not affect the ranking of firms, it does affect the magnitude of the growth rate in the subset of high growth firms. We favored percentage change because of its more intuitive interpretation. Third, we decided for a two year time horizon instead of a one year horizon to relate more closely to the OECD definition of high growth firms that is defined over a three year horizon. 
-Third, we decided for a threshold of 30% annual growth. In our sample this is equivalent to classifying the fastest growing 20% of firms as HGF. In the literature, both thresholds on a certain growth rates and a certain percentile of firms are used. We decided for a threshold based on a specific growth rates since we will analyze differen sectors (manufacturing and services) with a fixed benchmark.
+Third, we decided for a threshold of 30% annual growth. In our sample this is equivalent to classifying the fastest growing 20% of firms as HGF. In the literature, both thresholds on a certain growth rates and a certain percentile of firms are used. We decided for a threshold based on a specific growth rates since we will analyze different sectors (manufacturing and services) with a fixed benchmark.
 
 [^1] Alex Coad, Sven-Olov Daunfeldt, Werner Hölzl, Dan Johansson, Paul Nightingale, High-growth firms: introduction to the special section, Industrial and Corporate Change, Volume 23, Issue 1, February 2014, Pages 91–112, https://doi.org/10.1093/icc/dtt052
 
@@ -316,6 +317,9 @@ bisnode <- bisnode %>%
   # we want to avoid false positives and excluding them would be a bigger issue!
   mutate(high_growth = ifelse(is.na(high_growth), 0, high_growth))
 # TARGET VARIABLE: high_growth
+
+# add factor variant of high_growth
+bisnode$high_growth_factor <- as.factor(ifelse(bisnode$high_growth == 1, "high_growth", "low_growth"))
 
 ####################################
 # notes on growth
@@ -677,6 +681,7 @@ engvar <- c("total_assets", "fixed_assets_rel", "liq_assets_rel", "curr_assets_r
             "curr_liab_rel")
 
 engvar2 <- c(grep("*quad", names(bisnode), value = TRUE))
+engvar2 <- engvar2[engvar2 != "sales_mil_log_quad"]
 
 engvar3 <- c(grep("*flag_low$", names(bisnode), value = TRUE),
              grep("*flag_high$", names(bisnode), value = TRUE),
@@ -686,8 +691,9 @@ engvar3 <- c(grep("*flag_low$", names(bisnode), value = TRUE),
 # add two variables not grepled before
 engvar3 <- c(engvar3, c("flag_low_d1_sales_mil_log", "flag_high_d1_sales_mil_log"))
 
-sales <-  c("sales_mil_log", # no flag for NA because there are none for sales_mil
-            "d1_sales_mil_log_mod", "flag_missing_d1_sales_mil_log")
+sales <-  c(#"sales_mil_log", # no flag for NA because there are none for sales_mil
+            "d1_sales_mil_log_mod", 
+            "flag_missing_d1_sales_mil_log")
 
 hr <- c("ceo_old", "ceo_young", "ceo_age", "flag_missing_ceo_age", 
         "gender", "multiple_ceo", "origin", # have origin instead of foreign_management
@@ -700,20 +706,37 @@ firm <- c("age", "new", "urban_m", "region_m", "ind2")
 
 # interactions for logit, LASSO
 interactions1 <- c("ind2*age", "ind2*age_quad",
-                   "ind2*d1_sales_mil_log_mod", "ind2*sales_mil_log", 
+                   "ind2*d1_sales_mil_log_mod", 
+                   #"ind2*sales_mil_log", 
                    "ind2*ceo_age", "ind2*origin", "ind2*gender",
                    "ind2*urban_m", "ind2*ln_labor_avg", "ind2*multiple_ceo")
 
-interactions2 <- c("sales_mil_log*age", "sales_mil_log*gender",
-                   "sales_mil_log*profit_loss_year_rel", "sales_mil_log*origin",
-                   "sales_mil_log*multiple_ceo")
+# interactions2 <- c("sales_mil_log*age", "sales_mil_log*gender",
+                   # "sales_mil_log*profit_loss_year_rel", "sales_mil_log*origin",
+                   # "sales_mil_log*multiple_ceo")
 
 ####################
 # Variable Selection
 
 # logit
 # try without interactions?
-logitvars <- c(qualityvars, engvar, engvar2, engvar3, sales, hr, firm, interactions1, interactions2)
+logitvars1 <- c(qualityvars, engvar, engvar2, engvar3, sales, hr, firm)
+logitvars2 <- c(qualityvars, engvar, engvar2, engvar3, sales, hr, firm, interactions1)
+logit_model_vars <- list("logit_no_interactions" = logitvars1, "logit_incl_interactions" = logitvars2)
+
+# caret always (no matter if all sales vars excluded or not) gives warnings: 
+# Angepasste Wahrscheinlichkeiten mit numerischem Wert 0 oder 1 aufgetreten
+# Warnung: Vorhersage durch Fit ohne vollen Rang mag täuschen
+# below works with d1_sales_mil_log variables
+# below does not work with sales_mil_log variables
+# below shows no warnings on multicollinearity
+# also, Gabor's code shows warnings: Vorhersage durch Fit ohne vollen Rang mag täuschen
+# idea: exclude sales_mil_log variables and ignore warnings
+glm_1 <- glm(formula(paste0("high_growth_factor ~", paste0(logitvars1, collapse = " + "))),
+             family = "binomial",
+             data = bisnode_work)
+
+summary(glm_1)
 
 # random forest (no interactions, no modified features)
 rfvars  <-  c("sales_mil", "d1_sales_mil_log", "flag_missing_d1_sales_mil_log", 
@@ -721,7 +744,6 @@ rfvars  <-  c("sales_mil", "d1_sales_mil_log", "flag_missing_d1_sales_mil_log",
 
 # for logit LASSO
 lassovars <- c("ceo_count", qualityvars, engvar, engvar2, engvar3, sales, hr, firm, interactions1, interactions2)
-
 
 ```
 
@@ -762,8 +784,7 @@ train_control <- trainControl(method = "cv",
 # RMSE (AUC also?based on threshold that corresponds to prevalence of pos/neg in dataset)
 
 # Train Logit Models ----------------------------------------------
-## keep maybe for shiny vut decide which is our main model!
-logit_model_vars <- list("X1" = X1, "X2" = X2, "X3" = X3, "X4" = X4, "X5" = X5)
+## keep maybe for shiny but decide which is our main model!
 
 CV_RMSE_folds <- list()
 logit_models <- list()
@@ -771,10 +792,10 @@ logit_models <- list()
 for (model_name in names(logit_model_vars)) {
 
   features <- logit_model_vars[[model_name]]
-###CHNAGE TRAGET
+
   set.seed(13505)
   glm_model <- train(
-    formula(paste0("sales ~", paste0(features, collapse = " + "))),
+    formula(paste0("high_growth_factor ~", paste0(features, collapse = " + "))),
     method = "glm",
     data = bisnode_work,
     family = binomial,
@@ -783,10 +804,11 @@ for (model_name in names(logit_model_vars)) {
 
   logit_models[[model_name]] <- glm_model
   # Calculate RMSE on test for each fold
-  CV_RMSE_folds[[model_name]] <- glm_model$resample[,c("Resample", "RMSE")]
+  CV_RMSE_folds[[model_name]] <- glm_model$resample[, c("Resample", "RMSE")]
 
 }
-#### MAYBE DELETE DO SMALLER IF WE ONLY WANT ONE LOGIT!
+
+
 #############################################x
 # PART I
 # No loss fn
@@ -804,7 +826,7 @@ for (model_name in names(logit_models)) {
       model$pred %>%
       filter(Resample == fold)
 
-    roc_obj <- roc(cv_fold$obs, cv_fold$default)
+    roc_obj <- roc(cv_fold$obs, cv_fold$high_growth)
     auc[[fold]] <- as.numeric(roc_obj$auc)
   }
 
@@ -824,11 +846,11 @@ for (model_name in names(logit_models)) {
 
 # Take best model and estimate RMSE on holdout  -------------------------------------------
 
-best_logit_no_loss <- logit_models[["X4"]]
+best_logit_no_loss <- logit_models[["logit_no_interactions"]]
 
 logit_predicted_probabilities_holdout <- predict(best_logit_no_loss, newdata = bisnode_holdout, type = "prob")
-bisnode_holdout[,"best_logit_no_loss_pred"] <- logit_predicted_probabilities_holdout[,"TARGET"]
-RMSE(bisnode_holdout[, "best_logit_no_loss_pred", drop=TRUE], bisnode_holdout$TARGET)
+bisnode_holdout[,"best_logit_no_loss_pred"] <- logit_predicted_probabilities_holdout[,"high_growth"]
+RMSE(bisnode_holdout[, "best_logit_no_loss_pred", drop=TRUE], bisnode_holdout$high_growth)
 
 ```
 
@@ -846,9 +868,8 @@ tune_grid <- expand.grid(
   .min.node.size = c(10, 15))
 
 # getModelInfo("ranger")
-#### chnage TARGET 
 rf_model_p <- train(
-  formula(paste0("TARGET ~ ", paste0(rfvars , collapse = " + "))),
+  formula(paste0("high_growth_factor ~ ", paste0(rfvars , collapse = " + "))),
   method = "ranger",
   data = bisnode_work,
   tuneGrid = tune_grid,
@@ -869,7 +890,7 @@ for (fold in c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")) {
     rf_model_p$pred %>%
     filter(Resample == fold)
 
-  roc_obj <- roc(cv_fold$obs, cv_fold$default)
+  roc_obj <- roc(cv_fold$obs, cv_fold$high_growth)
   auc[[fold]] <- as.numeric(roc_obj$auc)
 }
 CV_AUC_folds[["rf_p"]] <- data.frame("Resample" = names(auc),
@@ -893,7 +914,7 @@ grid <- expand.grid("alpha" = 1, lambda = lambda)
 
 system.time({
   logit_lasso_model <- train(
-    formula(paste0("TARGET ~", paste0(logitvars, collapse = " + "))),
+    formula(paste0("high_growth_factor ~", paste0(lassovars, collapse = " + "))),
     data = bisnode_work,
     method = "glmnet",
     preProcess = c("center", "scale"),
