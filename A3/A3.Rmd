@@ -639,13 +639,9 @@ colSums(is.na(bisnode))/nrow(bisnode)*100
 <!-- Task1.1: Define variable groups for differnet models  --> 
 
 ```{r}
-######  Adjust for our variables!!! Most are similar & add ours
-## maybe Anja you have a better overview what we used
-# female? or gender variable?
-# all sales and labor vars?
-# ind2 keep?problems with one hot encoding - many vars
-# flags
-# total_assets_rel?? curr_liab_rel?? tang_assets_rel??
+#####################
+# Variables Selection
+
 
 rawvars <-  c("curr_assets", "curr_liab", "extra_exp", "extra_inc", "extra_profit_loss", 
               "fixed_assets", "inc_bef_tax", "intang_assets", "inventories", "liq_assets", 
@@ -672,44 +668,41 @@ engvar3 <- c(grep("*flag_low$", names(bisnode), value = TRUE),
              grep("*flag_zero$", names(bisnode), value = TRUE))
 # do not add flag_assets_problem due to missing variation
 
-# are below variables there??
+# are below variables there?? more sales vars?
 d1 <-  c("d1_sales_mil_log_mod", "d1_sales_mil_log_mod_sq",
          "flag_low_d1_sales_mil_log", "flag_high_d1_sales_mil_log")
 
+# more labour vars?
 hr <- c("ceo_old", "ceo_young", "ceo_age", "flag_missing_ceo_age", 
-        "ceo_count", "gender", "multiple_ceo", "foreign_management",
+        "ceo_count", "gender", "multiple_ceo", "origin", # have origin instead of foreign_management
         "labor_avg", "flag_miss_labor_avg")
 
-firm <- c("age", "age2", "new")
+firm <- c("age", "age2", "new", "urban_m", "region_m", "ind", "ind2", "ind2_cat")
 
-# factors <- c("gender", "origin", "ind", "ind2", "ind2_cat", "region_m", "urban_m")
-
-# dummy_encoded <- c("gender.male", "gender.mix", "origin.Foreign", "origin.mix", "region_m.East", "region_m.West", "urban_m.other", "urban_m.other_big_city", "ind.2", "ind.3", "ind2_cat.services")
-
+# test <- c(rawvars, qualityvars, engvar, engvar2, engvar3, d1, hr, firm)
+# setdiff(names(bisnode), test);setdiff(test, names(bisnode))
 
 # interactions for logit, LASSO
-interactions1 <- c("ind2_cat*age", "ind2_cat*age2",
-                   "ind2_cat*d1_sales_mil_log_mod", "ind2_cat*sales_mil_log",
-                   "ind2_cat*ceo_age", "ind2_cat*foreign_management",
-                   "ind2_cat*female",   "ind2_cat*urban_m", "ind2_cat*labor_avg_mod")
-interactions2 <- c("sales_mil_log*age", "sales_mil_log*female",
-                   "sales_mil_log*profit_loss_year_pl", "sales_mil_log*foreign_management")
+interactions1 <- c("ind2*age", "ind2*age2",
+                   "ind2*d1_sales_mil_log_mod", "ind2*sales_mil_log", # which sales vars??
+                   "ind2*ceo_age", "ind2*origin", "ind2*gender",
+                   "ind2*urban_m", "ind2*labor_avg", "ind2*multiple_ceo") # which labour vars??
+# which sales variables?
+interactions2 <- c("sales_mil_log*age", "sales_mil_log*gender",
+                   "sales_mil_log*profit_loss_year_rel", "sales_mil_log*origin",
+                   "sales_mil_log*multiple_ceo")
 
-
-X1 <- c("sales_mil_log", "sales_mil_log_sq", "d1_sales_mil_log_mod", "profit_loss_year_pl", "ind2_cat")
-X2 <- c("sales_mil_log", "sales_mil_log_sq", "d1_sales_mil_log_mod", "profit_loss_year_pl", "fixed_assets_bs","share_eq_bs","curr_liab_bs ",   "curr_liab_bs_flag_high ", "curr_liab_bs_flag_error",  "age","foreign_management" , "ind2_cat")
-X3 <- c("sales_mil_log", "sales_mil_log_sq", firm, engvar,                   d1)
-X4 <- c("sales_mil_log", "sales_mil_log_sq", firm, engvar, engvar2, engvar3, d1, hr, qualityvars)
-X5 <- c("sales_mil_log", "sales_mil_log_sq", firm, engvar, engvar2, engvar3, d1, hr, qualityvars, interactions1, interactions2)
-
-# for Logit
-logitvars <- c("sales_mil_log", "sales_mil_log_sq", engvar, engvar2, engvar3, d1, hr, firm, qualityvars, interactions1, interactions2)
+# for simple logit
+# which sales vars?
+logitvars <- c("sales_mil_log", "sales_mil_log_sq", qualityvars, engvar, engvar2, engvar3, d1, hr, firm)
 
 # for RF (no interactions, no modified features)
-rfvars  <-  c("sales_mil", "d1_sales_mil_log", rawvars, hr, firm, qualityvars)
+# which sales vars???
+rfvars  <-  c("sales_mil", "d1_sales_mil_log", rawvars, qualityvars, hr, firm)
 
-# for Logit LASSO:
-
+# for logit LASSO:
+# more sales vars??
+lassovars <- c(qualityvars, engvar, engvar2, engvar3, d1, hr, firm, interactions1, interactions2)
 
 # Check simplest model X1
 
