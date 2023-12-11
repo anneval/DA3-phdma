@@ -23,7 +23,7 @@ options(scipen = 999)
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/AnjaHahn/OneDrive - DataScience Service GmbH/WU/Courses/CEU Prediction with Machine Learning for Economists/da_case_studies')
+knitr::opts_knit$set(root.dir = 'C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
@@ -180,7 +180,7 @@ bisnode <- bisnode %>%
 bisnode <- bisnode %>%
   group_by(comp_id) %>%
   arrange(year) %>%
-  mutate(sales_growth = (lead(sales)/sales -1)) %>%
+  mutate(sales_growth_ahead = (lead(sales)/sales -1)) %>%
   ungroup()
 
 # YoY sales growth as logdiff
@@ -195,14 +195,14 @@ bisnode <- bisnode %>%
 bisnode <- bisnode %>%
   group_by(comp_id) %>%
   arrange(year) %>%
-  mutate(sales_growth_2y = (lead(sales, n = 2L)/sales -1)/2) %>%
+  mutate(sales_growth_2y_ahead = (lead(sales, n = 2L)/sales -1)/2) %>%
   ungroup()
 
 ###################################
 # Visualization sales growth
 
 # make histogram that shows both sales growth and d1_sales_mil_log
-plot_sales_growth_both <- ggplot(bisnode, aes(x = sales_growth)) +
+plot_sales_growth_both <- ggplot(bisnode, aes(x = sales_growth_ahead)) +
   geom_histogram(aes(fill = "Percentage Change"), bins = 100, color = color.outline, alpha = 0.5) +
   geom_histogram(aes(x = d1_sales_mil_log, fill = "Log-Differences"), bins = 100, 
                  color = color.outline, alpha = 0.5) +
@@ -262,6 +262,28 @@ plot_birch_ind <- ggplot(bisnode, aes(x = birch_ind)) +
   theme_bg() +
   scale_x_log10()
 plot_birch_ind
+
+
+###################################
+# Overwrite d1_sales_mil log to lagged variables since we will not use it as target but might inclzude it as predictor
+# YoY sales growth as logdiff
+bisnode <- bisnode %>%
+  group_by(comp_id) %>%
+  arrange(year) %>%
+  mutate(d1_sales_mil_log = sales_mil_log - lag(sales_mil_log) ) %>%
+  ungroup()
+
+
+###################################
+# Define Cutoff for High Growth firms
+###################################
+
+# Look at good cutoff for high growth
+quantile(bisnode$sales_growth_2y_ahead, na.rm = TRUE, probs = seq(0, 1, 0.05))
+
+# define high growth firms as firms that grow with more than 30% (coincides with fastest 20% in our data set)
+bisnode <- bisnode %>%
+  mutate(high_growth = ifelse(sales_growth_2y_ahead > 0.3, 1, 0))
 
 ####################################
 # notes on growth
