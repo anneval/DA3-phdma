@@ -81,37 +81,6 @@ bisnode %>%
 
 ```
 
-<!-- Data preparation  --> 
-
-```{r}
-
-# re-code one character variable
-bisnode <- bisnode %>%
-  mutate(urban_m = case_when(
-      urban_m == 1 ~ "capital_city",
-      urban_m == 2 ~ "other_big_city",
-      urban_m == 3 ~ "other"))
-
-# convert character variables to factors 
-bisnode <- bisnode %>% 
-  mutate_if(is.character, as.factor)
-
-# apply one-hot-encoding of factors
-dmy <- dummyVars("~ gender + origin + region_m + urban_m", data = bisnode, fullRank = TRUE)
-# @Teresa - warum hier fullRank = TRUE? ich hätte gefühlsmäßig FALSE genommen, hab aber jetzt auch nicht wirklich viel darüber gefunden
-# t: with fullRank = TRUE one variable is dropped to avoid multicollinearity
-new_dat <- data.frame(predict(dmy, newdata = bisnode))
-# @Anne: From your experience with A2, will the column names with "." make trouble now that we one-hot-encode in the beginning? Kann sein sollte aber kein Problem sein, können wir im Zweifel dann vor Shapeley umformatieren :)
-# add new variables to data
-bisnode <- cbind(bisnode, new_dat)
-
-
-# classify industry categories as factors
-bisnode <- bisnode %>%
-  mutate(across(all_of(c("ind", "ind2", "nace_main")), as.factor))
-
-
-```
 
 <!-- Sample design  --> 
 
@@ -128,11 +97,8 @@ bisnode <- bisnode %>%
   complete(year, comp_id)
 
 # drop variables with many NAs
-# Question from Anne: do we need to drop net_dom_sales, net_exp_sales or can we somehow impute would also make a good growth indicator export/ domestic sales or? also wages
-# t: don't think imputation makes sense with more than 90% missing values
 bisnode <- bisnode %>%        
   select(-c(COGS, finished_prod, net_dom_sales, net_exp_sales, wages, D))
-# potentially also drop unused years (e.g. 2016), yes I would drop it I guess he had good reasons to do it.
 
 # find the years with the least missing sales values
 bisnode %>%
@@ -151,25 +117,14 @@ bisnode  <- bisnode %>%
   mutate(status_alive = sales > 0 & !is.na(sales) %>%
            as.numeric(.))
 
-
 # look at cross section
+# add explanation to report!!!!
 bisnode <- bisnode %>%
   filter(status_alive == TRUE) %>% # only look at firms that have some sales
   # look at firms below 10m euro revenues and above 1000 euros
   filter(!(sales > 10000000)) %>%
   filter(!(sales < 1000))
 
-
-# Anne: I agree, I think I would put every modification in terms of sales/ labor_avg (wage) into section label engineering
-## (but only a formal thing not so important)
-
-
-## I think we should add firm age, also relevant in regard of command line 117. 
-# Something like this:
-#data <- data %>%
- # mutate(age = (year - founded_year) %>%
-  #         ifelse(. < 0, 0, .),
-   #      new = as.numeric(age <= 1)
 ```
 
 
@@ -181,7 +136,7 @@ plot_sales <-  ggplot(bisnode, aes(x = sales)) +
   geom_histogram(bins = 100, fill = color[1], color = color.outline, alpha = 0.8) +
   scale_x_log10() +
   labs(x = "Sales (log)", y = "Frequency")+
-  theme_bg() #Anne: I added his theme I think he likes that :D 
+  theme_bg() 
 plot_sales
 
 # visualize labor_avg
@@ -190,10 +145,9 @@ plot_labor_avg <- bisnode %>% filter(labor_avg > 0) %>%
   geom_histogram(bins = 100, fill = color[1], color = color.outline, alpha = 0.8) +
   labs(x = "Average Number of Employees", y = "Frequency") +
   xlim(0, 5) +
-    theme_bg() #Anne: I added his theme I think he likes that :D 
+    theme_bg() 
 plot_labor_avg
-# in codebook: N/12 --- (annual average / 12, it's not ideal, sorry) 
-# what does this mean?
+
 
 ```
 
@@ -207,9 +161,6 @@ plot_labor_avg
 ####################################
 
 # generate different variations to display sales
-# @Teresa - maybe have that under label engineering? t: only moved it up because I use it to filter sales_mil below, but true it doesn't really fit here...
-# Question Anne:   mutate(sales = ifelse(sales < 0, 1, sales), warum macht er aus sales einfach einen dummy? T: ich glaub die Zeile war weil er dann den Log nimmt und keine 0 haben wollte,
-# nachdem wir aber schon davor nach status_alive gefiltert haben, brauche wir das nicht, denke ich
 bisnode <- bisnode %>%
   filter(status_alive == TRUE) %>% # only look at firms that have some sales
   mutate(ln_sales = log(sales), # if we want to include firms not_alive need to specially treat 0
@@ -217,9 +168,7 @@ bisnode <- bisnode %>%
          sales_mil_log = ifelse(sales > 0, log(sales_mil), 0))
 # this already windsorizes sales
 
-
 # generate different variations to display labor_avg
-# @Teresa - maybe have that under label engineering?(together with data visualization below?)
 bisnode <- bisnode %>%
   mutate(ln_labor_avg = ifelse(labor_avg > 0, log(labor_avg), 0))
 
@@ -242,6 +191,7 @@ bisnode <- bisnode %>%
   ungroup()
 
 # 2-year ahead average annual sales growth as percentage change
+# our target!!!
 bisnode <- bisnode %>%
   group_by(comp_id) %>%
   arrange(year) %>%
@@ -260,12 +210,11 @@ plot_sales_growth_both <- ggplot(bisnode, aes(x = sales_growth)) +
   labs(x = "Sales growth (log)", y = "Frequency") +
   scale_fill_manual(values = c("Percentage Change" = color[1], "Log-Differences" = color[2]), 
                     name = "Growth Measures") +
-  theme_bg()#Anne: I added his theme I think he likes that :D 
+  theme_bg()
 
 plot_sales_growth_both
 # It makes a difference whether relative growth is measured in log(diff) or percentage change
 # since logdiff is an inaccurate approximation for high changes this is especially relevant for high growth firms
-# Anne: Percentage change gives us a more normal distribution though or?
 
 ###################################
 # Creation of different labels: employment
@@ -333,34 +282,17 @@ plot_birch_ind
 # rather than hard cutoff --> but not meaningful for us if we want to compare growth in different industries
 # a lot of firms with 0-1 employees: might need a lower absolute threshold for growth such that tiny firms that
 # add one extra employee are not classified as fast growing?
-####### Question:  0-1 new employees or in general? If there are any with 0 employees we should get rid of them anyways or?
 ```
 
 
 
-<!-- Feature engineering COMMENTS  --> 
+<!-- Filter for 2012  --> 
 
 ```{r}
-# I would also add a variable 'new' (see above and line 117). But yes maybe age and new both to sample design
-# industry codes look good!
+# restrict sample to 2012 for further analysis
 
-
-# why did we not add these? done at the beginning
-#gender_m = factor(gender, levels = c("female", "male", "mix")),
-#m_region_loc = factor(region_m, levels = c("Central", "East", "West")))
-
-# function help check variables: summary(as.factor(bisnode$ceo_age)) # its also a bit weird they are not orderd should be the case for a numerical variable; maybe some error in calculation? above 90 also seems unlikely or?
-
-# # Q: why are tangible assets not included in Gabors code?
-## Just a guess but I think tangible assets (production sides, machines etc) depending on firm category not that relevant for firm? I think he wanted to put more emphasize on the financial side/ worth. 
-
-
-# ceo_young < 25 why did we chose another threshold? 
-# do has he did for imputation? data <- data %>%
- # mutate(ceo_age = ifelse(ceo_age < 25, 25, ceo_age) %>%
-      #     ifelse(. > 75, 75, .) %>%
-       #    ifelse(is.na(.), mean(., na.rm = TRUE), .),
-       #  ceo_young = as.numeric(ceo_age < 40))
+bisnode <- bisnode %>%
+  filter(year == 2012)
 
 # # sales?? line 503 maybe do grpah and basic lm to see which terms (squares etc) to include or? 
 ```
@@ -369,14 +301,36 @@ plot_birch_ind
 <!-- Feature engineering  --> 
 
 ```{r, include=FALSE}
+# re-code one character variable
+bisnode <- bisnode %>%
+  mutate(urban_m = case_when(
+      urban_m == 1 ~ "capital_city",
+      urban_m == 2 ~ "other_big_city",
+      urban_m == 3 ~ "other"))
+
+# convert character variables to factors 
+bisnode <- bisnode %>% 
+  mutate_if(is.character, as.factor)
+
+# apply one-hot-encoding of factors
+dmy <- dummyVars("~ gender + origin + region_m + urban_m", data = bisnode, fullRank = TRUE)
+new_dat <- data.frame(predict(dmy, newdata = bisnode))
+# add new variables to data
+bisnode <- cbind(bisnode, new_dat)
+rm(new_dat)
+
+# classify industry categories as factors
+bisnode <- bisnode %>%
+  mutate(across(all_of(c("ind", "ind2", "nace_main")), as.factor))
+
 ###################################
 # new variables
-
 # firm characteristics
 bisnode <- bisnode %>%
   mutate(age = (year-founded_year) %>% # maybe remove again if computed earlier
            ifelse(. < 0, 0, .),
          age2 = age^2,
+         new = as.numeric(age <= 1),
          foreign_management = as.numeric(foreign >= 0.5),
          multiple_ceo = as.numeric(ceo_count > 1),
          ceo_age = (year-round(birth_year))) # avoid digits for years
@@ -406,7 +360,7 @@ bisnode <- bisnode %>%
 # there cannot be negative financial variables
 zero <- c("curr_liab", "curr_assets", "extra_exp", "extra_inc", "fixed_assets",
           "intang_assets", "inventories", "liq_assets", "material_exp",
-          "personnel_exp", "subscribed_cap", "tang_assets") #share_eq?
+          "personnel_exp", "subscribed_cap", "tang_assets")
 
 # flag negative ones
 for (var in zero){
@@ -446,16 +400,17 @@ bisnode <- bisnode %>%
          ceo_age = round(ifelse(is.na(ceo_age), mean(ceo_age, na.rm = TRUE), ceo_age)))
 
 # number of employees
-# not sure if needed bc reflected in response?
 bisnode <- bisnode %>%
   mutate(flag_miss_labor_avg = as.numeric(is.na(labor_avg)),
          labor_avg = ifelse(is.na(labor_avg), mean(labor_avg, na.rm = TRUE), labor_avg))
 
-# sales?
-# not sure if needed bc reflected in response?
+# sales
+# add sales
+
+# re-compute transformed labor/sales vars
 
 # still existing NAs
-# 
+
 for (var in names(bisnode)){
   
   if(any(is.na(bisnode[, var]))){
@@ -485,7 +440,7 @@ bisnode <- bisnode %>%
 
 # generate total assets
 bisnode <- bisnode %>%
-  mutate(total_assets = intang_assets + curr_assets + fixed_assets) # Q: why are tangible assets not included in Gabors code?
+  mutate(total_assets = intang_assets + curr_assets + fixed_assets)
 
 # compute relative variables (sales as reference)
 bisnode <- bisnode %>%
@@ -532,31 +487,36 @@ variances <- bisnode %>%
 bisnode <- bisnode %>%
   select(-one_of(names(variances)[variances]))
 
-# sales??
-# data <- data %>%
-#   mutate(sales_mil_log_sq=sales_mil_log^2)
-# data <- data %>%
-#   mutate(flag_low_d1_sales_mil_log = ifelse(d1_sales_mil_log < -1.5, 1, 0),
-#          flag_high_d1_sales_mil_log = ifelse(d1_sales_mil_log > 1.5, 1, 0),
-#          d1_sales_mil_log_mod = ifelse(d1_sales_mil_log < -1.5, -1.5,
-#                                        ifelse(d1_sales_mil_log > 1.5, 1.5, d1_sales_mil_log)),
-#          d1_sales_mil_log_mod_sq = d1_sales_mil_log_mod^2
-#          )
+# sales
+# add lag!!
+bisnode <- bisnode %>%
+  mutate(sales_mil_log_sq=sales_mil_log^2)
 
-# average employment???
+bisnode <- bisnode %>%
+  mutate(flag_low_d1_sales_mil_log = ifelse(d1_sales_mil_log < -1.5, 1, 0),
+         flag_high_d1_sales_mil_log = ifelse(d1_sales_mil_log > 1.5, 1, 0),
+         d1_sales_mil_log_mod = ifelse(d1_sales_mil_log < -1.5, -1.5,
+                                       ifelse(d1_sales_mil_log > 1.5, 1.5, d1_sales_mil_log)),
+         d1_sales_mil_log_mod_sq = d1_sales_mil_log_mod^2
+         )
 
 ########################################
 # one-hot encoding of additional factors
-# also ind2??
-dmy <- dummyVars("~ ind + ind2_cat", data = bisnode, fullRank = TRUE)
+dmy <- dummyVars("~ ind + ind2 + ind2_cat", data = bisnode, fullRank = TRUE)
 new_dat <- data.frame(predict(dmy, newdata = bisnode))
 # add new variables to data
 bisnode <- cbind(bisnode, new_dat)
 
+```
+
+
+
+```{r}
+
 ########################################
 # relationships between variables
 
-# mock data on fast growth and smaller data set (delete later)
+# mock data on fast growth and smaller data set (delete later!!!)
 bisnode$fast <- ifelse(bisnode$sales_growth > 
                          median(bisnode$sales_growth, na.rm = TRUE) &
                          !is.na(bisnode$sales_growth), 
@@ -569,7 +529,7 @@ plots <- list()
 
 # relevant numeric vars
 vars_num <- c(zero, any, c("total_assets", "ceo_age", "age", "inoffice_days"))
-# add sales/labour var?
+# add sales/labour var!!!
 
 # check relationships
 for (var in vars_num){
@@ -587,7 +547,7 @@ for (var in vars_num){
 # choose plots to show
 plots$intang_assets_rel
 plots[[15]]
-# ?? 1, 5, 6, 7, 8, 11
+# ?? 1, 5, 6, 7, 8, 11 # add lm to check signficance!!!
 # 4, 10, 12, 13, 15
 
 # add quadratics yes or no? all variables considered? winsorise more?
@@ -623,7 +583,6 @@ interactions_plot <- ggplot(bisnode, aes(x = labor_avg, y = fast, color = ind2))
   # scale_color_manual(values = c(color[1], color[2]))
 
 # drop unused factor levels
-# Gabor's code did not work here
 bisnode <- bisnode %>%
   mutate(across(where(is.factor), ~ droplevels(.)))
 
@@ -631,16 +590,11 @@ bisnode <- bisnode %>%
 colSums(is.na(bisnode))/nrow(bisnode)*100
 # datasummary_skim(bisnode, type='numeric', histogram = TRUE)
 
-# yearly data already there?
-
 
 ```
 
 ```{r}
-# restrict sample to 2012 for further analysis
-# Q: Add that already to sample design?
-bisnode <- bisnode %>%
-  filter(year == 2012)
+
 ```
 
 names(bisnode)
@@ -659,8 +613,7 @@ names(bisnode)
 
 rawvars <-  c("curr_assets", "curr_liab", "extra_exp", "extra_inc", "extra_profit_loss", "fixed_assets",
               "inc_bef_tax", "intang_assets", "inventories", "liq_assets", "material_exp", "personnel_exp",
-              "profit_loss_year", "sales", "share_eq", "subscribed_cap", "tang_assets", # why tang_asset left out in gabor's code? 
-              )
+              "profit_loss_year", "sales", "share_eq", "subscribed_cap")
 
 qualityvars <- c("balsheet_flag", "balsheet_length", "balsheet_notfullyear")
 
@@ -710,22 +663,19 @@ X3 <- c("sales_mil_log", "sales_mil_log_sq", firm, engvar,                   d1)
 X4 <- c("sales_mil_log", "sales_mil_log_sq", firm, engvar, engvar2, engvar3, d1, hr, qualityvars)
 X5 <- c("sales_mil_log", "sales_mil_log_sq", firm, engvar, engvar2, engvar3, d1, hr, qualityvars, interactions1, interactions2)
 
-# for LASSO
+# for Logit
 logitvars <- c("sales_mil_log", "sales_mil_log_sq", engvar, engvar2, engvar3, d1, hr, firm, qualityvars, interactions1, interactions2)
 
 # for RF (no interactions, no modified features)
 rfvars  <-  c("sales_mil", "d1_sales_mil_log", rawvars, hr, firm, qualityvars)
 
-# for 3rd model:
+# for Logit LASSO:
 
-
-# target variable
-## use different ones for comparison and shiny? 
-target <- c("")
 
 # Check simplest model X1
 
 ```
+
 
 <!-- Preparation for prediction & CV  --> 
 
