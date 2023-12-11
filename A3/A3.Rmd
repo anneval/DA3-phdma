@@ -92,9 +92,6 @@ bisnode %>%
 # Company with ID 12212152320 had a massive explosion from 2012 to 2013 (0 to 63 employees etc) - how to treat?
 ## did they exit before? Maybe we have to add a variable that indicate newly established firms?
 
-# add all missing year and company combinations
-bisnode <- bisnode %>%
-  complete(year, comp_id)
 
 # drop variables with many NAs
 bisnode <- bisnode %>%        
@@ -125,6 +122,9 @@ bisnode <- bisnode %>%
   filter(!(sales > 10000000)) %>%
   filter(!(sales < 1000))
 
+# add all missing year and company combinations
+bisnode <- bisnode %>%
+  complete(year, comp_id)
 ```
 
 
@@ -219,25 +219,28 @@ plot_sales_growth_both
 ###################################
 # Creation of different labels: employment
 ###################################
+# important note: employee variables are now calculated based on lag variabes not lead variables
+# hence, we can use them as features instead of target
+
 # YoY relative employee growth
 bisnode <- bisnode %>%
   group_by(comp_id) %>%
   arrange(year) %>%
-  mutate(labor_growth = (lead(labor_avg)/labor_avg - 1)) %>%
+  mutate(labor_growth = (labor_avg/lag(labor_avg) - 1)) %>%
   ungroup()
 
 # YoY employee growth as logdiff
 bisnode <- bisnode %>%
   group_by(comp_id) %>%
   arrange(year) %>%
-  mutate(d1_labor_avg_log = lead(ln_labor_avg) - ln_labor_avg ) %>%
+  mutate(d1_labor_avg_log = ln_labor_avg - lag(ln_labor_avg) ) %>%
   ungroup()
 
 # birch index (weighted index of absolute and relative employment growth)
 bisnode <- bisnode %>%
   group_by(comp_id) %>%
   arrange(year) %>%
-  mutate(birch_ind = ((lead(labor_avg) - labor_avg) * (lead(labor_avg)/labor_avg - 1)) ) %>%
+  mutate(birch_ind = ((labor_avg - lag(labor_avg)) * (labor_avg/lag(labor_avg) - 1)) ) %>%
   ungroup()
 
 ###################################
@@ -274,6 +277,12 @@ bisnode <- bisnode %>%
   ungroup()
 
 
+# show the number of NA in the variable growth_2y_ahead for each year
+x <-bisnode %>%
+  group_by(year) %>%
+  summarise(na_count = sum(is.na(sales_growth_2y_ahead)))
+
+
 ###################################
 # Define Cutoff for High Growth firms
 ###################################
@@ -308,7 +317,7 @@ bisnode <- bisnode %>%
 
 
 
-<!-- Filter for 2012  --> 
+^23 <!-- Filter for 2012  --> 
 
 ```{r}
 # restrict sample to 2012 for further analysis
