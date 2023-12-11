@@ -28,7 +28,7 @@ options(scipen = 999)
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies')
+knitr::opts_knit$set(root.dir = 'C:/Users/AnjaHahn/OneDrive - DataScience Service GmbH/WU/Courses/CEU Prediction with Machine Learning for Economists/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
@@ -341,7 +341,6 @@ bisnode <- bisnode %>%
 bisnode <- bisnode %>%
   filter(year == 2012)
 
-# # sales?? line 503 maybe do grpah and basic lm to see which terms (squares etc) to include or? 
 ```
 
 
@@ -358,13 +357,6 @@ bisnode <- bisnode %>%
 # convert character variables to factors 
 bisnode <- bisnode %>% 
   mutate_if(is.character, as.factor)
-
-# apply one-hot-encoding of factors
-dmy <- dummyVars("~ gender + origin + region_m + urban_m", data = bisnode, fullRank = TRUE)
-new_dat <- data.frame(predict(dmy, newdata = bisnode))
-# add new variables to data
-bisnode <- cbind(bisnode, new_dat)
-rm(new_dat)
 
 # classify industry categories as factors
 bisnode <- bisnode %>%
@@ -384,12 +376,11 @@ bisnode <- bisnode %>%
 
 ###################################
 # plausibility checks of relevant numeric variables
-for (var in c("age", "ceo_age", "ceo_count", "inoffice_days",
+for (var in c("age", "ceo_age", "ceo_count", "tang_assets",
              "curr_assets", "curr_liab", "extra_exp", "extra_inc",
              "extra_profit_loss", "fixed_assets", "inc_bef_tax",
              "intang_assets", "inventories", "liq_assets", "material_exp",
-             "personnel_exp", "profit_loss_year", "share_eq", "subscribed_cap",
-             "tang_assets")){
+             "personnel_exp", "profit_loss_year", "share_eq", "subscribed_cap")){
   print(paste(paste0(var, 
                      ": min:", 
                      min(bisnode[, var], na.rm = TRUE), 
@@ -547,44 +538,28 @@ bisnode <- bisnode %>%
          d1_sales_mil_log_mod_sq = d1_sales_mil_log_mod^2
          )
 
-########################################
-# one-hot encoding of additional factors
-dmy <- dummyVars("~ ind + ind2 + ind2_cat", data = bisnode, fullRank = TRUE)
-new_dat <- data.frame(predict(dmy, newdata = bisnode))
-# add new variables to data
-bisnode <- cbind(bisnode, new_dat)
-
 ```
 
 
 
 ```{r}
-
 ########################################
 # relationships between variables
-
-# mock data on fast growth and smaller data set (delete later!!!)
-bisnode$fast <- ifelse(bisnode$sales_growth > 
-                         median(bisnode$sales_growth, na.rm = TRUE) &
-                         !is.na(bisnode$sales_growth), 
-                       1, 0)
-bisnode$fast[is.na(bisnode$fast)] <- 0
-bisnode_mock <- bisnode[sample(1:nrow(bisnode), 5000),]
 
 # scatterplot computation
 plots <- list()
 
 # relevant numeric vars
-vars_num <- c(zero, any, c("total_assets", "ceo_age", "age", "inoffice_days"))
+vars_num <- c(zero, any, c("total_assets", "ceo_age", "age", "labor_avg"))
 # add sales/labour var!!!
 
 # check relationships
 for (var in vars_num){
   
-  if(any(is.na(bisnode_mock[, var]))){
+  if(any(is.na(bisnode[, var]))){
     print(paste0(var, " entails NAs")) # check for lowess
   } else{
-    plots[[var]] <- ggplot(data = bisnode_mock, aes_string(x = var, y = "fast")) +
+    plots[[var]] <- ggplot(data = bisnode, aes_string(x = var, y = "high_growth")) +
   geom_point(size = 0.1,  shape = 20, fill = color[2], color = color[2]) +
   geom_smooth(method = "loess", se = F, colour = color[1], size = 1.5, span = 0.9) +
   theme_bg()
@@ -592,13 +567,28 @@ for (var in vars_num){
 }
 
 # choose plots to show
-plots$intang_assets_rel
+plots$curr_assets_rel
 plots[[15]]
+
+# check lm with quadratics
+glm_results <- list()
+
+for (var in vars_num){
+  
+  # build the formula dynamically
+  formula <- formula(paste0("high_growth ~ ", var, " + I(", var, "^2)"))
+  
+  glm <- glm(formula, data = bisnode, family = "binomial")
+  glm_results[[var]] <- summary(glm)
+  
+}
+
 # ?? 1, 5, 6, 7, 8, 11 # add lm to check signficance!!!
 # 4, 10, 12, 13, 15
 
 # add quadratics yes or no? all variables considered? winsorise more?
-quad <- c("intang_assets_rel", "inc_bef_tax_rel", "total_assets", "ceo_age", "inoffice_days")
+quad <- c("curr_liab_rel", "curr_assets_rel",
+          "intang_assets_rel", "inc_bef_tax_rel", "total_assets", "ceo_age")
 
 bisnode <- bisnode %>%
   mutate_at(vars(quad), funs("quad"= .^2))
@@ -610,9 +600,9 @@ binary_variables <- c("gender", "origin", "ind2", "ind", "ind2_cat", "urban_m",
 
 
 # loop did not work
-ggplot(bisnode, aes(x = factor(gender), fill = factor(fast))) +
-# ggplot(bisnode, aes(x = factor(ceo_old), fill = factor(fast))) +
-# ggplot(bisnode, aes(x = factor(ceo_young), fill = factor(fast))) +
+ggplot(bisnode, aes(x = factor(gender), fill = factor(high_growth))) +
+# ggplot(bisnode, aes(x = factor(ceo_old), fill = factor(high_growth))) +
+# ggplot(bisnode, aes(x = factor(ceo_young), fill = factor(high_growth))) +
     geom_bar(position = "fill", stat = "count") +
       labs(y = "Proportion", fill = "Fast Growth") +
   theme_bg() +
@@ -620,8 +610,8 @@ ggplot(bisnode, aes(x = factor(gender), fill = factor(fast))) +
 
 
 # interactions
-interactions_plot <- ggplot(bisnode, aes(x = labor_avg, y = fast, color = ind2)) +
-  # ggplot(bisnode, aes(x = age, y = fast, color = ind2_cat)) +
+interactions_plot <- ggplot(bisnode, aes(x = labor_avg, y = high_growth, color = ind2)) +
+  # ggplot(bisnode, aes(x = age, y = high_growth, color = ind2_cat)) +
   theme_bw() + 
   geom_point() + 
   geom_point(alpha = .3, 
@@ -640,12 +630,6 @@ colSums(is.na(bisnode))/nrow(bisnode)*100
 
 ```
 
-```{r}
-
-```
-
-names(bisnode)
-
 
 <!-- Task1.1: Define variable groups for differnet models  --> 
 
@@ -658,9 +642,10 @@ names(bisnode)
 # flags
 # total_assets_rel?? curr_liab_rel?? tang_assets_rel??
 
-rawvars <-  c("curr_assets", "curr_liab", "extra_exp", "extra_inc", "extra_profit_loss", "fixed_assets",
-              "inc_bef_tax", "intang_assets", "inventories", "liq_assets", "material_exp", "personnel_exp",
-              "profit_loss_year", "sales", "share_eq", "subscribed_cap")
+rawvars <-  c("curr_assets", "curr_liab", "extra_exp", "extra_inc", "extra_profit_loss", 
+              "fixed_assets", "inc_bef_tax", "intang_assets", "inventories", "liq_assets", 
+              "material_exp", "personnel_exp", "profit_loss_year", "sales", "share_eq", 
+              "subscribed_cap")
 
 qualityvars <- c("balsheet_flag", "balsheet_length", "balsheet_notfullyear")
 
@@ -668,31 +653,33 @@ engvar <- c("total_assets", "fixed_assets_rel", "liq_assets_rel", "curr_assets_r
             "share_eq_rel", "subscribed_cap_rel", "intang_assets_rel", "extra_exp_rel",
             "extra_inc_rel", "extra_profit_loss_rel", "inc_bef_tax_rel", "inventories_rel",
             "material_exp_rel", "profit_loss_year_rel", "personnel_exp_rel", 
-            "curr_liab_rel", #?
-            "tang_assets_rel") # ?
+            "curr_liab_rel")
 
+# add additional quadratics!!
 engvar2 <- c("extra_profit_loss_rel_quad", "inc_bef_tax_rel_quad",
-             "profit_loss_year_rel_quad", "share_eq_rel_quad", "intang_assets_rel_quad", "total_assets_quad", # instead total_assets_rel?
-             "ceo_age_quad", "inoffice_days_quad")
+             "profit_loss_year_rel_quad", "share_eq_rel_quad", 
+             "intang_assets_rel_quad", "total_assets_quad",
+             "ceo_age_quad")
 
-engvar3 <- c(grep("*flag_low$", names(data), value = TRUE),
-             grep("*flag_high$", names(data), value = TRUE),
-             grep("*flag_error$", names(data), value = TRUE),
-             grep("*flag_zero$", names(data), value = TRUE))
+engvar3 <- c(grep("*flag_low$", names(bisnode), value = TRUE),
+             grep("*flag_high$", names(bisnode), value = TRUE),
+             grep("*flag_error$", names(bisnode), value = TRUE),
+             grep("*flag_zero$", names(bisnode), value = TRUE))
+# do not add flag_assets_problem due to missing variation
 
+# are below variables there??
 d1 <-  c("d1_sales_mil_log_mod", "d1_sales_mil_log_mod_sq",
          "flag_low_d1_sales_mil_log", "flag_high_d1_sales_mil_log")
 
-hr <- c("female", "ceo_old", "ceo_young",
-        "ceo_age",
-        "flag_miss_ceo_age", "ceo_count", "labor_avg",
-        "flag_miss_labor_avg", "foreign_management", "inoffice_days", "multiple_ceo")
+hr <- c("ceo_old", "ceo_young", "ceo_age", "flag_missing_ceo_age", 
+        "ceo_count", "gender", "multiple_ceo", "foreign_management",
+        "labor_avg", "flag_miss_labor_avg")
 
 firm <- c("age", "age2", "new")
 
-factors <- c("gender", "origin", "ind", "ind2", "ind2_cat", "region_m", "urban_m")
+# factors <- c("gender", "origin", "ind", "ind2", "ind2_cat", "region_m", "urban_m")
 
-dummy_encoded <- c("gender.male", "gender.mix", "origin.Foreign", "origin.mix", "region_m.East", "region_m.West", "urban_m.other", "urban_m.other_big_city", "ind.2", "ind.3", "ind2_cat.services")
+# dummy_encoded <- c("gender.male", "gender.mix", "origin.Foreign", "origin.mix", "region_m.East", "region_m.West", "urban_m.other", "urban_m.other_big_city", "ind.2", "ind.3", "ind2_cat.services")
 
 
 # interactions for logit, LASSO
@@ -999,6 +986,14 @@ vip(rf_model)
 # Install and load 'shap' package if not already installed
 # install.packages("shap")
 library(shap)
+########################################
+# one-hot encoding of additional factors
+dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
+                 data = bisnode, fullRank = TRUE)
+new_dat <- data.frame(predict(dmy, newdata = bisnode))
+# add new variables to data
+bisnode <- cbind(bisnode, new_dat)
+rm(new_dat)
 
 # Extract SHAP values
 shap_values <- predict_contrib(rf_model, holdout_set)
