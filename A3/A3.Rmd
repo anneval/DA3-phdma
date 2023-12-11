@@ -531,7 +531,6 @@ bisnode <- bisnode %>%
   select(-one_of(names(variances)[variances]))
 
 # sales
-# add lag!!
 bisnode <- bisnode %>%
   mutate(sales_mil_log_sq=sales_mil_log^2)
 
@@ -540,14 +539,14 @@ bisnode <- bisnode %>%
          flag_high_d1_sales_mil_log = ifelse(d1_sales_mil_log > 1.5, 1, 0),
          d1_sales_mil_log_mod = ifelse(d1_sales_mil_log < -1.5, -1.5,
                                        ifelse(d1_sales_mil_log > 1.5, 1.5, d1_sales_mil_log)),
-         d1_sales_mil_log_mod_sq = d1_sales_mil_log_mod^2
+         d1_sales_mil_log_mod_quad = d1_sales_mil_log_mod^2
          )
 
 ```
 
 
 
-```{r}
+```{r variable_relations}
 ########################################
 # relationships between variables
 
@@ -555,8 +554,9 @@ bisnode <- bisnode %>%
 plots <- list()
 
 # relevant numeric vars
-vars_num <- c(zero, any, c("total_assets", "ceo_age", "age", "labor_avg"))
-# add sales/labour var!!!
+vars_num <- c(zero, any, c("total_assets", "ceo_age", "age", "labor_avg", "ln_labor_avg",
+                           "sales_mil", "sales_mil_log", "d1_sales_mil_log_mod",
+                           "d1_sales_mil_log_mod_quad"))
 
 # check relationships
 for (var in vars_num){
@@ -572,8 +572,9 @@ for (var in vars_num){
 }
 
 # choose plots to show
-plots$curr_assets_rel
-plots[[15]]
+plots$extra_profit_loss_rel
+# plots$extra_exp_rel # does not work, neither: fixed_assets_rel
+plots[[6]]
 
 # check lm with quadratics
 glm_results <- list()
@@ -588,12 +589,19 @@ for (var in vars_num){
   
 }
 
-# ?? 1, 5, 6, 7, 8, 11 # add lm to check signficance!!!
-# 4, 10, 12, 13, 15
+glm_results$extra_profit_loss_rel
 
-# add quadratics yes or no? all variables considered? winsorise more?
-quad <- c("curr_liab_rel", "curr_assets_rel",
-          "intang_assets_rel", "inc_bef_tax_rel", "total_assets", "ceo_age")
+
+```
+
+Asset variables do not show so much variation.
+
+```{r variable_relations}
+# add quadratics for chosen variables (based on plots and glms)
+quad <- c("intang_assets_rel", "inventories_rel", "liq_assets_rel", "material_exp_rel",
+          "personnel_exp_rel", "subscribed_cap_rel", "inc_bef_tax_rel", 
+          "profit_loss_year_rel", "share_eq_rel", "total_assets", "ceo_age", 
+          "age", "extra_profit_loss_rel")
 
 bisnode <- bisnode %>%
   mutate_at(vars(quad), funs("quad"= .^2))
@@ -615,7 +623,7 @@ ggplot(bisnode, aes(x = factor(gender), fill = factor(high_growth))) +
 
 
 # interactions
-interactions_plot <- ggplot(bisnode, aes(x = labor_avg, y = high_growth, color = ind2)) +
+interactions_plot <- ggplot(bisnode, aes(x = age, y = high_growth, color = ind2)) +
   # ggplot(bisnode, aes(x = age, y = high_growth, color = ind2_cat)) +
   theme_bw() + 
   geom_point() + 
