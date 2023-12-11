@@ -28,7 +28,7 @@ options(scipen = 999)
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/AnjaHahn/OneDrive - DataScience Service GmbH/WU/Courses/CEU Prediction with Machine Learning for Economists/da_case_studies')
+knitr::opts_knit$set(root.dir = 'C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
@@ -73,6 +73,9 @@ bisnode <- read_csv(paste(data_in,"cs_bisnode_panel.csv", sep = "/")) # 287829 o
 colSums(is.na(bisnode))
 colSums(is.na(bisnode))/nrow(bisnode)*100
 
+#proportion of observations with less than 1 labor_avg among all that have an observation for labor_avg
+bisnode %>% filter(labor_avg < 1) %>% nrow() / bisnode %>% filter(!is.na(labor_avg)) %>% nrow()
+
 # look at data
 bisnode %>% glimpse()
 
@@ -89,7 +92,8 @@ bisnode %>%
 
 ## Sample Design
 
-We exclude some variables that have extremely high rates of missing values (above 90%) and only look at firms that are active, that is, they have some sales. What is more, our analysis is only based on firms with sales between 1000 and 10 million euros. We believe this subset presents the most attractive investment opportunities. First, very small firms with sales below 1000 EUR in sales are likely not to seek investment. Second, very large firms are well represented in various indices and any expected growth is likely to be already incorporated in the stock price.
+We exclude some variables that have extremely high rates of missing values (above 90%) and only look at firms that are active, that is, they have some sales. What is more, our analysis is only based on firms with sales between 1000 and 10 million euros. We believe this subset presents the most attractive investment opportunities. First, very small firms with sales below 1000 EUR in sales are likely not to seek investment and high growth events might happen at random more easily. Second, very large firms are well represented in various indices and any expected growth is likely to be already incorporated in the stock price. Hence, our sample selection represents a business decision to focus on a segment that is more predictable and more promising for investors.
+
 <!-- Sample design  --> 
 
 ```{r, include=FALSE}
@@ -162,7 +166,10 @@ plot_labor_avg
 
 ## Label Engineering
 
-We are exploring multiple alternatives as target variable to represent high growth firms. In our selection we pay attention to the following dimensions: i) the indicator to choose, ii) the measurement, iii) the time horizon, and iv) the threshold. 
+We are exploring multiple alternatives as target variable to represent high growth firms. In our selection we pay attention to the following dimensions: i) the indicator to choose, ii) the measurement, iii) the time horizon, and iv) the threshold. The literature does not yield one consensus over a definition of high growth firms, it rather points out that any decision along these dimensions depends on the goal of the analysis.[^1] We decided for relative average annual sales growth over two years for the following reasons: First, sales provided a more relevant and reliable target than number of employees. Sales data is missing only in 2.6% of cases whereas number of employees is missing in 50.9% of cases. What is more, 85% of firms had less than 1 employee on average. Second, we decided to use relative growth instead of absolute growth. This decision will favor smaller firms since high relative growth is harder to achieve for larger firms. We believe relative growth to be more relevant since it is more closely linked to our expected return on investment. To be more specific, we calculated percentage change and did not rely on log differences. Even though this decision does not affect the ranking of firms, it does affect the magnitude of the growth rate in the subset of high growth firms. We favored percentage change because of its more intuitive interpretation. Third, we decided for a two year time horizon instead of a one year horizon to relate more closely to the OECD definition of high growth firms that is defined over a three year horizon. 
+Third, we decided for a threshold of 30% annual growth. In our sample this is equivalent to classifying the fastest growing 20% of firms as HGF. In the literature, both thresholds on a certain growth rates and a certain percentile of firms are used. We decided for a threshold based on a specific growth rates since we will analyze differen sectors (manufacturing and services) with a fixed benchmark.
+
+[^1] Alex Coad, Sven-Olov Daunfeldt, Werner Hölzl, Dan Johansson, Paul Nightingale, High-growth firms: introduction to the special section, Industrial and Corporate Change, Volume 23, Issue 1, February 2014, Pages 91–112, https://doi.org/10.1093/icc/dtt052
 
 <!-- Label engineering  --> 
 
@@ -913,9 +920,12 @@ CV_RMSE_folds[["LASSO"]] <- logit_lasso_model$resample[,c("Resample", "RMSE")]
 
 
 
-
 <!-- Task1.1: Evaluation  -->
 ```{r}
+# collect all models in a list
+
+
+
 
 # discrete ROC (with thresholds in steps) on holdout -------------------------------------------------
 # continuous ROC on holdout with best model (Logit 4) -------------------------------------------
@@ -931,7 +941,7 @@ CV_RMSE_folds[["LASSO"]] <- logit_lasso_model$resample[,c("Resample", "RMSE")]
 
 ```{r}
 
-#############################################x
+#############################################
 # PART II.
 # We have a loss function
 ########################################
