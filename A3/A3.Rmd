@@ -279,7 +279,7 @@ plot_birch_ind
 
 
 ###################################
-# Overwrite d1_sales_mil log to lagged variables since we will not use it as target but might inclzude it as predictor
+# Overwrite d1_sales_mil log to lagged variables since we will not use it as target but might include it as predictor
 # YoY sales growth as logdiff
 bisnode <- bisnode %>%
   group_by(comp_id) %>%
@@ -442,10 +442,15 @@ bisnode <- bisnode %>%
   mutate(flag_miss_labor_avg = as.numeric(is.na(labor_avg)),
          labor_avg = ifelse(is.na(labor_avg), mean(labor_avg, na.rm = TRUE), labor_avg))
 
-# sales
-# add sales
+# overwrite ln_labor_avg with imputed values
+bisnode <- bisnode %>%
+  mutate(ln_labor_avg = ifelse(labor_avg > 0, log(labor_avg), 0))
 
-# re-compute transformed labor/sales vars
+# impute d1_sales_mil_log as zero growth and create a flag
+bisnode <- bisnode %>%
+  mutate(flag_missing_d1_sales_mil_log = as.numeric(is.na(d1_sales_mil_log)),
+         d1_sales_mil_log = ifelse(is.na(d1_sales_mil_log), 0, d1_sales_mil_log))
+
 
 # still existing NAs
 
