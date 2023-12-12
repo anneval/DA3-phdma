@@ -741,7 +741,7 @@ hr <- c("ceo_old", "ceo_young", "ceo_age", "flag_missing_ceo_age",
 
 firm <- c("age", "new", "urban_m", "region_m", "ind2")
 
-onehot <- names(bisnode[, c(133:150)])
+#onehot <- names(bisnode[, c(133:150)])
 
 # test <- c(rawvars, qualityvars, engvar, engvar2, engvar3, sales, hr, firm)
 # setdiff(names(bisnode), test);setdiff(test, names(bisnode))
@@ -816,8 +816,9 @@ n_folds = 5
 train_control <- trainControl(method = "cv",
                               number = n_folds,
                               classProbs = TRUE, # computing probabilities during training
-                              summaryFunction = twoClassSummaryExtended, # from da_helper_functions.R
-                              savePredictions = "all", # save the predictions for each fold
+                              summaryFunction = twoClassSummaryExtended, 
+                              savePredictions = TRUE, # fromda_helper_functions.R
+      
                               verboseIter = TRUE)
 
 
@@ -964,7 +965,7 @@ CV_AUC[["rf_p"]] <- mean(CV_AUC_folds[["rf_p"]]$AUC)
 # Now use loss function and search for best thresholds and expected loss over folds -----### SECOND PART 
 
 
-bisnode_work$high_growth_factor
+#bisnode_work$high_growth_factor
 
 
 ############### LOSS FUNCTION PART missing!
@@ -1043,7 +1044,6 @@ CV_AUC[["LASSO"]] <- mean(CV_AUC_folds[["LASSO"]]$AUC)
 
 
 ```{r}
-
 #############################################
 # PART II.
 # We have a loss function
@@ -1058,7 +1058,6 @@ cost = FN/FP
 prevalence = sum(bisnode_work$high_growth)/length(bisnode_work$high_growth)
 
 # Draw ROC Curve and find optimal threshold with loss function --------------------------
-
 
 ################################
 # incorporate loss function for logit models
@@ -1294,6 +1293,70 @@ rf_manu_predicted_probabilities_holdout <- predict(rf_model_p_manu, newdata = ma
 manu_holdout$rf_p_manu_prediction <- rf_manu_predicted_probabilities_holdout[,"high_growth"]
 RMSE(manu_holdout$rf_p_manu_prediction, manu_holdout$high_growth)
 ```
+```{r}
+######################################
+# loss function for RF manufacturing
+######################################
+
+# Now use loss function and search for best thresholds and expected loss over folds -----
+best_tresholds_cv_manu <- list()
+expected_loss_cv_manu <- list()
+
+for (fold in c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")) {
+  cv_fold <-
+    rf_model_p_manu$pred %>%
+    filter(mtry == best_mtry,
+           min.node.size == best_min_node_size,
+           Resample == fold)
+
+  roc_obj <- roc(cv_fold$obs, cv_fold$high_growth)
+  best_treshold <- coords(roc_obj, "best", ret="all", transpose = FALSE,
+                          best.method="youden", best.weights=c(cost, prevalence))
+  best_tresholds_cv_manu[[fold]] <- best_treshold$threshold
+  expected_loss_cv_manu[[fold]] <- (best_treshold$fp*FP + best_treshold$fn*FN)/length(cv_fold$high_growth)
+}
+
+# average
+best_tresholds[["rf_p_manu"]] <- mean(unlist(best_tresholds_cv_manu))
+expected_loss[["rf_p_manu"]] <- mean(unlist(expected_loss_cv_manu))
+
+
+# display RF performance
+rf_summary_manu <- data.frame("CV RMSE" = CV_RMSE[["rf_p_manu"]],
+                         "CV AUC" = CV_AUC[["rf_p_manu"]],
+                         "Avg of optimal thresholds" = best_tresholds[["rf_p_manu"]],
+                         "Threshold for Fold5" = best_treshold$threshold,
+                         "Avg expected loss" = expected_loss[["rf_p_manu"]],
+                         "Expected loss for Fold5" = expected_loss_cv[[fold]])
+
+kable(x = rf_summary_manu, format = "latex", booktabs=TRUE,  digits = 3, row.names = TRUE,
+      linesep = "", col.names = c("CV RMSE", "CV AUC",
+                                  "Avg of optimal thresholds","Threshold for fold #5",
+                                  "Avg expected loss","Expected loss for fold #5"))
+
+
+# Create plots - this is for Fold5
+createLossPlot(roc_obj, best_treshold, "rf_p_manu_loss_plot")
+createRocPlotWithOptimal(roc_obj, best_treshold, "rf_p_manu_roc_plot")
+
+# Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
+
+rf_predicted_probabilities_manu_holdout <- predict(rf_model_p_manu, newdata = manu_holdout, type = "prob")
+manu_holdout$rf_p_manu_prediction <- rf_predicted_probabilities_manu_holdout[,"high_growth"]
+RMSE(manu_holdout$rf_p_manu_prediction, manu_holdout$high_growth)
+
+# ROC curve on holdout
+roc_obj_manu_holdout <- roc(manu_holdout$high_growth_factor, manu_holdout[, "rf_p_manu_prediction", drop=TRUE])
+
+# AUC
+as.numeric(roc_obj_manu_holdout$auc)
+
+# Get expected loss on holdout with optimal threshold
+holdout_treshold_manu <- coords(roc_obj_manu_holdout, x = best_tresholds[["rf_p_manu"]] , input= "threshold",
+                           ret="all", transpose = FALSE)
+expected_loss_holdout_manu <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/length(manu_holdout$high_growth)
+expected_loss_holdout_manu
+```
 
 ```{r}
 #################################################
@@ -1333,14 +1396,73 @@ CV_AUC_folds[["rf_p_serv"]] <- data.frame("Resample" = names(auc),
 CV_RMSE[["rf_p_serv"]] <- mean(CV_RMSE_folds[["rf_p_serv"]]$RMSE)
 CV_AUC[["rf_p_serv"]] <- mean(CV_AUC_folds[["rf_p_serv"]]$AUC)
 
+```
 
+```{r}
+######################################
+# loss function for RF manufacturing
+######################################
+
+# Now use loss function and search for best thresholds and expected loss over folds -----
+best_tresholds_cv_serv <- list()
+expected_loss_cv_serv <- list()
+
+for (fold in c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")) {
+  cv_fold <-
+    rf_model_p_serv$pred %>%
+    filter(mtry == best_mtry,
+           min.node.size == best_min_node_size,
+           Resample == fold)
+
+  roc_obj <- roc(cv_fold$obs, cv_fold$high_growth)
+  best_treshold <- coords(roc_obj, "best", ret="all", transpose = FALSE,
+                          best.method="youden", best.weights=c(cost, prevalence))
+  best_tresholds_cv_serv[[fold]] <- best_treshold$threshold
+  expected_loss_cv_serv[[fold]] <- (best_treshold$fp*FP + best_treshold$fn*FN)/length(cv_fold$high_growth)
+}
+
+# average
+best_tresholds[["rf_p_serv"]] <- mean(unlist(best_tresholds_cv_serv))
+expected_loss[["rf_p_serv"]] <- mean(unlist(expected_loss_cv_serv))
+
+
+# display RF performance
+rf_summary_serv <- data.frame("CV RMSE" = CV_RMSE[["rf_p_serv"]],
+                         "CV AUC" = CV_AUC[["rf_p_serv"]],
+                         "Avg of optimal thresholds" = best_tresholds[["rf_p_serv"]],
+                         "Threshold for Fold5" = best_treshold$threshold,
+                         "Avg expected loss" = expected_loss[["rf_p_serv"]],
+                         "Expected loss for Fold5" = expected_loss_cv[[fold]])
+
+kable(x = rf_summary_serv, format = "latex", booktabs=TRUE,  digits = 3, row.names = TRUE,
+      linesep = "", col.names = c("CV RMSE", "CV AUC",
+                                  "Avg of optimal thresholds","Threshold for fold #5",
+                                  "Avg expected loss","Expected loss for fold #5"))
+
+
+# Create plots - this is for Fold5
+createLossPlot(roc_obj, best_treshold, "rf_p_serv_loss_plot")
+createRocPlotWithOptimal(roc_obj, best_treshold, "rf_p_serv_roc_plot")
 
 # Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
 
-rf_serv_predicted_probabilities_holdout <- predict(rf_model_p_serv, newdata = serv_holdout, type = "prob")
-serv_holdout$rf_p_serv_prediction <- rf_serv_predicted_probabilities_holdout[,"high_growth"]
+rf_predicted_probabilities_serv_holdout <- predict(rf_model_p_serv, newdata = serv_holdout, type = "prob")
+serv_holdout$rf_p_serv_prediction <- rf_predicted_probabilities_serv_holdout[,"high_growth"]
 RMSE(serv_holdout$rf_p_serv_prediction, serv_holdout$high_growth)
+
+# ROC curve on holdout
+roc_obj_serv_holdout <- roc(serv_holdout$high_growth_factor, serv_holdout[, "rf_p_serv_prediction", drop=TRUE])
+
+# AUC
+as.numeric(roc_obj_serv_holdout$auc)
+
+# Get expected loss on holdout with optimal threshold
+holdout_treshold_serv <- coords(roc_obj_serv_holdout, x = best_tresholds[["rf_p_serv"]] , input= "threshold",
+                           ret="all", transpose = FALSE)
+expected_loss_holdout_serv <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/length(serv_holdout$high_growth)
+expected_loss_holdout_serv
 ```
+
 
 <!-- Task2.2: Define single loss function (Same loss function as before?) but use for samples separately (pick one prediction model) --> 
 
@@ -1356,20 +1478,6 @@ RMSE(serv_holdout$rf_p_serv_prediction, serv_holdout$high_growth)
 
 <!-- Task3.1: Use some methods to interpret your random forest probability model (Shapley, PDP) --> 
 <!-- RF VAR IMP (all 3) W/OUT LOSS adjust  -->
-
-```{r}
-### Variable importance top 10 
-# use RF model since performed the best!
-# first need a function to calculate grouped varimp
-group.importance <- function(rf.obj, groups) {
-  var.imp <- as.matrix(sapply(groups, function(g) {
-    sum(importance(rf.obj)[g], na.rm = TRUE)
-  }))
-  colnames(var.imp) <- "MeanDecreaseGini"
-  return(var.imp)
-}
-```
-
 
 ```{r}
 ####### CHANGE TO FORESTS WITH LOSS ########
@@ -1440,6 +1548,19 @@ rf_model_plots$rf_model_plot_10_3
 ### Variable importance grouped 
 ##### ADJUST FOR GROUPS 
 
+```{r}
+### Variable importance top 10 
+# use RF model since performed the best!
+# first need a function to calculate grouped varimp
+group.importance <- function(rf.obj, groups) {
+  var.imp <- as.matrix(sapply(groups, function(g) {
+    sum(importance(rf.obj)[g], na.rm = TRUE)
+  }))
+  colnames(var.imp) <- "MeanDecreaseGini"
+  return(var.imp)
+}
+```
+
 ```{r,echo=FALSE, include=F, warning=F}
 ##############################
 # 2) varimp plot grouped to (8)
@@ -1448,30 +1569,29 @@ rf_model_plots$rf_model_plot_10_3
 # dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
 #                  data = bisnode, fullRank = TRUE)
 
-varnames <- rf_model_p$finalModel$xNames
+# Loop over the random forest models
+for (i in seq_along(rf_models)) {
+  current_rf_model <- rf_models[[i]]
+
+varnames <- current_rf_model$finalModel$xNames
 ind_varnames <- grep("ind",varnames, value = TRUE)
-ind2_varnames <- grep("ind2",varnames, value = TRUE) # change
-ind2_cat_varnames <- grep("ind2_cat",varnames, value = TRUE)# change 
 gender_varnames <- grep("gender",varnames, value = TRUE)
 origin_varnames <- grep("origin",varnames, value = TRUE)
 region_m_varnames <- grep("region_m",varnames, value = TRUE)
 urban_m_varnames <- grep("urban_m",varnames, value = TRUE)
 
-
 groups <- list(ind=ind_varnames,
-               ind2 = ind2_varnames,
-               ind2_cat = ind2_cat_varnames,
                gender = gender_varnames,
                origin = origin_varnames,
                region_m =region_m_varnames,
                urban_m = urban_m_varnames)
 
-rf_model_var_imp_grouped <- group.importance(rf_old$finalModel, groups)
+rf_model_var_imp_grouped <- group.importance(current_rf_model$finalModel, groups)
 rf_model_var_imp_grouped_df <- data.frame(varname = rownames(rf_model_var_imp_grouped),
                                             imp = rf_model_var_imp_grouped[,1])  %>%
   mutate(imp_percentage = imp/sum(imp))
 
-rf_model_var_imp_grouped_plot <- ggplot(rf_model_var_imp_grouped_df, aes(x = reorder(varname, imp), y = imp_percentage)) +
+current_plot_group <- ggplot(rf_model_var_imp_grouped_df, aes(x = reorder(varname, imp), y = imp_percentage)) +
   geom_point(color = color[1], size = 1) +
   geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
   ylab("Importance (Percent)") +
@@ -1484,7 +1604,11 @@ rf_model_var_imp_grouped_plot <- ggplot(rf_model_var_imp_grouped_df, aes(x = reo
         axis.text.y = element_text(size = 6),
         axis.title.x = element_text(size = 6),
         axis.title.y = element_text(size = 6))
-rf_model_var_imp_grouped_plot
+
+ # Save the plot
+  rf_model_plots[[paste0("rf_model_var_imp_grouped_plot", i)]] <- current_plot_group
+}
+
 ```
 
 <!-- Shapley (all 3) AGAIN W/OUT LOSS adjust  -->
@@ -1492,7 +1616,6 @@ rf_model_var_imp_grouped_plot
 ```{r,echo=FALSE, include=FALSE, warning=F}
 ## SHAP VALUES ##
 rfvars
-
 ### correct facors chosen?? 
 
 # define one-hot encoding function
@@ -1510,8 +1633,11 @@ names(data_holdout_ohe) <- gsub(x = names(data_holdout_ohe),
 # # unify model for treeshap
 ## now porblem appa. with RF? 
 
-rf_model_unified <- ranger.unify(rf_model_p_manu$finalModel, bisnode_holdout)
+rf_model_unified <- ranger.unify(rf_model_p$finalModel, bisnode_holdout)
 
+
+
+rf_model_p$finalModel$nu
 
 ranger_model <- rf_model_p_manu$finalModel
 
@@ -1552,6 +1678,30 @@ treeshap_res <- treeshap(rf_model_p, data_holdout_ohe[1:500, ]) # delete # for c
 # #treeshap_inter <- treeshap(rf_model_unified, data_holdout_ohe[1:100, ], interactions = T)
 # #summary(treeshap_res)
 ```
+
+```{r,echo=FALSE, include=FALSE, warning=F}
+#########################################################################################
+# Partial Dependence Plots -------------------------------------------------------
+#########################################################################################
+
+rf_model
+
+pdp_n_acc <- pdp::partial(rf_model_p, pred.var = "fixed_assets", pred.grid = distinct_(bisnode_holdout, "fixed_assets"), train = bisnode_holdout)
+
+pdp_n_acc_plot <- pdp_n_acc %>%
+  autoplot( ) +
+  geom_point(color=color[1], size=2) +
+  geom_line(color=color[1], size=1) +
+  ylab("Predicted price") +
+  xlab("Accommodates (persons)") +
+  scale_x_continuous(limit=c(1,7), breaks=seq(1,7,1))+
+  theme_bg()
+#pdp_n_acc_plot
+
+```
+```
+
+
 <!-- Save data environment for dashboard  -->
 
 ```{r}
