@@ -320,6 +320,9 @@ bisnode <- bisnode %>%
 
 # add factor variant of high_growth
 bisnode$high_growth_factor <- as.factor(ifelse(bisnode$high_growth == 1, "high_growth", "low_growth"))
+# order levels such that low_growth is first (this way it will be used as control in the roc function to determine the loss)
+bisnode$high_growth_factor <- factor(bisnode$high_growth_factor, levels = c("low_growth", "high_growth"))
+
 
 ####################################
 # notes on growth
@@ -968,6 +971,141 @@ CV_RMSE_folds[["LASSO"]] <- logit_lasso_model$resample[,c("Resample", "RMSE")]
 # PART II.
 # We have a loss function
 ########################################
+
+# make sure that high_growth is interpreted as case and low_growth as control
+# make it a numeric variable
+
+
+
+# Introduce loss function
+# relative cost of of a false negative classification (as compared with a false positive classification)
+FP=1
+FN=10
+cost = FN/FP
+# the prevalence, or the proportion of cases in the population (n.cases/(n.controls+n.cases))
+prevalence = sum(bisnode_work$high_growth)/length(bisnode_work$high_growth)
+
+# Draw ROC Curve and find optimal threshold with loss function --------------------------
+
+
+################################
+best_tresholds <- list()
+expected_loss <- list()
+logit_cv_rocs <- list()
+logit_cv_threshold <- list()
+logit_cv_expected_loss <- list()
+
+for (model_name in names(logit_models)) {
+
+  model <- logit_models[[model_name]]
+  colname <- paste0(model_name,"_prediction")
+
+  best_tresholds_cv <- list()
+  expected_loss_cv <- list()
+
+  for (fold in c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")) {
+    cv_fold <-
+      model$pred %>%
+      filter(Resample == fold)
+    
+    # Check if length(cv_fold$high_growth) is zero
+    if (length(cv_fold$high_growth) == 0) {
+      print(paste("Warning: length of high_growth in", fold, "of model", model_name, "is zero."))
+      next  # Skip to the next iteration
+    }
+
+    roc_obj <- roc(cv_fold$obs, cv_fold$high_growth)
+    best_treshold <- coords(roc_obj, "best", ret="all", transpose = FALSE,
+                            best.method="youden", best.weights=c(cost, prevalence))
+    best_tresholds_cv[[fold]] <- best_treshold$threshold
+    expected_loss_cv[[fold]] <- (best_treshold$fp*FP + best_treshold$fn*FN)/length(cv_fold$dhigh_growth)
+  }
+
+  # average
+  best_tresholds[[model_name]] <- mean(unlist(best_tresholds_cv))
+  expected_loss[[model_name]] <- mean(unlist(expected_loss_cv))
+
+  # for fold #5
+  logit_cv_rocs[[model_name]] <- roc_obj
+  logit_cv_threshold[[model_name]] <- best_treshold
+  logit_cv_expected_loss[[model_name]] <- expected_loss_cv[[fold]]
+
+}
+
+###############################################
+logit_summary <- data.frame("Avg of optimal thresholds" = unlist(best_tresholds),
+                             "Threshold for Fold5" = sapply(logit_cv_threshold, function(x) {x$threshold}),
+                             "Avg expected loss" = unlist(expected_loss),
+                             "Expected loss for Fold5" = unlist(logit_cv_expected_loss))
+
+kable(x = logit_summary, format = "latex", booktabs=TRUE,  digits = 3, row.names = TRUE,
+      linesep = "", col.names = c("Avg of optimal thresholds","Threshold for fold #5",
+                                  "Avg expected loss","Expected loss for fold #5"))
+
+# Create plots based on Fold5 in CV ----------------------------------------------
+
+# for (model_name in names(logit_cv_rocs)) {
+# 
+#   r <- logit_cv_rocs[[model_name]]
+#   best_coords <- logit_cv_threshold[[model_name]]
+#   createLossPlot(r, best_coords,
+#                  paste0(model_name, "_loss_plot"))
+#   createRocPlotWithOptimal(r, best_coords,
+#                            paste0(model_name, "_roc_plot"))
+# }
+
+# Pick best model based on average expected loss ----------------------------------
+
+best_logit_with_loss <- logit_models[["X4"]]
+best_logit_optimal_treshold <- best_tresholds[["X4"]]
+
+logit_predicted_probabilities_holdout <- predict(best_logit_with_loss, newdata = data_holdout, type = "prob")
+data_holdout[,"best_logit_with_loss_pred"] <- logit_predicted_probabilities_holdout[,"default"]
+
+# ROC curve on holdout
+roc_obj_holdout <- roc(data_holdout$default, data_holdout[, "best_logit_with_loss_pred", drop=TRUE])
+
+# Get expected loss on holdout
+holdout_treshold <- coords(roc_obj_holdout, x = best_logit_optimal_treshold, input= "threshold",
+                           ret="all", transpose = FALSE)
+expected_loss_holdout <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/length(data_holdout$default)
+expected_loss_holdout
+
+# Confusion table on holdout with optimal threshold
+holdout_prediction <-
+  ifelse(data_holdout$best_logit_with_loss_pred < best_logit_optimal_treshold, "no_default", "default") %>%
+  factor(levels = c("no_default", "default"))
+cm_object3 <- confusionMatrix(holdout_prediction,data_holdout$default_f)
+cm3 <- cm_object3$table
+cm3
+
+
+
+# here loss function for RF
+
+# Now use loss function and search for best thresholds and expected loss over folds -----
+best_tresholds_cv <- list()
+expected_loss_cv <- list()
+
+for (fold in c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")) {
+  cv_fold <-
+    rf_model_p$pred %>%
+    filter(mtry == best_mtry,
+           min.node.size == best_min_node_size,
+           Resample == fold)
+
+  roc_obj <- roc(cv_fold$obs, cv_fold$default)
+  best_treshold <- coords(roc_obj, "best", ret="all", transpose = FALSE,
+                          best.method="youden", best.weights=c(cost, prevelance))
+  best_tresholds_cv[[fold]] <- best_treshold$threshold
+  expected_loss_cv[[fold]] <- (best_treshold$fp*FP + best_treshold$fn*FN)/length(cv_fold$default)
+}
+
+# average
+best_tresholds[["rf_p"]] <- mean(unlist(best_tresholds_cv))
+expected_loss[["rf_p"]] <- mean(unlist(expected_loss_cv))
+
+
 ```
 
 
