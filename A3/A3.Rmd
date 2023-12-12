@@ -28,7 +28,7 @@ options(scipen = 999)
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/AnjaHahn/OneDrive - DataScience Service GmbH/WU/Courses/CEU Prediction with Machine Learning for Economists/da_case_studies')
+knitr::opts_knit$set(root.dir = 'C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
@@ -743,7 +743,7 @@ rfvars  <-  c("sales_mil", "d1_sales_mil_log", "flag_missing_d1_sales_mil_log",
               "ceo_count", "labor_avg", "ind", "ind2_cat", rawvars, qualityvars, hr, firm)
 
 # for logit LASSO
-lassovars <- c("ceo_count", qualityvars, engvar, engvar2, engvar3, sales, hr, firm, interactions1)
+lassovars <- c("ceo_count", qualityvars, engvar, engvar2, engvar3, sales, hr, firm, interactions1, interactions2)
 
 ```
 
@@ -899,14 +899,13 @@ CV_AUC_folds[["rf_p"]] <- data.frame("Resample" = names(auc),
 CV_RMSE[["rf_p"]] <- mean(CV_RMSE_folds[["rf_p"]]$RMSE)
 CV_AUC[["rf_p"]] <- mean(CV_AUC_folds[["rf_p"]]$AUC)
 
-
 # Now use loss function and search for best thresholds and expected loss over folds -----### SECOND PART 
 ```
 
 
 
 
-<!-- Task1.1: Model 3 - Logit LASSO  -->
+<!-- Task1.1: Model 3 - Logit LASSO?? / Classification Tree?  -->
 ```{r}
 # Logit lasso -----------------------------------------------------------
 
