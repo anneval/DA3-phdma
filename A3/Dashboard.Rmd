@@ -296,7 +296,7 @@ rf_model_var_imp_plot
 #### add loop other predictors but also store each graph so if I change pred different graph some kind of drop down 
 ```
 
-Sidebar {.sidebar}
+## Sidebar {.sidebar}
 
 ```{r, include=TRUE}
 # CHANGE ACCORDING TO OUR DATASET rf_variables
