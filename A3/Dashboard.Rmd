@@ -81,7 +81,7 @@ library(pdp)
 ```{r data,include=FALSE}
 data_in <- paste(data_dir,"bisnode-firms", sep = "/")
 #load(paste(data_in,"A2.RData",sep = "/")) #activate once we have correct data
-rf_old <- read_rds(paste(data_in,"rf_A2.rds",sep = "/")) # save in data dir!!!
+rf_old <- read_rds(paste(data_in,"rf_A3.rds",sep = "/")) # save in data dir!!!
 ```
 
 # <font size="3">Bisnode</font> {data-navmenu="Key variables"}
@@ -93,129 +93,32 @@ TEXT
 ## Row {.tabset .tabset-fade}
 ### Variable importance top 10 
 
-```{r,echo=FALSE, include=F, warning=F}
-# use RF model since performed the best!
-# first need a function to calculate grouped varimp
-group.importance <- function(rf.obj, groups) {
-  var.imp <- as.matrix(sapply(groups, function(g) {
-    sum(importance(rf.obj)[g], na.rm = TRUE)
-  }))
-  colnames(var.imp) <- "MeanDecreaseGini"
-  return(var.imp)
-}
-
-rf_model_var_imp <- importance(rf_old$finalModel)/1000
-rf_model_var_imp_df <-
-  data.frame(varname = names(rf_model_var_imp),imp = rf_model_var_imp) %>%
-  mutate(varname = gsub("f_neighbourhood_cleansed", "Borough:", varname) ) %>%
-  mutate(varname = gsub("f_room_type", "Room type:", varname) ) %>%
-  arrange(desc(imp)) %>%
-  mutate(imp_percentage = imp/sum(imp))
-```
-
-
-```{r,echo=FALSE, include=F, warning=F}
-##############################
-# 2) full varimp plot, top 10 only
-##############################
-
-rf_model_var_imp_plot_10 <- ggplot(rf_model_var_imp_df[1:10,], aes(x = reorder(varname, imp), y = imp_percentage)) +
-  geom_point(color = color[1], size = 1) +
-  geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
-  ylab("Importance (Percent)") +
-  xlab("Variable Name") +
-  coord_flip() +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-  theme_minimal() +  # Change to theme_minimal or another theme of your choice
-  theme(panel.grid.major.y = element_blank(),  # Remove horizontal grid lines only
-        axis.text.x = element_text(size = 6),
-        axis.text.y = element_text(size = 6),
-        axis.title.x = element_text(size = 6),
-        axis.title.y = element_text(size = 6))
-
-rf_model_var_imp_plot_10
-```
 
 ```{r, include=T}
-rf_model_var_imp_plot_10
+##############################
+# 1) full varimp plot, top 10 only
+##############################
+rf_model_plots$rf_model_plot_10_1
 ```
 
 
 ### Variable importance grouped 
 
-```{r,echo=FALSE, include=F, warning=F}
+```{r, include=T}
 ##############################
 # 2) varimp plot grouped to (8)
 ##############################
 # grouped variable importance - keep binaries created off factors together
-
-varnames <- rf_old$finalModel$xNames
-f_neighbourhood_cleansed_varnames <- grep("f_neighbourhood_cleansed",varnames, value = TRUE)
-f_property_type_varnames <- grep("f_property_type",varnames, value = TRUE)
-f_room_type_varnames <- grep("f_room_type",varnames, value = TRUE)
-
-groups <- list(f_neighbourhood_cleansed=f_neighbourhood_cleansed_varnames,
-               f_property_type = f_property_type_varnames,
-               f_room_type = f_room_type_varnames,
-               bathroom = "bathroom",
-               n_days_since = "n_days_since",
-               accommodates = "accommodates",
-               beds = "beds")
-
-rf_model_var_imp_grouped <- group.importance(rf_old$finalModel, groups)
-rf_model_var_imp_grouped_df <- data.frame(varname = rownames(rf_model_var_imp_grouped),
-                                            imp = rf_model_var_imp_grouped[,1])  %>%
-  mutate(imp_percentage = imp/sum(imp))
-
-rf_model_var_imp_grouped_plot <- ggplot(rf_model_var_imp_grouped_df, aes(x = reorder(varname, imp), y = imp_percentage)) +
-  geom_point(color = color[1], size = 1) +
-  geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
-  ylab("Importance (Percent)") +
-  xlab("Variable Name") +
-  coord_flip() +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-  theme_minimal() +  # Change to theme_minimal or another theme of your choice
-  theme(panel.grid.major.y = element_blank(),  # Remove horizontal grid lines only
-        axis.text.x = element_text(size = 6),
-        axis.text.y = element_text(size = 6),
-        axis.title.x = element_text(size = 6),
-        axis.title.y = element_text(size = 6))
-rf_model_var_imp_grouped_plot
-```
-
-```{r, include=T}
 rf_model_var_imp_grouped_plot
 ```
 
 ### Variable importance all 
 
-```{r,echo=FALSE, include=F, warning=F}
-##############################
-# 1) full varimp plot, above a cutoff
-##############################
-
-cutoff = 600
-
-rf_model_var_imp_plot <- ggplot(rf_model_var_imp_df[rf_model_var_imp_df$imp > cutoff,],
-                                aes(x = reorder(varname, imp), y = imp_percentage)) +
-  geom_point(color = color[1], size = 1.5) +
-  geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
-  ylab("Importance (Percent)") +
-  xlab("Variable Name") +
-  coord_flip() +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-  theme_minimal() +  # Change to theme_minimal or another theme of your choice
-  theme(panel.grid.major.y = element_blank(),  # Remove horizontal grid lines only
-        axis.text.x = element_text(size = 6),
-        axis.text.y = element_text(size = 6),
-        axis.title.x = element_text(size = 6),
-        axis.title.y = element_text(size = 6))
-
-rf_model_var_imp_plot
-```
-
 ```{r, include=T}
-rf_model_var_imp_plot
+##############################
+# 3) full varimp plot, above a cutoff
+##############################
+rf_model_plots$rf_model_plot_all_1
 ```
 
 ## Row {.tabset .tabset-fade}
@@ -417,41 +320,29 @@ TEXT
 ## Row {.tabset .tabset-fade}
 ### Variable importance top 10 
 
-```{r,echo=FALSE, include=F, warning=F}
+```{r, include=T}
 ##############################
 # 2) full varimp plot, top 10 only
 ##############################
-```
-
-```{r, include=T}
-rf_model_var_imp_plot_10
+rf_model_plots$rf_model_plot_10_2
 ```
 
 
 ### Variable importance grouped 
 
-```{r,echo=FALSE, include=F, warning=F}
+```{r, include=T}
 ##############################
 # 2) varimp plot grouped to (8)
 ##############################
 # grouped variable importance - keep binaries created off factors together
-
-```
-
-```{r, include=T}
-rf_model_var_imp_grouped_plot
 ```
 
 ### Variable importance all 
-
-```{r,echo=FALSE, include=F, warning=F}
-##############################
-# 1) full varimp plot, above a cutoff
-##############################
-```
-
 ```{r, include=T}
-rf_model_var_imp_plot
+##############################
+# 3) full varimp plot
+##############################
+rf_model_plots$rf_model_plot_all_2
 ```
 
 ## Row {.tabset .tabset-fade}
@@ -480,21 +371,15 @@ TEXT
 
 ## Row {.tabset .tabset-fade}
 ### Variable importance top 10 
-
-```{r,echo=FALSE, include=F, warning=F}
+```{r, include=T}
 ##############################
 # 2) full varimp plot, top 10 only
 ##############################
+rf_model_plots$rf_model_plot_10_3
 ```
 
+### Variable importance grouped
 ```{r, include=T}
-rf_model_var_imp_plot_10
-```
-
-
-### Variable importance grouped 
-
-```{r,echo=FALSE, include=F, warning=F}
 ##############################
 # 2) varimp plot grouped to (8)
 ##############################
@@ -502,20 +387,12 @@ rf_model_var_imp_plot_10
 
 ```
 
-```{r, include=T}
-rf_model_var_imp_grouped_plot
-```
-
 ### Variable importance all 
-
-```{r,echo=FALSE, include=F, warning=F}
-##############################
-# 1) full varimp plot, above a cutoff
-##############################
-```
-
 ```{r, include=T}
-rf_model_var_imp_plot
+##############################
+# 1) full varimp plot
+##############################
+rf_model_plots$rf_model_plot_all_3
 ```
 
 ## Row {.tabset .tabset-fade}

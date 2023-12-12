@@ -765,7 +765,7 @@ logit_model_vars <- list("logit_no_interactions" = logitvars1, "logit_incl_inter
 # summary(glm_1)
 
 # random forest (no interactions, no modified features)
-rfvars  <-  c("sales_mil", "d1_sales_mil_log", "flag_missing_d1_sales_mil_log", 
+rfvars  <-  c("d1_sales_mil_log", "flag_missing_d1_sales_mil_log", 
               "ceo_count", "labor_avg", "ind", "ind2_cat", rawvars, qualityvars, hr, firm)
 length(rfvars)
 # for logit LASSO
@@ -1164,6 +1164,7 @@ serv_holdout <- bisnode_work %>% filter(ind2_cat == "services")
 # Split by gini, ratio of 1's in each tree, average over trees
 #################################################
 
+
 rf_model_p_manu <- train(
   formula(paste0("high_growth_factor ~ ", paste0(rfvars , collapse = " + "))),
   method = "ranger",
@@ -1197,6 +1198,7 @@ CV_RMSE[["rf_p_manu"]] <- mean(CV_RMSE_folds[["rf_p_manu"]]$RMSE)
 CV_AUC[["rf_p_manu"]] <- mean(CV_AUC_folds[["rf_p_manu"]]$AUC)
 
 ```
+
 ```{r}
 #################################################
 # Probability forest for service sample!
@@ -1250,6 +1252,7 @@ CV_AUC[["rf_p_serv"]] <- mean(CV_AUC_folds[["rf_p_serv"]]$AUC)
 ```
 
 <!-- Task3.1: Use some methods to interpret your random forest probability model (Shapley, PDP) --> 
+<!-- RF VAR IMP (all 3) W/OUT LOSS adjust  -->
 
 ```{r}
 ### Variable importance top 10 
@@ -1286,7 +1289,7 @@ rf_model_var_imp_df <-
   mutate(imp_percentage = imp/sum(imp))
 
 
-# Create plot all
+# Create plot VAR IMP ALL 
   current_plot <- ggplot(rf_model_var_imp_df, aes(x = reorder(varname, imp), y = imp_percentage)) +
     geom_point(color = color[1], size = 1) +
     geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
@@ -1304,7 +1307,7 @@ rf_model_var_imp_df <-
   # Save the plot
   rf_model_plots[[paste0("rf_model_plot_all_", i)]] <- current_plot
 
-# Create plot 
+# Create plot VAR IMP TOP 10  
   current_plot <- ggplot(rf_model_var_imp_df[1:10,], aes(x = reorder(varname, imp), y = imp_percentage)) +
     geom_point(color = color[1], size = 1) +
     geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
@@ -1331,29 +1334,8 @@ rf_model_plots$rf_model_plot_all_3
 rf_model_plots$rf_model_plot_10_3
 ```
 
-```{r,echo=FALSE, include=F, warning=F}
-##############################
-# 1) full varimp plot, top 10 only
-##############################
-#
-rf_model_var_imp_plot_10 <- ggplot(rf_model_var_imp_df[1:10,], aes(x = reorder(varname, imp), y = imp_percentage)) +
-  geom_point(color = color[1], size = 1) +
-  geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
-  ylab("Importance (Percent)") +
-  xlab("Variable Name") +
-  coord_flip() +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-  theme_minimal() +  # Change to theme_minimal or another theme of your choice
-  theme(panel.grid.major.y = element_blank(),  # Remove horizontal grid lines only
-        axis.text.x = element_text(size = 6),
-        axis.text.y = element_text(size = 6),
-        axis.title.x = element_text(size = 6),
-        axis.title.y = element_text(size = 6))
-
-rf_model_var_imp_plot_10
-```
-
 ### Variable importance grouped 
+##### ADJUST FOR GROUPS 
 
 ```{r,echo=FALSE, include=F, warning=F}
 ##############################
@@ -1395,30 +1377,67 @@ rf_model_var_imp_grouped_plot <- ggplot(rf_model_var_imp_grouped_df, aes(x = reo
 rf_model_var_imp_grouped_plot
 ```
 
-### Variable importance all 
+<!-- Shapley (all 3) AGAIN W/OUT LOSS adjust  -->
 
-```{r,echo=FALSE, include=F, warning=F}
-##############################
-# 3) full varimp plot, above a cutoff
-##############################
+```{r,echo=FALSE, include=FALSE, warning=F}
+## SHAP VALUES ##
+rfvars
 
-rf_model_var_imp_plot_all <- ggplot(rf_model_var_imp_df, aes(x = reorder(varname, imp), y = imp_percentage)) +
-  geom_point(color = color[1], size = 1) +
-  geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
-  ylab("Importance (Percent)") +
-  xlab("Variable Name") +
-  coord_flip() +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-  theme_minimal() +  # Change to theme_minimal or another theme of your choice
-  theme(panel.grid.major.y = element_blank(),  # Remove horizontal grid lines only
-        axis.text.x = element_text(size = 6),
-        axis.text.y = element_text(size = 6),
-        axis.title.x = element_text(size = 6),
-        axis.title.y = element_text(size = 6))
+### correct facors chosen?? 
 
-rf_model_var_imp_plot_all
+# define one-hot encoding function
+dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
+                 data = bisnode_holdout, fullRank = TRUE)
+
+# #perform one-hot encoding on data frame
+
+ data_holdout_ohe <- data.frame(predict(dmy, newdata=bisnode_holdout))
+# 
+# # replace "." character to " " to match model object names
+names(data_holdout_ohe) <- gsub(x = names(data_holdout_ohe),
+                                pattern = "\\.",
+                                replacement = " ")
+# 
+# # unify model for treeshap
+## now porblem appa. with RF? 
+
+rf_model_unified <- ranger.unify(rf_model_p_manu$finalModel, data_holdout_ohe)
+print(colnames(rf_model_p))
+str(rf_model_p)
+
+# # when: Error in set_reference_dataset(ret, as.data.frame(data)) : 
+# # Dataset does not contain all features occurring in the model.
+# 
+# #model_variable_names <- rf_model$coefnames
+# #new_data_variable_names <- colnames(data_holdout_ohe)
+# 
+# #missing_variables <- setdiff(rf_model$coefnames, new_data_variable_names)
+# #if (length(missing_variables) > 0) {
+#  # stop(paste("Error: Missing variables in new data:", toString(missing_variables)))
+# #}
+# # if Error message (add variables from Error here manually)
+# # Identify the indices of the columns you want to change
+# indices_to_change <- which(colnames(data_holdout_ohe) %in% c("neighbourhood_cleansedBrnshj Husum", "neighbourhood_cleansedVesterbro Kongens Enghave"))
+# 
+# # Create a vector of new column names for the selected columns
+# new_names <- c("neighbourhood_cleansedBrnshj-Husum", "neighbourhood_cleansedVesterbro-Kongens Enghave")
+# 
+# # Change the column names only for the selected columns
+# names(data_holdout_ohe)[indices_to_change] <- new_names
+# 
+# ## go back to unify model for treeshap
+# 
+# #rf_model_unified <- ranger.unify(rf_model$finalModel, data_holdout_ohe)
+# 
+# #treeshap_res <- treeshap(rf_model_unified, data_holdout_ohe[1:500, ]) # delete # for calculation but excluded here for Rmd knitting 
+# 
+# #treeshap_res <- plot_contribution(treeshap_res, obs = 12)
+# 
+# #treeshap_featureIMP <- plot_feature_importance(treeshap_res, max_vars = 10)
+# 
+# #treeshap_inter <- treeshap(rf_model_unified, data_holdout_ohe[1:100, ], interactions = T)
+# #summary(treeshap_res)
 ```
-
 <!-- Save data environment for dashboard  -->
 
 ```{r}
