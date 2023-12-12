@@ -978,12 +978,22 @@ lasso_coeffs <- as.matrix(coef(tuned_logit_lasso_model, best_lambda))
 
 CV_RMSE_folds[["LASSO"]] <- logit_lasso_model$resample[,c("Resample", "RMSE")]
 
+# AUC
+auc <- list()
+for (fold in c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")) {
+  cv_fold <-
+    logit_lasso_model$pred %>%
+    filter(Resample == fold)
 
-# ALTERNATIVE
-#################################################
-# Classification forest
-# Split by Gini, majority vote in each tree, majority vote over trees
-#################################################
+  roc_obj <- roc(cv_fold$obs, cv_fold$high_growth)
+  auc[[fold]] <- as.numeric(roc_obj$auc)
+}
+CV_AUC_folds[["LASSO"]] <- data.frame("Resample" = names(auc),
+                                      "AUC" = unlist(auc))
+
+CV_RMSE[["LASSO"]] <- mean(CV_RMSE_folds[["LASSO"]]$RMSE)
+CV_AUC[["LASSO"]] <- mean(CV_AUC_folds[["LASSO"]]$AUC)
+
 ```
 
 
