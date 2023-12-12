@@ -28,7 +28,7 @@ options(scipen = 999)
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies')
+knitr::opts_knit$set(root.dir = 'C:/Users/AnjaHahn/OneDrive - DataScience Service GmbH/WU/Courses/CEU Prediction with Machine Learning for Economists/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
@@ -676,7 +676,7 @@ colSums(is.na(bisnode))/nrow(bisnode)*100
 
 #### Logit Model
 
-For the logit, we try out two specifications. Both of them include the sales variables (past growth), engineered variables (i.e. ratios of financial variables, windsorized), the detected (possible) quadratic terms and the flags we created for extreme, missing and potentially erroneous data. Also, both specifications include quality variables (balance sheet information) and information on HR (e.g. CEO information) and the firm itself (e.g. regarding the location and industry). The difference lies in interactions included: Whilst the first specification does not include any interactions, the second one interacts selected variables with the industry variable. This gives us XX variables. 
+For the logit, we try out two specifications. Both of them include the variable on past growth in sales, engineered variables (i.e. ratios of financial variables, windsorized), the detected quadratic terms and the flags we created for extreme, missing and potentially erroneous data. Also, both specifications include quality variables (balance sheet information) and information on HR (e.g. CEO information) and the firm itself (e.g. regarding the location and industry). The difference lies in interactions included: Whilst the first specification does not include any interactions, the second one interacts selected variables with the industry variable. This gives us XX variables. 
 
 #### Probability Forest
 
@@ -715,8 +715,7 @@ engvar3 <- c(grep("*flag_low$", names(bisnode), value = TRUE),
 # add two variables not grepled before
 engvar3 <- c(engvar3, c("flag_low_d1_sales_mil_log", "flag_high_d1_sales_mil_log"))
 
-sales <-  c(#"sales_mil_log", # no flag for NA because there are none for sales_mil
-            "d1_sales_mil_log_mod", 
+sales <-  c("d1_sales_mil_log_mod", 
             "flag_missing_d1_sales_mil_log")
 
 hr <- c("ceo_old", "ceo_young", "ceo_age", "flag_missing_ceo_age", 
@@ -731,21 +730,17 @@ firm <- c("age", "new", "urban_m", "region_m", "ind2")
 # interactions for logit, LASSO
 interactions1 <- c("ind2*age", "ind2*age_quad",
                    "ind2*d1_sales_mil_log_mod", 
-                   #"ind2*sales_mil_log", 
                    "ind2*ceo_age", "ind2*origin", "ind2*gender",
                    "ind2*urban_m", "ind2*ln_labor_avg", "ind2*multiple_ceo")
 
-# interactions2 <- c("sales_mil_log*age", "sales_mil_log*gender",
-                   # "sales_mil_log*profit_loss_year_rel", "sales_mil_log*origin",
-                   # "sales_mil_log*multiple_ceo")
 
 ####################
 # Variable Selection
 
 # logit
-# try without interactions?
 logitvars1 <- c(qualityvars, engvar, engvar2, engvar3, sales, hr, firm)
 length(logitvars1)
+# try without interactions
 logitvars2 <- c(qualityvars, engvar, engvar2, engvar3, sales, hr, firm, interactions1)
 length(logitvars2)
 logit_model_vars <- list("logit_no_interactions" = logitvars1, "logit_incl_interactions" = logitvars2)
@@ -753,21 +748,19 @@ logit_model_vars <- list("logit_no_interactions" = logitvars1, "logit_incl_inter
 # caret always (no matter if all sales vars excluded or not) gives warnings: 
 # Angepasste Wahrscheinlichkeiten mit numerischem Wert 0 oder 1 aufgetreten
 # Warnung: Vorhersage durch Fit ohne vollen Rang mag täuschen
-# below works with d1_sales_mil_log variables
-# below does not work with sales_mil_log variables
-# below shows no warnings on multicollinearity
-# also, Gabor's code shows warnings: Vorhersage durch Fit ohne vollen Rang mag täuschen
-# idea: exclude sales_mil_log variables and ignore warnings
+# below simple GLM works with d1_sales_mil_log variables
+# below simple GLM does not work with sales_mil_log variables
+# below simple GLM shows no warnings on multicollinearity
 # glm_1 <- glm(formula(paste0("high_growth_factor ~", paste0(logitvars1, collapse = " + "))),
 #              family = "binomial",
 #              data = bisnode_work)
-
 # summary(glm_1)
 
 # random forest (no interactions, no modified features)
 rfvars  <-  c("d1_sales_mil_log", "flag_missing_d1_sales_mil_log", 
               "ceo_count", "labor_avg", "ind", "ind2_cat", rawvars, qualityvars, hr, firm)
 length(rfvars)
+
 # for logit LASSO
 lassovars <- c("ceo_count", qualityvars, engvar, engvar2, engvar3, sales, hr, firm, interactions1)
 length(lassovars)
