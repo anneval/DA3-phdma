@@ -28,7 +28,7 @@ options(scipen = 999)
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/AnjaHahn/OneDrive - DataScience Service GmbH/WU/Courses/CEU Prediction with Machine Learning for Economists/da_case_studies')
+knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
@@ -696,17 +696,17 @@ For the LASSO logit, we consider the same variables as in the second logit speci
 #####################
 # Group Variables
 
-# one-hot encode factor variables (to use in random forest and later for SHAP values)
-variable_types <- sapply(bisnode, class)
-# Identify factor variables
-factor_variables <- names(variable_types[variable_types == "factor"])
-
-dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
-                 data = bisnode, fullRank = TRUE)
-new_dat <- data.frame(predict(dmy, newdata = bisnode))
-# add new variables to data
-bisnode <- cbind(bisnode, new_dat)
-rm(new_dat)
+# # one-hot encode factor variables (to use in random forest and later for SHAP values)
+# variable_types <- sapply(bisnode, class)
+# # Identify factor variables
+# factor_variables <- names(variable_types[variable_types == "factor"])
+# 
+# dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
+#                  data = bisnode, fullRank = TRUE)
+# new_dat <- data.frame(predict(dmy, newdata = bisnode))
+# # add new variables to data
+# bisnode <- cbind(bisnode, new_dat)
+# rm(new_dat)
 
 rawvars <-  c("curr_assets", "curr_liab", "extra_exp", "extra_inc", "extra_profit_loss", 
               "fixed_assets", "inc_bef_tax", "intang_assets", "inventories", "liq_assets", 
@@ -784,8 +784,10 @@ logit_model_vars <- list("logit_no_interactions" = logitvars1, "logit_incl_inter
 
 # random forest (no interactions, no modified features)
 rfvars  <-  c("d1_sales_mil_log", "flag_missing_d1_sales_mil_log", 
-              "ceo_count", "labor_avg", rawvars, qualityvars, hr, firm, onehot)
-rfvars <- rfvars[!rfvars %in% c("origin", "gender", "urban_m", "region_m", "ind2")]
+              "ceo_count", "labor_avg", rawvars, qualityvars, hr, firm)
+# rfvars  <-  c("d1_sales_mil_log", "flag_missing_d1_sales_mil_log", 
+#               "ceo_count", "labor_avg", rawvars, qualityvars, hr, firm, onehot)
+#rfvars <- rfvars[!rfvars %in% c("origin", "gender", "urban_m", "region_m", "ind2")]
 
 length(rfvars)
 # for logit LASSO
@@ -815,8 +817,10 @@ train_control <- trainControl(method = "cv",
                               number = n_folds,
                               classProbs = TRUE, # computing probabilities during training
                               summaryFunction = twoClassSummaryExtended, # from da_helper_functions.R
-                              savePredictions = TRUE, # save the predictions for each fold
+                              savePredictions = "all", # save the predictions for each fold
                               verboseIter = TRUE)
+
+
 ```
 
 ## Model Estimation
@@ -1250,14 +1254,14 @@ serv_holdout <- bisnode_work %>% filter(ind2_cat == "services")
 # Split by gini, ratio of 1's in each tree, average over trees
 #################################################
 
-
 rf_model_p_manu <- train(
   formula(paste0("high_growth_factor ~ ", paste0(rfvars , collapse = " + "))),
   method = "ranger",
   data = manu_work,
   tuneGrid = tune_grid,
   trControl = train_control,
-  importance = "impurity"
+  importance = "impurity",
+  save.info = "all"
 )
 
 rf_model_p_manu$results
@@ -1441,19 +1445,26 @@ rf_model_plots$rf_model_plot_10_3
 # 2) varimp plot grouped to (8)
 ##############################
 # grouped variable importance - keep binaries created off factors together
+# dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
+#                  data = bisnode, fullRank = TRUE)
 
 varnames <- rf_model_p$finalModel$xNames
-#f_neighbourhood_cleansed_varnames <- grep("f_neighbourhood_cleansed",varnames, value = TRUE)
-#f_property_type_varnames <- grep("f_property_type",varnames, value = TRUE)
-#f_room_type_varnames <- grep("f_room_type",varnames, value = TRUE)
+ind_varnames <- grep("ind",varnames, value = TRUE)
+ind2_varnames <- grep("ind2",varnames, value = TRUE) # change
+ind2_cat_varnames <- grep("ind2_cat",varnames, value = TRUE)# change 
+gender_varnames <- grep("gender",varnames, value = TRUE)
+origin_varnames <- grep("origin",varnames, value = TRUE)
+region_m_varnames <- grep("region_m",varnames, value = TRUE)
+urban_m_varnames <- grep("urban_m",varnames, value = TRUE)
 
-groups <- list(f_neighbourhood_cleansed=f_neighbourhood_cleansed_varnames,
-               f_property_type = f_property_type_varnames,
-               f_room_type = f_room_type_varnames,
-               bathroom = "bathroom",
-               n_days_since = "n_days_since",
-               accommodates = "accommodates",
-               beds = "beds")
+
+groups <- list(ind=ind_varnames,
+               ind2 = ind2_varnames,
+               ind2_cat = ind2_cat_varnames,
+               gender = gender_varnames,
+               origin = origin_varnames,
+               region_m =region_m_varnames,
+               urban_m = urban_m_varnames)
 
 rf_model_var_imp_grouped <- group.importance(rf_old$finalModel, groups)
 rf_model_var_imp_grouped_df <- data.frame(varname = rownames(rf_model_var_imp_grouped),
@@ -1485,8 +1496,8 @@ rfvars
 ### correct facors chosen?? 
 
 # define one-hot encoding function
-dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
-                 data = bisnode_holdout, fullRank = TRUE)
+# dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
+#                  data = bisnode_holdout, fullRank = TRUE)
 
 # #perform one-hot encoding on data frame
 
@@ -1499,7 +1510,14 @@ names(data_holdout_ohe) <- gsub(x = names(data_holdout_ohe),
 # # unify model for treeshap
 ## now porblem appa. with RF? 
 
-rf_model_unified <- ranger.unify(rf_model_p$finalModel, data_holdout_ohe)
+rf_model_unified <- ranger.unify(rf_model_p_manu$finalModel, bisnode_holdout)
+
+
+ranger_model <- rf_model_p_manu$finalModel
+
+tree_info <- ranger_model$unique.tree.info
+
+
 
 # # when: Error in set_reference_dataset(ret, as.data.frame(data)) : 
 # # Dataset does not contain all features occurring in the model.
