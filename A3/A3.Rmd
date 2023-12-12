@@ -996,11 +996,6 @@ CV_RMSE_folds[["LASSO"]] <- logit_lasso_model$resample[,c("Resample", "RMSE")]
 # We have a loss function
 ########################################
 
-# make sure that high_growth is interpreted as case and low_growth as control
-# make it a numeric variable
-
-
-
 # Introduce loss function
 # relative cost of of a false negative classification (as compared with a false positive classification)
 FP=1
