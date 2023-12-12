@@ -1054,56 +1054,56 @@ kable(x = logit_summary, format = "latex", booktabs=TRUE,  digits = 3, row.names
 #                            paste0(model_name, "_roc_plot"))
 # }
 
-# Pick best model based on average expected loss ----------------------------------
+# # Pick best model based on average expected loss ----------------------------------
+# 
+# best_logit_with_loss <- logit_models[["X4"]]
+# best_logit_optimal_treshold <- best_tresholds[["X4"]]
+# 
+# logit_predicted_probabilities_holdout <- predict(best_logit_with_loss, newdata = data_holdout, type = "prob")
+# data_holdout[,"best_logit_with_loss_pred"] <- logit_predicted_probabilities_holdout[,"default"]
+# 
+# # ROC curve on holdout
+# roc_obj_holdout <- roc(data_holdout$default, data_holdout[, "best_logit_with_loss_pred", drop=TRUE])
+# 
+# # Get expected loss on holdout
+# holdout_treshold <- coords(roc_obj_holdout, x = best_logit_optimal_treshold, input= "threshold",
+#                            ret="all", transpose = FALSE)
+# expected_loss_holdout <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/length(data_holdout$default)
+# expected_loss_holdout
+# 
+# # Confusion table on holdout with optimal threshold
+# holdout_prediction <-
+#   ifelse(data_holdout$best_logit_with_loss_pred < best_logit_optimal_treshold, "no_default", "default") %>%
+#   factor(levels = c("no_default", "default"))
+# cm_object3 <- confusionMatrix(holdout_prediction,data_holdout$default_f)
+# cm3 <- cm_object3$table
+# cm3
+# 
 
-best_logit_with_loss <- logit_models[["X4"]]
-best_logit_optimal_treshold <- best_tresholds[["X4"]]
 
-logit_predicted_probabilities_holdout <- predict(best_logit_with_loss, newdata = data_holdout, type = "prob")
-data_holdout[,"best_logit_with_loss_pred"] <- logit_predicted_probabilities_holdout[,"default"]
-
-# ROC curve on holdout
-roc_obj_holdout <- roc(data_holdout$default, data_holdout[, "best_logit_with_loss_pred", drop=TRUE])
-
-# Get expected loss on holdout
-holdout_treshold <- coords(roc_obj_holdout, x = best_logit_optimal_treshold, input= "threshold",
-                           ret="all", transpose = FALSE)
-expected_loss_holdout <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/length(data_holdout$default)
-expected_loss_holdout
-
-# Confusion table on holdout with optimal threshold
-holdout_prediction <-
-  ifelse(data_holdout$best_logit_with_loss_pred < best_logit_optimal_treshold, "no_default", "default") %>%
-  factor(levels = c("no_default", "default"))
-cm_object3 <- confusionMatrix(holdout_prediction,data_holdout$default_f)
-cm3 <- cm_object3$table
-cm3
-
-
-
-# here loss function for RF
-
-# Now use loss function and search for best thresholds and expected loss over folds -----
-best_tresholds_cv <- list()
-expected_loss_cv <- list()
-
-for (fold in c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")) {
-  cv_fold <-
-    rf_model_p$pred %>%
-    filter(mtry == best_mtry,
-           min.node.size == best_min_node_size,
-           Resample == fold)
-
-  roc_obj <- roc(cv_fold$obs, cv_fold$default)
-  best_treshold <- coords(roc_obj, "best", ret="all", transpose = FALSE,
-                          best.method="youden", best.weights=c(cost, prevelance))
-  best_tresholds_cv[[fold]] <- best_treshold$threshold
-  expected_loss_cv[[fold]] <- (best_treshold$fp*FP + best_treshold$fn*FN)/length(cv_fold$default)
-}
-
-# average
-best_tresholds[["rf_p"]] <- mean(unlist(best_tresholds_cv))
-expected_loss[["rf_p"]] <- mean(unlist(expected_loss_cv))
+# # here loss function for RF
+# 
+# # Now use loss function and search for best thresholds and expected loss over folds -----
+# best_tresholds_cv <- list()
+# expected_loss_cv <- list()
+# 
+# for (fold in c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")) {
+#   cv_fold <-
+#     rf_model_p$pred %>%
+#     filter(mtry == best_mtry,
+#            min.node.size == best_min_node_size,
+#            Resample == fold)
+# 
+#   roc_obj <- roc(cv_fold$obs, cv_fold$default)
+#   best_treshold <- coords(roc_obj, "best", ret="all", transpose = FALSE,
+#                           best.method="youden", best.weights=c(cost, prevelance))
+#   best_tresholds_cv[[fold]] <- best_treshold$threshold
+#   expected_loss_cv[[fold]] <- (best_treshold$fp*FP + best_treshold$fn*FN)/length(cv_fold$default)
+# }
+# 
+# # average
+# best_tresholds[["rf_p"]] <- mean(unlist(best_tresholds_cv))
+# expected_loss[["rf_p"]] <- mean(unlist(expected_loss_cv))
 
 
 ```
