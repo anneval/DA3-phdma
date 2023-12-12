@@ -691,8 +691,6 @@ For the LASSO logit, we consider the same variables as in the second logit speci
 ```{r}
 #####################
 # Group Variables
-<<<<<<< Updated upstream
-=======
 
 # one-hot encode factor variables (to use in random forest and later for SHAP values)
 variable_types <- sapply(bisnode, class)
@@ -706,8 +704,6 @@ new_dat <- data.frame(predict(dmy, newdata = bisnode))
 bisnode <- cbind(bisnode, new_dat)
 rm(new_dat)
 
-
->>>>>>> Stashed changes
 rawvars <-  c("curr_assets", "curr_liab", "extra_exp", "extra_inc", "extra_profit_loss", 
               "fixed_assets", "inc_bef_tax", "intang_assets", "inventories", "liq_assets", 
               "material_exp", "personnel_exp", "profit_loss_year", "share_eq", "subscribed_cap")
@@ -939,16 +935,8 @@ CV_AUC_folds[["rf_p"]] <- data.frame("Resample" = names(auc),
 CV_RMSE[["rf_p"]] <- mean(CV_RMSE_folds[["rf_p"]]$RMSE)
 CV_AUC[["rf_p"]] <- mean(CV_AUC_folds[["rf_p"]]$AUC)
 
-<<<<<<< Updated upstream
-# Now use loss function and search for best thresholds and expected loss over folds -----### SECOND PART 
-
-
-############### LOSS FUNCTION PART missing!
-
-# Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
-=======
 # # Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
->>>>>>> Stashed changes
+
 # 
 # rf_predicted_probabilities_holdout <- predict(rf_model_p, newdata = bisnode_holdout, type = "prob")
 # bisnode_holdout$rf_p_prediction <- rf_predicted_probabilities_holdout[,"high_growth"]
