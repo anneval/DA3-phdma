@@ -1087,6 +1087,7 @@ kable(x = logit_summary, format = "latex", booktabs=TRUE,  digits = 3, row.names
                             paste0(model_name, "_roc_plot"))
  }
 
+
 # Pick best model based on average expected loss ----------------------------------
 
 best_logit_with_loss <- logit_models[["logit_incl_interactions"]]
@@ -1111,8 +1112,6 @@ holdout_prediction <-
 cm_object3 <- confusionMatrix(holdout_prediction,bisnode_holdout$high_growth_factor)
 cm3 <- cm_object3$table
 cm3
-
-
 
 ```
 
