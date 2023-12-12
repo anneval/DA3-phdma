@@ -28,7 +28,7 @@ options(scipen = 999)
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies')
+knitr::opts_knit$set(root.dir = 'C:/Users/AnjaHahn/OneDrive - DataScience Service GmbH/WU/Courses/CEU Prediction with Machine Learning for Economists/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
@@ -695,6 +695,18 @@ For the LASSO logit, we consider the same variables as in the second logit speci
 ```{r}
 #####################
 # Group Variables
+
+# one-hot encode factor variables (to use in random forest and later for SHAP values)
+variable_types <- sapply(bisnode, class)
+# Identify factor variables
+factor_variables <- names(variable_types[variable_types == "factor"])
+
+dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
+                 data = bisnode, fullRank = TRUE)
+new_dat <- data.frame(predict(dmy, newdata = bisnode))
+# add new variables to data
+bisnode <- cbind(bisnode, new_dat)
+rm(new_dat)
 
 rawvars <-  c("curr_assets", "curr_liab", "extra_exp", "extra_inc", "extra_profit_loss", 
               "fixed_assets", "inc_bef_tax", "intang_assets", "inventories", "liq_assets", 
