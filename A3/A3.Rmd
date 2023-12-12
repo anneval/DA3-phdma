@@ -1316,8 +1316,7 @@ rf_model_p_manu <- train(
   data = manu_work,
   tuneGrid = tune_grid,
   trControl = train_control,
-  importance = "impurity",
-  save.info = "all"
+  importance = "impurity"
 )
 
 rf_model_p_manu$results
@@ -1344,11 +1343,7 @@ CV_RMSE[["rf_p_manu"]] <- mean(CV_RMSE_folds[["rf_p_manu"]]$RMSE)
 CV_AUC[["rf_p_manu"]] <- mean(CV_AUC_folds[["rf_p_manu"]]$AUC)
 
 
-# Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
 
-rf_manu_predicted_probabilities_holdout <- predict(rf_model_p_manu, newdata = manu_holdout, type = "prob")
-manu_holdout$rf_p_manu_prediction <- rf_manu_predicted_probabilities_holdout[,"high_growth"]
-RMSE(manu_holdout$rf_p_manu_prediction, manu_holdout$high_growth)
 ```
 ```{r}
 ######################################
@@ -1537,8 +1532,7 @@ expected_loss_holdout_serv
 <!-- RF VAR IMP (all 3) W/OUT LOSS adjust  -->
 
 ```{r}
-####### CHANGE TO FORESTS WITH LOSS ########
-# Assuming you have three data sets named df1, df2, and df3
+
 rf_models <- list(rf_model_p, rf_model_p_manu, rf_model_p_serv)
 # Create an empty list to store the plots
 rf_model_plots <- list()
@@ -1603,7 +1597,6 @@ rf_model_plots$rf_model_plot_10_3
 ```
 
 ### Variable importance grouped 
-##### ADJUST FOR GROUPS 
 
 ```{r}
 ### Variable importance top 10 
@@ -1665,6 +1658,9 @@ current_plot_group <- ggplot(rf_model_var_imp_grouped_df, aes(x = reorder(varnam
  # Save the plot
   rf_model_plots[[paste0("rf_model_var_imp_grouped_plot", i)]] <- current_plot_group
 }
+rf_model_plots$rf_model_var_imp_grouped_plot1
+rf_model_plots$rf_model_var_imp_grouped_plot2
+rf_model_plots$rf_model_var_imp_grouped_plot3
 
 ```
 
@@ -1672,98 +1668,111 @@ current_plot_group <- ggplot(rf_model_var_imp_grouped_df, aes(x = reorder(varnam
 
 ```{r,echo=FALSE, include=FALSE, warning=F}
 ## SHAP VALUES ##
-rfvars
-### correct facors chosen?? 
-
-# define one-hot encoding function
-# dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
-#                  data = bisnode_holdout, fullRank = TRUE)
-
-# #perform one-hot encoding on data frame
-
- data_holdout_ohe <- data.frame(predict(dmy, newdata=bisnode_holdout))
+# rfvars
+# ### correct facors chosen?? 
 # 
-# # replace "." character to " " to match model object names
-names(data_holdout_ohe) <- gsub(x = names(data_holdout_ohe),
-                                pattern = "\\.",
-                                replacement = " ")
-# # unify model for treeshap
-## now porblem appa. with RF? 
-
-rf_model_unified <- ranger.unify(rf_model_p$finalModel, bisnode_holdout)
-
-
-
-rf_model_p$finalModel$nu
-
-ranger_model <- rf_model_p_manu$finalModel
-
-tree_info <- ranger_model$unique.tree.info
-
-
-
-# # when: Error in set_reference_dataset(ret, as.data.frame(data)) : 
-# # Dataset does not contain all features occurring in the model.
+# # define one-hot encoding function
+# # dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
+# #                  data = bisnode_holdout, fullRank = TRUE)
 # 
-# #model_variable_names <- rf_model$coefnames
-# #new_data_variable_names <- colnames(data_holdout_ohe)
+# # #perform one-hot encoding on data frame
 # 
-# #missing_variables <- setdiff(rf_model$coefnames, new_data_variable_names)
-# #if (length(missing_variables) > 0) {
-#  # stop(paste("Error: Missing variables in new data:", toString(missing_variables)))
-# #}
-# # if Error message (add variables from Error here manually)
-# # Identify the indices of the columns you want to change
-# indices_to_change <- which(colnames(data_holdout_ohe) %in% c("neighbourhood_cleansedBrnshj Husum", "neighbourhood_cleansedVesterbro Kongens Enghave"))
+#  data_holdout_ohe <- data.frame(predict(dmy, newdata=bisnode_holdout))
+# # 
+# # # replace "." character to " " to match model object names
+# names(data_holdout_ohe) <- gsub(x = names(data_holdout_ohe),
+#                                 pattern = "\\.",
+#                                 replacement = " ")
+# # # unify model for treeshap
+# ## now porblem appa. with RF? 
 # 
-# # Create a vector of new column names for the selected columns
-# new_names <- c("neighbourhood_cleansedBrnshj-Husum", "neighbourhood_cleansedVesterbro-Kongens Enghave")
+# rf_model_unified <- ranger.unify(rf_model_p$finalModel, bisnode_holdout)
 # 
-# # Change the column names only for the selected columns
-# names(data_holdout_ohe)[indices_to_change] <- new_names
 # 
-# ## go back to unify model for treeshap
 # 
-# #rf_model_unified <- ranger.unify(rf_model$finalModel, data_holdout_ohe)
+# rf_model_p$finalModel$nu
 # 
-treeshap_res <- treeshap(rf_model_p, data_holdout_ohe[1:500, ]) # delete # for calculation but excluded here for Rmd knitting 
+# ranger_model <- rf_model_p_manu$finalModel
 # 
-# #treeshap_res <- plot_contribution(treeshap_res, obs = 12)
+# tree_info <- ranger_model$unique.tree.info
 # 
-# #treeshap_featureIMP <- plot_feature_importance(treeshap_res, max_vars = 10)
 # 
-# #treeshap_inter <- treeshap(rf_model_unified, data_holdout_ohe[1:100, ], interactions = T)
-# #summary(treeshap_res)
+# 
+# # # when: Error in set_reference_dataset(ret, as.data.frame(data)) : 
+# # # Dataset does not contain all features occurring in the model.
+# # 
+# # #model_variable_names <- rf_model$coefnames
+# # #new_data_variable_names <- colnames(data_holdout_ohe)
+# # 
+# # #missing_variables <- setdiff(rf_model$coefnames, new_data_variable_names)
+# # #if (length(missing_variables) > 0) {
+# #  # stop(paste("Error: Missing variables in new data:", toString(missing_variables)))
+# # #}
+# # # if Error message (add variables from Error here manually)
+# # # Identify the indices of the columns you want to change
+# # indices_to_change <- which(colnames(data_holdout_ohe) %in% c("neighbourhood_cleansedBrnshj Husum", "neighbourhood_cleansedVesterbro Kongens Enghave"))
+# # 
+# # # Create a vector of new column names for the selected columns
+# # new_names <- c("neighbourhood_cleansedBrnshj-Husum", "neighbourhood_cleansedVesterbro-Kongens Enghave")
+# # 
+# # # Change the column names only for the selected columns
+# # names(data_holdout_ohe)[indices_to_change] <- new_names
+# # 
+# # ## go back to unify model for treeshap
+# # 
+# # #rf_model_unified <- ranger.unify(rf_model$finalModel, data_holdout_ohe)
+# # 
+# treeshap_res <- treeshap(rf_model_p, data_holdout_ohe[1:500, ]) # delete # for calculation but excluded here for Rmd knitting 
+# # 
+# # #treeshap_res <- plot_contribution(treeshap_res, obs = 12)
+# # 
+# # #treeshap_featureIMP <- plot_feature_importance(treeshap_res, max_vars = 10)
+# # 
+# # #treeshap_inter <- treeshap(rf_model_unified, data_holdout_ohe[1:100, ], interactions = T)
+# # #summary(treeshap_res)
 ```
 
 ```{r,echo=FALSE, include=FALSE, warning=F}
 #########################################################################################
 # Partial Dependence Plots -------------------------------------------------------
 #########################################################################################
+varnames
 
-rf_model
+pdp_n_acc <- pdp::partial(rf_model_p, pred.var = "age", pred.grid = distinct_(bisnode_holdout, "d1_sales_mil_log"), train = bisnode_work)
 
-pdp_n_acc <- pdp::partial(rf_model_p, pred.var = "fixed_assets", pred.grid = distinct_(bisnode_holdout, "fixed_assets"), train = bisnode_holdout)
 
 pdp_n_acc_plot <- pdp_n_acc %>%
   autoplot( ) +
   geom_point(color=color[1], size=2) +
   geom_line(color=color[1], size=1) +
-  ylab("Predicted price") +
-  xlab("Accommodates (persons)") +
+  ylab("Growth") +
+  xlab("ceo_count") +
   scale_x_continuous(limit=c(1,7), breaks=seq(1,7,1))+
-  theme_bg()
-#pdp_n_acc_plot
+theme_bg()
+pdp_n_acc_plot
 
+
+### factors?? 
+
+pdp_n_roomtype <- pdp::partial(rf_model_p, pred.var = "originmix", pred.grid = distinct_(bisnode_holdout, "originmix"), train = bisnode_work)
+pdp_n_roomtype_plot <- pdp_n_roomtype %>%
+  autoplot( ) +
+  geom_point(color=color[1], size=2) +
+  ylab("Predicted price") +
+  xlab("Room type") +
+  scale_y_continuous(limits=c(60,120), breaks=seq(60,120, by=10)) +
+  theme_bg()
+pdp_n_roomtype_plot
 ```
-```
+
 
 
 <!-- Save data environment for dashboard  -->
-
 ```{r}
-save.image(file = "A3.RData")
+save.image(file = "A3.RData") # specify location 
 ```
+
+
 
 
 <!-- Task3.2: Create a shiny (flexdashboard) app for the project where you can show (1) how key variables influence the prediction (!Shapley) and (2) show expected loss based on different thresholds. -->

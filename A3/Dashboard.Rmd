@@ -35,7 +35,7 @@ Replace code with graphs "ready"-->
 # Clear memory
 rm(list=ls())
 # set global chunk options
-knitr::opts_chunk$set(include = FALSE, fig.align = 'center', cache = TRUE,
+knitr::opts_chunk$set(include = FALSE, fig.align = 'center', cache = F,
                       warning = FALSE, message = FALSE, echo = FALSE)
 
 options(scipen = 999)
@@ -53,7 +53,7 @@ knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/S
 
 <!-- Set directory, load functions and theme  --> 
 ```{r helper functions, include=FALSE}
-getwd()
+#getwd()
 source("set-data-directory.R")
 source("ch00-tech-prep/theme_bg.R")
 source("ch00-tech-prep/da_helper_functions.R")
@@ -80,8 +80,8 @@ library(pdp)
 
 ```{r data,include=FALSE}
 data_in <- paste(data_dir,"bisnode-firms", sep = "/")
-#load(paste(data_in,"A2.RData",sep = "/")) #activate once we have correct data
-rf_old <- read_rds(paste(data_in,"rf_A3.rds",sep = "/")) # save in data dir!!!
+load(paste(data_in,"A3.RData",sep = "/")) #activate once we have correct data
+#rf_old <- read_rds(paste(data_in,"rf_A3.rds",sep = "/")) # save in data dir!!!
 ```
 
 # <font size="3">Bisnode</font> {data-navmenu="Key variables"}
@@ -109,7 +109,8 @@ rf_model_plots$rf_model_plot_10_1
 # 2) varimp plot grouped to (8)
 ##############################
 # grouped variable importance - keep binaries created off factors together
-rf_model_var_imp_grouped_plot
+rf_model_plots$rf_model_var_imp_grouped_plot1
+
 ```
 
 ### Variable importance all 
@@ -126,54 +127,7 @@ rf_model_plots$rf_model_plot_all_1
 
 ```{r,echo=FALSE, include=FALSE, warning=F}
 ## SHAP VALUES ##
-#### all done in code before 
-# devtools::install_github('ModelOriented/treeshap')
 
-# #define one-hot encoding function
-# dummy <- dummyVars(" ~  ., fullRank=T, sep = NULL)
-# 
-# #perform one-hot encoding on data frame
-# data_holdout_ohe <- data.frame(predict(dummy, newdata=listings_holdout))
-# 
-# # replace "." character to " " to match model object names
-# names(data_holdout_ohe) <- gsub(x = names(data_holdout_ohe),
-#                                 pattern = "\\.", 
-#                                 replacement = " ")  
-# 
-# # unify model for treeshap
-# rf_model_unified <- ranger.unify(rf_model$finalModel, data_holdout_ohe)
-# # when: Error in set_reference_dataset(ret, as.data.frame(data)) : 
-# # Dataset does not contain all features occurring in the model.
-# 
-# #model_variable_names <- rf_model$coefnames
-# #new_data_variable_names <- colnames(data_holdout_ohe)
-# 
-# #missing_variables <- setdiff(rf_model$coefnames, new_data_variable_names)
-# #if (length(missing_variables) > 0) {
-#  # stop(paste("Error: Missing variables in new data:", toString(missing_variables)))
-# #}
-# # if Error message (add variables from Error here manually)
-# # Identify the indices of the columns you want to change
-# indices_to_change <- which(colnames(data_holdout_ohe) %in% c("neighbourhood_cleansedBrnshj Husum", "neighbourhood_cleansedVesterbro Kongens Enghave"))
-# 
-# # Create a vector of new column names for the selected columns
-# new_names <- c("neighbourhood_cleansedBrnshj-Husum", "neighbourhood_cleansedVesterbro-Kongens Enghave")
-# 
-# # Change the column names only for the selected columns
-# names(data_holdout_ohe)[indices_to_change] <- new_names
-# 
-# ## go back to unify model for treeshap
-# 
-# #rf_model_unified <- ranger.unify(rf_model$finalModel, data_holdout_ohe)
-# 
-# #treeshap_res <- treeshap(rf_model_unified, data_holdout_ohe[1:500, ]) # delete # for calculation but excluded here for Rmd knitting 
-# 
-# #treeshap_res <- plot_contribution(treeshap_res, obs = 12)
-# 
-# #treeshap_featureIMP <- plot_feature_importance(treeshap_res, max_vars = 10)
-# 
-# #treeshap_inter <- treeshap(rf_model_unified, data_holdout_ohe[1:100, ], interactions = T)
-# #summary(treeshap_res)
 ```
 
 ```{r, figures-Shap, fig.show="hold", out.width="50%", echo =FALSE, warning=FALSE}
@@ -204,7 +158,7 @@ rf_model_plots$rf_model_plot_all_1
 ```{r, include=TRUE}
 # CHANGE ACCORDING TO OUR DATASET rf_variables
 # Assume 'features' is a vector of feature names in your dataset
-features <- c("accommodates", "room_type", "other_feature")
+features <- c("ceo_old", "ceo_count", "ceo_age")
 
 selectInput("feature_selector", "Select Feature:", choices = features, selected = features[1])
 
@@ -216,48 +170,62 @@ selectInput("feature_selector", "Select Feature:", choices = features, selected 
 
 ### does it work like this or do I need a loop over my features still? (- shiny code together with selectInput above..)In one chunk? 
 ## add something for displaying?
-
+#renderPlot
 renderPlot({
   selected_feature <- input$feature_selector
   
   # Check if the selected feature is numeric or categorical
-  if (is.numeric(listings_holdout[[selected_feature]])) {
+  if (is.numeric(bisnode_holdout[[selected_feature]])) {
     # Create PDP for numeric feature
-    pdp_result <- pdp::partial(rf_old, pred.var = selected_feature, 
-                               pred.grid = distinct_(listings_holdout, selected_feature), 
-                               train = listings_holdout)
+    pdp_result <- pdp::partial(rf_model_p, pred.var = selected_feature, 
+                               pred.grid = distinct_(bisnode_holdout, selected_feature), 
+                               train = bisnode_work)
     
     # Customize PDP plot for numeric feature
     pdp_plot <- pdp_result %>%
       autoplot() +
       geom_point(color = color[1], size = 2) +
       geom_line(color = color[1], size = 1) +
-      ylab("Predicted price") +
+      ylab("Growth") +
       xlab(paste("Partial Dependence on", selected_feature)) +
       theme_bg()
     
     # Print the plot
     print(pdp_plot)
     
-  } else if (is.factor(listings_holdout[[selected_feature]])) {
+  } else if (is.factor(bisnode_holdout[[selected_feature]])) {
     # Create PDP for categorical feature
-    pdp_result <- pdp::partial(rf_old, pred.var = selected_feature, 
-                               pred.grid = unique(listings_holdout[[selected_feature]]), 
-                               train = listings_holdout)
+    pdp_result <- pdp::partial(rf_model_p, pred.var = selected_feature, 
+                               pred.grid = unique(bisnode_holdout[[selected_feature]]), 
+                               train = bisnode_work)
     
     # Customize PDP plot for categorical feature
     pdp_plot <- pdp_result %>%
       autoplot() +
       geom_point(color = color[1], size = 2) +
-      ylab("Predicted price") +
+      ylab("Growth") +
       xlab(paste("Partial Dependence on", selected_feature)) +
       theme_bg()
     
     # Print the plot
     print(pdp_plot)
-  }
+    }#,cacheKeyExpr = {input$feature_selector }
 })
 
+```
+```{r}
+# function(input, output) {
+#   renderCachedPlot(
+#     {
+#       rownums <- seq_len(input$n)
+#       plot(cars$speed[rownums], cars$dist[rownums])
+#     },
+#     cacheKeyExpr = { input$n }
+#   )
+# }
+
+#https://shiny.posit.co/r/articles/improve/plot-caching/
+#Usage is simple: in the most basic form, simply replace your renderPlot() with renderCachedPlot(), and add a cache key expression argument. For example, your server function might look like this:
 ```
 
 
@@ -334,7 +302,8 @@ rf_model_plots$rf_model_plot_10_2
 ##############################
 # 2) varimp plot grouped to (8)
 ##############################
-# grouped variable importance - keep binaries created off factors together
+rf_model_plots$rf_model_var_imp_grouped_plot2
+
 ```
 
 ### Variable importance all 
@@ -383,8 +352,7 @@ rf_model_plots$rf_model_plot_10_3
 ##############################
 # 2) varimp plot grouped to (8)
 ##############################
-# grouped variable importance - keep binaries created off factors together
-
+rf_model_plots$rf_model_var_imp_grouped_plot3
 ```
 
 ### Variable importance all 
@@ -449,15 +417,4 @@ TEXT
 
 ### Services
 
-###### Description
 
-The sentiment indicator for the *Perceived Economic Situation* consists of Google search terms that aim to reflect people's concerns about the current economic situation. For instance, people might search for "Wirtschaftskrise" (= economic crisis) to get information.  
-
-###### Keywords
-
-- economic crisis ("Wirtschaftskrise")
-- short-term work ("Kurzarbeit)
-- unemployed ("arbeitslos")
-- insolvency ("Insolvenz")
-
-[Download data](https://raw.githubusercontent.com/anneval/MA_data/main/raw/at/trendecon_sa.csv){target="_blank"}
