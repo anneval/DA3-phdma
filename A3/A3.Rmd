@@ -28,7 +28,7 @@ options(scipen = 999)
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies')
+knitr::opts_knit$set(root.dir = 'C:/Users/AnjaHahn/OneDrive - DataScience Service GmbH/WU/Courses/CEU Prediction with Machine Learning for Economists/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
@@ -828,11 +828,6 @@ train_control <- trainControl(method = "cv",
 
 We divide our data set into a work (80 percent, 15,229 observations) and holdout set (20 percent, 3,807 observations). The workout set will be used to train our models. We use 5-fold cross validation to evaluate performance of our models. 
 
-### Probability Prediction
-
-look at cv performance and pick best model (then RMSE and ROC on holdout)
-#### Logit Models
-The below plot compares the RMSE and AUC of both logit model specifications.
 
 <!-- Task1.1: Model 1 - Logit  --> 
 
@@ -906,13 +901,13 @@ for (model_name in names(logit_models)) {
   CV_AUC[[model_name]] <- mean(CV_AUC_folds[[model_name]]$AUC)
 }
 
-# Take best model and estimate RMSE on holdout  -------------------------------------------
-
-best_logit_no_loss <- logit_models[["logit_no_interactions"]]
-
-logit_predicted_probabilities_holdout <- predict(best_logit_no_loss, newdata = bisnode_holdout, type = "prob")
-bisnode_holdout[,"best_logit_no_loss_pred"] <- logit_predicted_probabilities_holdout[,"high_growth"]
-RMSE(bisnode_holdout[, "best_logit_no_loss_pred", drop=TRUE], bisnode_holdout$high_growth)
+# # Take best model and estimate RMSE on holdout  -------------------------------------------
+# 
+# best_logit_no_loss <- logit_models[["logit_no_interactions"]]
+# 
+# logit_predicted_probabilities_holdout <- predict(best_logit_no_loss, newdata = bisnode_holdout, type = "prob")
+# bisnode_holdout[,"best_logit_no_loss_pred"] <- logit_predicted_probabilities_holdout[,"high_growth"]
+# RMSE(bisnode_holdout[, "best_logit_no_loss_pred", drop=TRUE], bisnode_holdout$high_growth)
 
 ```
 
@@ -962,20 +957,6 @@ CV_AUC_folds[["rf_p"]] <- data.frame("Resample" = names(auc),
 CV_RMSE[["rf_p"]] <- mean(CV_RMSE_folds[["rf_p"]]$RMSE)
 CV_AUC[["rf_p"]] <- mean(CV_AUC_folds[["rf_p"]]$AUC)
 
-# Now use loss function and search for best thresholds and expected loss over folds -----### SECOND PART 
-
-
-#bisnode_work$high_growth_factor
-
-
-############### LOSS FUNCTION PART missing!
-
-# Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
-
-rf_predicted_probabilities_holdout <- predict(rf_model_p, newdata = bisnode_holdout, type = "prob")
-bisnode_holdout$rf_p_prediction <- rf_predicted_probabilities_holdout[,"high_growth"]
-RMSE(bisnode_holdout$rf_p_prediction, bisnode_holdout$high_growth)
-
 ```
 
 
@@ -1005,7 +986,6 @@ tuned_logit_lasso_model <- logit_lasso_model$finalModel
 best_lambda <- logit_lasso_model$bestTune$lambda
 logit_models[["LASSO"]] <- logit_lasso_model
 lasso_coeffs <- as.matrix(coef(tuned_logit_lasso_model, best_lambda))
-#write.csv(lasso_coeffs, paste0(output, "lasso_logit_coeffs.csv"))
 
 CV_RMSE_folds[["LASSO"]] <- logit_lasso_model$resample[,c("Resample", "RMSE")]
 
@@ -1024,6 +1004,142 @@ CV_AUC_folds[["LASSO"]] <- data.frame("Resample" = names(auc),
 
 CV_RMSE[["LASSO"]] <- mean(CV_RMSE_folds[["LASSO"]]$RMSE)
 CV_AUC[["LASSO"]] <- mean(CV_AUC_folds[["LASSO"]]$AUC)
+
+```
+
+### Probability Prediction
+
+The below plot shows the results for our different model specifications. We would choose the first simple logit model over the second, since it has fewer coefficients and even better (lower) RMSE and (higher) AUC. The logit LASSO does not perform better, either (worse AUC and similar RMSE). Based on the CV results, we would therefore go for the random forest which performs slightly better in both the RMSE and AUC.
+
+
+```{r summary_no_loss}
+
+ncoeff <- lapply(logit_models, FUN = function(x) length(x$coefnames))
+ncoeff[["rf"]] <- NA
+nvars <- list()
+nvars[["logit_no_interactions"]] <- length(logitvars1[-grep("quad", logitvars1)])
+nvars[["logit_incl_interactions"]] <- length(logitvars2[-grep("quad|\\*", logitvars2)]) # same as above
+nvars[["LASSO"]] <- length(lassovars[-grep("quad|\\*", logitvars2)])
+nvars[["rf"]] <- length(rfvars)
+
+summary_no_loss <- data.frame(Model = c("Logit w/o interactions", "Logit w interactions", "Logit LASSO", "Random Forest"),
+                              Preds = c(nvars$logit_no_interactions, nvars$logit_incl_interactions, nvars$LASSO, nvars$rf),
+                              Coeffs = c(ncoeff$logit_no_interactions, ncoeff$logit_incl_interactions, ncoeff$LASSO, ncoeff$rf),
+                              RMSE = c(CV_RMSE$logit_no_interactions, CV_RMSE$logit_incl_interactions, CV_RMSE$LASSO, CV_RMSE$rf_p),
+                              AUC = c(CV_AUC$logit_no_interactions, CV_AUC$logit_incl_interactions, CV_AUC$LASSO, CV_AUC$rf_p))
+
+kable(x = summary_no_loss, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
+      linesep = "")
+
+```
+
+We use our best model to predict on the holdout set and receive a RMSE of **0.372**. Also, we produce the below (discrete) ROC plot which shows us the trade off between making false positive and false negative errors. The confusion matrices for default classification (using 0.5 as threshold) and for the threshold set to the mean of predicted values (approx. 0.2) show, as expected, how a lower threshold would lead to a higher probability of predicting high growth. Also, we nicely see the trade-off between false positives (going up) and false negatives (going down) when lowering the threshold. However, these choices of thresholds are still not based on a proper loss function, to which we will come next.  
+
+```{r best_model_no_loss}
+
+# Take best model and estimate RMSE on holdout
+# Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
+
+rf_predicted_probabilities_holdout <- predict(rf_model_p, newdata = bisnode_holdout, type = "prob")
+bisnode_holdout$rf_p_prediction <- rf_predicted_probabilities_holdout[,"high_growth"]
+RMSE(bisnode_holdout$rf_p_prediction, bisnode_holdout$high_growth)
+
+# produce ROC plot (discrete; could also be continuous)
+thresholds <- seq(0.05, 0.75, by = 0.05)
+cm <- list()
+true_positive_rates <- c()
+false_positive_rates <- c()
+for (thr in thresholds) {
+  holdout_prediction <- ifelse(bisnode_holdout[,"rf_p_prediction"] < thr, "low_growth", "high_growth") %>%
+    factor(levels = c("low_growth", "high_growth"))
+  cm_thr <- confusionMatrix(holdout_prediction, bisnode_holdout$high_growth_factor)$table
+  cm[[as.character(thr)]] <- cm_thr
+  true_positive_rates <- c(true_positive_rates, cm_thr["high_growth", "high_growth"] /
+                             (cm_thr["high_growth", "high_growth"] + cm_thr["low_growth", "high_growth"]))
+  false_positive_rates <- c(false_positive_rates, cm_thr["high_growth", "low_growth"] /
+                              (cm_thr["high_growth", "low_growth"] + cm_thr["low_growth", "low_growth"]))
+}
+
+tpr_fpr_for_thresholds <- tibble(
+  "threshold" = thresholds,
+  "true_positive_rate" = true_positive_rates,
+  "false_positive_rate" = false_positive_rates
+)
+
+discrete_roc_plot <- ggplot(
+  data = tpr_fpr_for_thresholds,
+  aes(x = false_positive_rate, y = true_positive_rate, color = threshold)) +
+  labs(x = "False positive rate (1 - Specificity)", y = "True positive rate (Sensitivity)") +
+  geom_point(size=2, alpha=0.8) +
+  #scale_color_viridis(option = "D", direction = -1) +
+  scale_x_continuous(expand = c(0.01,0.01), limit=c(0,1), breaks = seq(0,1,0.1)) +
+  scale_y_continuous(expand = c(0.01,0.01), limit=c(0,1), breaks = seq(0,1,0.1)) +
+  theme_bg() +
+  theme(legend.position ="right") +
+  theme(legend.title = element_text(size = 4), 
+        legend.text = element_text(size = 4),
+        legend.key.size = unit(.4, "cm")) 
+discrete_roc_plot
+
+# do classification with "random" threshold
+# default: the threshold 0.5 is used to convert probabilities to binary classes
+rf_class_prediction <- predict(rf_model_p, newdata = bisnode_holdout)
+summary(rf_class_prediction)
+
+# confusion matrix for 0.5 threshold
+cm_object1 <- confusionMatrix(rf_class_prediction, bisnode_holdout$high_growth_factor, positive = "high_growth")
+cm1 <- cm_object1$table
+cm1
+
+# observations in holdout
+obs_holdout <- nrow(bisnode_holdout)
+
+# add a version of the table where each cell is divided by the total number of observations
+cm1_perc <- cm1/obs_holdout
+
+# add column and row totals
+cm1_perc <- cbind(cm1_perc, rowSums(cm1_perc))
+cm1_perc <- rbind(cm1_perc, colSums(cm1_perc))
+
+# add missing row and column names
+cm1_perc <- as.data.frame(cm1_perc)
+colnames(cm1_perc) <- c("Actual Low Growth", "Actual High Growth", "Total")
+rownames(cm1_perc) <- c("Predicted Low Growth", "Predicted High Growth", "Total")
+
+# multiply each with 100 and add %
+cm1_perc[] <- lapply(cm1_perc, function(x) sprintf("%.2f%%", x * 100))
+
+kable(x = cm1_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
+      linesep = "")
+
+
+# confusion matrix for mean of predicted probabilities
+mean_predicted_highgrowth_prob <- mean(bisnode_holdout$rf_p_prediction)
+holdout_prediction <-
+  ifelse(bisnode_holdout$rf_p_prediction < mean_predicted_highgrowth_prob, "low_growth", "high_growth") %>%
+  factor(levels = c("low_growth", "high_growth"))
+cm_object2 <- confusionMatrix(holdout_prediction, bisnode_holdout$high_growth_factor)
+cm2 <- cm_object2$table
+cm2
+
+# add a version of the table where each cell is divided by the total number of observations
+cm2_perc <- cm2/obs_holdout
+
+# add column and row totals
+cm2_perc <- cbind(cm2_perc, rowSums(cm2_perc))
+cm2_perc <- rbind(cm2_perc, colSums(cm2_perc))
+
+# add missing row and column names
+cm2_perc <- as.data.frame(cm2_perc)
+colnames(cm2_perc) <- c("Actual Low Growth", "Actual High Growth", "Total")
+rownames(cm2_perc) <- c("Predicted Low Growth", "Predicted High Growth", "Total")
+
+# multiply each with 100 and add %
+cm2_perc[] <- lapply(cm2_perc, function(x) sprintf("%.2f%%", x * 100))
+
+kable(x = cm2_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
+      linesep = "")
+
 
 ```
 
@@ -1122,7 +1238,7 @@ kable(x = logit_summary, format = "latex", booktabs=TRUE,  digits = 3, row.names
                                   "Avg expected loss","Expected loss for fold #5"))
 
 ## Create plots based on Fold5 in CV ----------------------------------------------
-
+## below loop does not run!!!
  for (model_name in names(logit_cv_rocs)) {
 
    r <- logit_cv_rocs[[model_name]]
@@ -1206,6 +1322,7 @@ kable(x = rf_summary, format = "latex", booktabs=TRUE,  digits = 3, row.names = 
 
 
 # Create plots - this is for Fold5
+# below functions do not run!!!
 createLossPlot(roc_obj, best_treshold, "rf_p_loss_plot")
 createRocPlotWithOptimal(roc_obj, best_treshold, "rf_p_roc_plot")
 
@@ -1234,22 +1351,17 @@ expected_loss_holdout
 # compare all models: to pick the one with lowest expected loss
 ###############################################
 
-# calculate number of variables and coefficients for all models
-ncoeff <- list()
-ncoeff[["logit_no_interactions"]] <- length(logit_models[["logit_no_interactions"]]$coefnames)
-ncoeff[["logit_incl_interactions"]] <- length(logit_models[["logit_incl_interactions"]]$coefnames)
-ncoeff[["LASSO"]] <- length(logit_models[["LASSO"]]$coefnames)
-ncoeff[["rf_p"]] <- length(rf_model_p$coefnames)
+
 
 # calculate number of variables for all models
-##### OPEN TODO: include number of variables (have to unselect quadratics and interactions for logit)
 ##### OPEN: make nice row_names names
 
-summary_all_mods <- data.frame("Coefficients" = unlist(ncoeff),
-                              "CV RMSE" = unlist(CV_RMSE),
-                              "CV AUC" = unlist(CV_AUC),
-                              "CV threshold" = unlist(best_tresholds),
-                              "CV expected Loss" = unlist(expected_loss))
+summary_all_mods <- data.frame("Predictors" = unlist(nvars),
+                               "Coefficients" = unlist(ncoeff),
+                               "CV RMSE" = unlist(CV_RMSE),
+                               "CV AUC" = unlist(CV_AUC),
+                               "CV threshold" = unlist(best_tresholds),
+                               "CV expected Loss" = unlist(expected_loss))
 
 kable(x = summary_all_mods, format = "latex", booktabs=TRUE,  digits = 3, row.names = TRUE,
       linesep = "", col.names = c("Coefficients", "CV RMSE", "CV AUC",
@@ -1286,8 +1398,16 @@ cm4_perc <- cm4/obs_holdout
 cm4_perc <- cbind(cm4_perc, rowSums(cm4_perc))
 cm4_perc <- rbind(cm4_perc, colSums(cm4_perc))
 
+# add missing row and column names
+cm4_perc <- as.data.frame(cm4_perc)
+colnames(cm4_perc) <- c("Actual Low Growth", "Actual High Growth", "Total")
+rownames(cm4_perc) <- c("Predicted Low Growth", "Predicted High Growth", "Total")
 
+# multiply each with 100 and add %
+cm4_perc[] <- lapply(cm4_perc, function(x) sprintf("%.2f%%", x * 100))
 
+kable(x = cm4_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
+      linesep = "")
 
 ```
 
@@ -1388,6 +1508,7 @@ kable(x = rf_summary_manu, format = "latex", booktabs=TRUE,  digits = 3, row.nam
 
 
 # Create plots - this is for Fold5
+# below function do not run!!!
 createLossPlot(roc_obj, best_treshold, "rf_p_manu_loss_plot")
 createRocPlotWithOptimal(roc_obj, best_treshold, "rf_p_manu_roc_plot")
 
@@ -1493,6 +1614,7 @@ kable(x = rf_summary_serv, format = "latex", booktabs=TRUE,  digits = 3, row.nam
 
 
 # Create plots - this is for Fold5
+# below functions do not run!!
 createLossPlot(roc_obj, best_treshold, "rf_p_serv_loss_plot")
 createRocPlotWithOptimal(roc_obj, best_treshold, "rf_p_serv_roc_plot")
 
@@ -1738,6 +1860,7 @@ rf_model_plots$rf_model_var_imp_grouped_plot3
 #########################################################################################
 varnames
 
+# below code does not work!!!
 pdp_n_acc <- pdp::partial(rf_model_p, pred.var = "age", pred.grid = distinct_(bisnode_holdout, "d1_sales_mil_log"), train = bisnode_work)
 
 
