@@ -359,11 +359,12 @@ bisnode <- bisnode %>%
 
 
 ## Feature Engineering
-- included some new variables that were created from other variables
-- windsorized a range of variables (negative values to =0), and included flags for it
-- drop some variables 
-- impute some variables (including sales growth) --> defend decision to impute with 0 growth
 
+Feature engineering of the bisnode data set comprises re-coding of existing variables s.t. they get the appropriate class and/or meaningful levels and values. Also, plausibility checks are conducted: As some of our financial variables (e.g. *inventories*, *fixed_assets* etc.) must not be negative, we flag them and set negative values to zero. Other implausible variables, such as  *ceo_age* below 18 years, we set to NA. 
+
+In the process of analysing missing values, we impute some important ones (*ceo_age*, *labor_avg*) and add flags for missing values. For other, very important variables (mainly on assets, ceo and industry information), we do not impute but rather drop missing values. Moreover, we intend to use the variable on previous firm growth as predictor for (future) fast growth -- very much in the same fashion as we know from time trends models. Thus, we include the lagged growth in sales (2011 to 2012). As this results in some NAs (due to some missing sales values in 2011), we again flag the observations concerned and impute them by replacing them with 0. This means we assume that said observations did not experience any growth. Although this solution is not ideal, it is based on the assumption that we compare a firm's (missing) sales value in 2011 to the value of its "nearest neighbour" -- the firm's sales in 2012.
+
+Moreover, we compute some new variables: *age* of the company, a dummy for whether it is a *new* company, has *multiple_ceo*s, a *foreign_management*. We classify the observations based on their two-digit NACE codes into "manufacturing" vs. "services" (*ind2_cat* variable), generate a variable for *total_assets* and compute ratios of some financial variables (with either *total_assets* or *sales* as reference). Lastly, we windsorize tails of numeric variables and add flags accordingly.
 
 
 <!-- Feature engineering  --> 
@@ -567,6 +568,9 @@ bisnode <- bisnode %>%
 ```
 
 
+Next, we look at relationships between predictors and the binary response. We use the LOESS (locally estimated scatterplot smoothing) method to fit a smooth curve to the data points. In case the curve shows some clear non-linear behaviour, we add quadratic terms of predictors concerned. These decisions are re-assured by the estimation of simple GLMs, where we explain *high_growth* with the respective numeric variable and its quadratic -- whenever we detect a statistically significant relationship between a quadratic term and the binary response, we add that variable as quadratic predictor as well. From visual inspection of the plots, we can say that in general, asset variables do not show a lot of variation in the response i.e. do not seem to affect *fast_growth* as much.
+
+
 
 ```{r variable_relations}
 ########################################
@@ -587,16 +591,17 @@ for (var in vars_num){
     print(paste0(var, " entails NAs")) # check for lowess
   } else{
     plots[[var]] <- ggplot(data = bisnode, aes_string(x = var, y = "high_growth")) +
-  geom_point(size = 0.1,  shape = 20, fill = color[2], color = color[2]) +
+  geom_point(size = 1, fill = color[2], color = color[2]) +
   geom_smooth(method = "loess", se = F, colour = color[1], size = 1.5, span = 0.9) +
   theme_bg()
   }
 }
 
-# choose plots to show
-plots$sales_mil_log
-# plots$extra_exp_rel # does not work, neither: fixed_assets_rel
-plots[[6]]
+# plots to show
+# example of adding quadratic
+plots$ceo_age
+# example of not adding quadratic
+plots$curr_assets_rel
 
 # check lm with quadratics
 glm_results <- list()
@@ -611,12 +616,11 @@ for (var in vars_num){
   
 }
 
-glm_results$sales_mil_log
 
 
 ```
 
-Asset variables do not show so much variation.
+Moreover, we looked at the relationship between the binary response and binary/categorical predictors. In the plot below, we see, for example, that *high_growth* seems to be more prevalent with a young (defined as < 40 years) CEO. Also, a firm being very young (< 1 age) seems to play a role. As regards possible interactions, the below plot hints towards a relationship between industry category (NACE 2 digit classification) and age of the company, as can be seen by the different slopes of the fitted line per category. 
 
 ```{r variable_relations}
 # add quadratics for chosen variables (based on plots and glms)
@@ -633,18 +637,22 @@ binary_variables <- c("gender", "origin", "ind2", "ind", "ind2_cat", "urban_m",
                       "region_m", "ceo_old", "ceo_young")
 
 
-# loop did not work
-ggplot(bisnode, aes(x = factor(gender), fill = factor(high_growth))) +
-# ggplot(bisnode, aes(x = factor(ceo_old), fill = factor(high_growth))) +
-# ggplot(bisnode, aes(x = factor(ceo_young), fill = factor(high_growth))) +
-    geom_bar(position = "fill", stat = "count") +
-      labs(y = "Proportion", fill = "Fast Growth") +
+# two examples
+ggplot(bisnode, aes(x = factor(new), fill = factor(high_growth))) +
+  geom_bar(position = "fill", stat = "count") +
+  labs(y = "Proportion", fill = "High Growth") +
   theme_bg() +
-  scale_fill_manual(values = c(color[1], color[2]))
-
+  scale_fill_manual(values = c(color[1], color[2])) +
+  theme(legend.text = element_text(size = 10))
+ggplot(bisnode, aes(x = factor(ceo_young), fill = factor(high_growth))) +
+  geom_bar(position = "fill", stat = "count") +
+  labs(y = "Proportion", fill = "High Growth") +
+  theme_bg() +
+  scale_fill_manual(values = c(color[1], color[2])) +
+  theme(legend.text = element_text(size = 10))
 
 # interactions
-interactions_plot <- ggplot(bisnode, aes(x = age, y = high_growth, color = ind2)) +
+ggplot(bisnode, aes(x = age, y = high_growth, color = ind2)) +
   # ggplot(bisnode, aes(x = age, y = high_growth, color = ind2_cat)) +
   theme_bw() + 
   geom_point() + 
@@ -663,6 +671,19 @@ colSums(is.na(bisnode))/nrow(bisnode)*100
 
 
 ```
+
+## Variable Selection
+
+#### Logit Model
+
+For the logit, we try out two specifications. Both of them include the sales variables (past growth), engineered variables (i.e. ratios of financial variables, windsorized), the detected (possible) quadratic terms and the flags we created for extreme, missing and potentially erroneous data. Also, both specifications include quality variables (balance sheet information) and information on HR (e.g. CEO information) and the firm itself (e.g. regarding the location and industry). The difference lies in interactions included: Whilst the first specification does not include any interactions, the second one interacts selected variables with the industry variable. This gives us XX variables. 
+
+#### Probability Forest
+
+Since the probability forest can deal with complicated relationships between variables, we do not include any quadratics, interacted, modified and/or  windsorized variables. Thus, the raw financial, quality, sales, HR and firm variables are added. Also, potentially highly correlated variables are considered together. Categorical variables are encoded as factors. This gives us XX variables. 
+
+#### LASSO Logit
+For the LASSO logit, we consider the same variables as in the second logit specification (including one additional highly correlated variable). This yields in total XXX vars.
 
 
 <!-- Task1.1: Define variable groups for differnet models  --> 
@@ -724,7 +745,9 @@ interactions1 <- c("ind2*age", "ind2*age_quad",
 # logit
 # try without interactions?
 logitvars1 <- c(qualityvars, engvar, engvar2, engvar3, sales, hr, firm)
+length(logitvars1)
 logitvars2 <- c(qualityvars, engvar, engvar2, engvar3, sales, hr, firm, interactions1)
+length(logitvars2)
 logit_model_vars <- list("logit_no_interactions" = logitvars1, "logit_incl_interactions" = logitvars2)
 
 # caret always (no matter if all sales vars excluded or not) gives warnings: 
@@ -744,9 +767,10 @@ logit_model_vars <- list("logit_no_interactions" = logitvars1, "logit_incl_inter
 # random forest (no interactions, no modified features)
 rfvars  <-  c("sales_mil", "d1_sales_mil_log", "flag_missing_d1_sales_mil_log", 
               "ceo_count", "labor_avg", "ind", "ind2_cat", rawvars, qualityvars, hr, firm)
-
+length(rfvars)
 # for logit LASSO
 lassovars <- c("ceo_count", qualityvars, engvar, engvar2, engvar3, sales, hr, firm, interactions1)
+length(lassovars)
 
 ```
 
