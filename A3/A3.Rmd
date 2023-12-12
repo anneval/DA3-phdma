@@ -680,14 +680,14 @@ colSums(is.na(bisnode))/nrow(bisnode)*100
 
 #### Logit Model
 
-For the logit, we try out two specifications. Both of them include the sales variables (past growth), engineered variables (i.e. ratios of financial variables, windsorized), the detected (possible) quadratic terms and the flags we created for extreme, missing and potentially erroneous data. Also, both specifications include quality variables (balance sheet information) and information on HR (e.g. CEO information) and the firm itself (e.g. regarding the location and industry). The difference lies in interactions included: Whilst the first specification does not include any interactions, the second one interacts selected variables with the industry variable. This gives us XX variables. 
+For the logit, we try out two specifications. Both of them include the sales variables (past growth), engineered variables (i.e. ratios of financial variables, windsorized), the detected (possible) quadratic terms and the flags we created for extreme, missing and potentially erroneous data. Also, both specifications include quality variables (balance sheet information) and information on HR (e.g. CEO information) and the firm itself (e.g. regarding the location and industry). The difference lies in interactions included: Whilst the first specification does not include any interactions, the second one interacts selected variables with the industry variable. The first model entails **81** terms and the second one entails **90** terms.
 
 #### Probability Forest
 
-Since the probability forest can deal with complicated relationships between variables, we do not include any quadratics, interacted, modified and/or  windsorized variables. Thus, the raw financial, quality, sales, HR and firm variables are added. Also, potentially highly correlated variables are considered together. Categorical variables are encoded as factors. This gives us XX variables. 
+Since the probability forest can deal with complicated relationships between variables, we do not include any quadratics, interacted, modified and/or  windsorized variables. Thus, the raw financial, quality, sales, HR and firm variables are added. Also, potentially highly correlated variables are considered together. Categorical variables are encoded as factors. This gives us **49** variables.  
 
 #### LASSO Logit
-For the LASSO logit, we consider the same variables as in the second logit specification (including one additional highly correlated variable). This yields in total XXX vars.
+For the LASSO logit, we consider the same variables as in the second logit specification (including one additional highly correlated variable). This yields in total 91 vars.
 
 
 <!-- Task1.1: Define variable groups for differnet models  --> 
@@ -741,6 +741,8 @@ hr <- c("ceo_old", "ceo_young", "ceo_age", "flag_missing_ceo_age",
 
 firm <- c("age", "new", "urban_m", "region_m", "ind2")
 
+onehot <- names(bisnode[, c(133:150)])
+
 # test <- c(rawvars, qualityvars, engvar, engvar2, engvar3, sales, hr, firm)
 # setdiff(names(bisnode), test);setdiff(test, names(bisnode))
 
@@ -782,7 +784,9 @@ logit_model_vars <- list("logit_no_interactions" = logitvars1, "logit_incl_inter
 
 # random forest (no interactions, no modified features)
 rfvars  <-  c("d1_sales_mil_log", "flag_missing_d1_sales_mil_log", 
-              "ceo_count", "labor_avg", "ind", "ind2_cat", rawvars, qualityvars, hr, firm)
+              "ceo_count", "labor_avg", rawvars, qualityvars, hr, firm, onehot)
+rfvars <- rfvars[!rfvars %in% c("origin", "gender", "urban_m", "region_m", "ind2")]
+
 length(rfvars)
 # for logit LASSO
 lassovars <- c("ceo_count", qualityvars, engvar, engvar2, engvar3, sales, hr, firm, interactions1)
@@ -814,6 +818,16 @@ train_control <- trainControl(method = "cv",
                               savePredictions = TRUE, # save the predictions for each fold
                               verboseIter = TRUE)
 ```
+
+## Model Estimation
+
+We divide our data set into a work (80 percent, 15,229 observations) and holdout set (20 percent, 3,807 observations). The workout set will be used to train our models. We use 5-fold cross validation to evaluate performance of our models. 
+
+### Probability Prediction
+
+look at cv performance and pick best model (then RMSE and ROC on holdout)
+#### Logit Models
+The below plot compares the RMSE and AUC of both logit model specifications.
 
 <!-- Task1.1: Model 1 - Logit  --> 
 
