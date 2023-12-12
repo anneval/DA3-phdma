@@ -928,6 +928,19 @@ CV_RMSE[["rf_p"]] <- mean(CV_RMSE_folds[["rf_p"]]$RMSE)
 CV_AUC[["rf_p"]] <- mean(CV_AUC_folds[["rf_p"]]$AUC)
 
 # Now use loss function and search for best thresholds and expected loss over folds -----### SECOND PART 
+
+
+bisnode_work$high_growth_factor
+
+
+############### LOSS FUNCTION PART missing!
+
+# Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
+
+rf_predicted_probabilities_holdout <- predict(rf_model_p, newdata = bisnode_holdout, type = "prob")
+bisnode_holdout$rf_p_prediction <- rf_predicted_probabilities_holdout[,"high_growth"]
+RMSE(bisnode_holdout$rf_p_prediction, bisnode_holdout$high_growth)
+
 ```
 
 
@@ -1205,6 +1218,12 @@ CV_AUC_folds[["rf_p_manu"]] <- data.frame("Resample" = names(auc),
 CV_RMSE[["rf_p_manu"]] <- mean(CV_RMSE_folds[["rf_p_manu"]]$RMSE)
 CV_AUC[["rf_p_manu"]] <- mean(CV_AUC_folds[["rf_p_manu"]]$AUC)
 
+
+# Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
+
+rf_manu_predicted_probabilities_holdout <- predict(rf_model_p_manu, newdata = manu_holdout, type = "prob")
+manu_holdout$rf_p_manu_prediction <- rf_manu_predicted_probabilities_holdout[,"high_growth"]
+RMSE(manu_holdout$rf_p_manu_prediction, manu_holdout$high_growth)
 ```
 
 ```{r}
@@ -1245,6 +1264,13 @@ CV_AUC_folds[["rf_p_serv"]] <- data.frame("Resample" = names(auc),
 CV_RMSE[["rf_p_serv"]] <- mean(CV_RMSE_folds[["rf_p_serv"]]$RMSE)
 CV_AUC[["rf_p_serv"]] <- mean(CV_AUC_folds[["rf_p_serv"]]$AUC)
 
+
+
+# Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
+
+rf_serv_predicted_probabilities_holdout <- predict(rf_model_p_serv, newdata = serv_holdout, type = "prob")
+serv_holdout$rf_p_serv_prediction <- rf_serv_predicted_probabilities_holdout[,"high_growth"]
+RMSE(serv_holdout$rf_p_serv_prediction, serv_holdout$high_growth)
 ```
 
 <!-- Task2.2: Define single loss function (Same loss function as before?) but use for samples separately (pick one prediction model) --> 
@@ -1405,13 +1431,10 @@ dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m
 names(data_holdout_ohe) <- gsub(x = names(data_holdout_ohe),
                                 pattern = "\\.",
                                 replacement = " ")
-# 
 # # unify model for treeshap
 ## now porblem appa. with RF? 
 
-rf_model_unified <- ranger.unify(rf_model_p_manu$finalModel, data_holdout_ohe)
-print(colnames(rf_model_p))
-str(rf_model_p)
+rf_model_unified <- ranger.unify(rf_model_p$finalModel, data_holdout_ohe)
 
 # # when: Error in set_reference_dataset(ret, as.data.frame(data)) : 
 # # Dataset does not contain all features occurring in the model.
@@ -1437,7 +1460,7 @@ str(rf_model_p)
 # 
 # #rf_model_unified <- ranger.unify(rf_model$finalModel, data_holdout_ohe)
 # 
-# #treeshap_res <- treeshap(rf_model_unified, data_holdout_ohe[1:500, ]) # delete # for calculation but excluded here for Rmd knitting 
+treeshap_res <- treeshap(rf_model_p, data_holdout_ohe[1:500, ]) # delete # for calculation but excluded here for Rmd knitting 
 # 
 # #treeshap_res <- plot_contribution(treeshap_res, obs = 12)
 # 
