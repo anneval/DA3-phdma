@@ -732,18 +732,18 @@ logit_model_vars <- list("logit_no_interactions" = logitvars1, "logit_incl_inter
 # below shows no warnings on multicollinearity
 # also, Gabor's code shows warnings: Vorhersage durch Fit ohne vollen Rang mag täuschen
 # idea: exclude sales_mil_log variables and ignore warnings
-glm_1 <- glm(formula(paste0("high_growth_factor ~", paste0(logitvars1, collapse = " + "))),
-             family = "binomial",
-             data = bisnode_work)
+# glm_1 <- glm(formula(paste0("high_growth_factor ~", paste0(logitvars1, collapse = " + "))),
+#              family = "binomial",
+#              data = bisnode_work)
 
-summary(glm_1)
+# summary(glm_1)
 
 # random forest (no interactions, no modified features)
 rfvars  <-  c("sales_mil", "d1_sales_mil_log", "flag_missing_d1_sales_mil_log", 
               "ceo_count", "labor_avg", "ind", "ind2_cat", rawvars, qualityvars, hr, firm)
 
 # for logit LASSO
-lassovars <- c("ceo_count", qualityvars, engvar, engvar2, engvar3, sales, hr, firm, interactions1, interactions2)
+lassovars <- c("ceo_count", qualityvars, engvar, engvar2, engvar3, sales, hr, firm, interactions1)
 
 ```
 
@@ -905,7 +905,7 @@ CV_AUC[["rf_p"]] <- mean(CV_AUC_folds[["rf_p"]]$AUC)
 
 
 
-<!-- Task1.1: Model 3 - Logit LASSO?? / Classification Tree?  -->
+<!-- Task1.1: Model 3 - Logit LASSO  -->
 ```{r}
 # Logit lasso -----------------------------------------------------------
 
