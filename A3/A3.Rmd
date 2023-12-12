@@ -28,7 +28,7 @@ options(scipen = 999)
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies')
+knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
@@ -680,14 +680,14 @@ colSums(is.na(bisnode))/nrow(bisnode)*100
 
 #### Logit Model
 
-For the logit, we try out two specifications. Both of them include the sales variables (past growth), engineered variables (i.e. ratios of financial variables, windsorized), the detected (possible) quadratic terms and the flags we created for extreme, missing and potentially erroneous data. Also, both specifications include quality variables (balance sheet information) and information on HR (e.g. CEO information) and the firm itself (e.g. regarding the location and industry). The difference lies in interactions included: Whilst the first specification does not include any interactions, the second one interacts selected variables with the industry variable. This gives us XX variables. 
+For the logit, we try out two specifications. Both of them include the sales variables (past growth), engineered variables (i.e. ratios of financial variables, windsorized), the detected (possible) quadratic terms and the flags we created for extreme, missing and potentially erroneous data. Also, both specifications include quality variables (balance sheet information) and information on HR (e.g. CEO information) and the firm itself (e.g. regarding the location and industry). The difference lies in interactions included: Whilst the first specification does not include any interactions, the second one interacts selected variables with the industry variable. The first model entails **81** terms and the second one entails **90** terms.
 
 #### Probability Forest
 
-Since the probability forest can deal with complicated relationships between variables, we do not include any quadratics, interacted, modified and/or  windsorized variables. Thus, the raw financial, quality, sales, HR and firm variables are added. Also, potentially highly correlated variables are considered together. Categorical variables are encoded as factors. This gives us XX variables. 
+Since the probability forest can deal with complicated relationships between variables, we do not include any quadratics, interacted, modified and/or  windsorized variables. Thus, the raw financial, quality, sales, HR and firm variables are added. Also, potentially highly correlated variables are considered together. Categorical variables are encoded as factors. This gives us **49** variables.  
 
 #### LASSO Logit
-For the LASSO logit, we consider the same variables as in the second logit specification (including one additional highly correlated variable). This yields in total XXX vars.
+For the LASSO logit, we consider the same variables as in the second logit specification (including one additional highly correlated variable). This yields in total 91 vars.
 
 
 <!-- Task1.1: Define variable groups for differnet models  --> 
@@ -695,6 +695,18 @@ For the LASSO logit, we consider the same variables as in the second logit speci
 ```{r}
 #####################
 # Group Variables
+
+# # one-hot encode factor variables (to use in random forest and later for SHAP values)
+# variable_types <- sapply(bisnode, class)
+# # Identify factor variables
+# factor_variables <- names(variable_types[variable_types == "factor"])
+# 
+# dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
+#                  data = bisnode, fullRank = TRUE)
+# new_dat <- data.frame(predict(dmy, newdata = bisnode))
+# # add new variables to data
+# bisnode <- cbind(bisnode, new_dat)
+# rm(new_dat)
 
 rawvars <-  c("curr_assets", "curr_liab", "extra_exp", "extra_inc", "extra_profit_loss", 
               "fixed_assets", "inc_bef_tax", "intang_assets", "inventories", "liq_assets", 
@@ -728,6 +740,8 @@ hr <- c("ceo_old", "ceo_young", "ceo_age", "flag_missing_ceo_age",
         "ln_labor_avg", "flag_miss_labor_avg")
 
 firm <- c("age", "new", "urban_m", "region_m", "ind2")
+
+onehot <- names(bisnode[, c(133:150)])
 
 # test <- c(rawvars, qualityvars, engvar, engvar2, engvar3, sales, hr, firm)
 # setdiff(names(bisnode), test);setdiff(test, names(bisnode))
@@ -770,7 +784,11 @@ logit_model_vars <- list("logit_no_interactions" = logitvars1, "logit_incl_inter
 
 # random forest (no interactions, no modified features)
 rfvars  <-  c("d1_sales_mil_log", "flag_missing_d1_sales_mil_log", 
-              "ceo_count", "labor_avg", "ind", "ind2_cat", rawvars, qualityvars, hr, firm)
+              "ceo_count", "labor_avg", rawvars, qualityvars, hr, firm)
+# rfvars  <-  c("d1_sales_mil_log", "flag_missing_d1_sales_mil_log", 
+#               "ceo_count", "labor_avg", rawvars, qualityvars, hr, firm, onehot)
+#rfvars <- rfvars[!rfvars %in% c("origin", "gender", "urban_m", "region_m", "ind2")]
+
 length(rfvars)
 # for logit LASSO
 lassovars <- c("ceo_count", qualityvars, engvar, engvar2, engvar3, sales, hr, firm, interactions1)
@@ -799,9 +817,21 @@ train_control <- trainControl(method = "cv",
                               number = n_folds,
                               classProbs = TRUE, # computing probabilities during training
                               summaryFunction = twoClassSummaryExtended, # from da_helper_functions.R
-                              savePredictions = TRUE, # save the predictions for each fold
+                              savePredictions = "all", # save the predictions for each fold
                               verboseIter = TRUE)
+
+
 ```
+
+## Model Estimation
+
+We divide our data set into a work (80 percent, 15,229 observations) and holdout set (20 percent, 3,807 observations). The workout set will be used to train our models. We use 5-fold cross validation to evaluate performance of our models. 
+
+### Probability Prediction
+
+look at cv performance and pick best model (then RMSE and ROC on holdout)
+#### Logit Models
+The below plot compares the RMSE and AUC of both logit model specifications.
 
 <!-- Task1.1: Model 1 - Logit  --> 
 
@@ -1279,14 +1309,14 @@ serv_holdout <- bisnode_work %>% filter(ind2_cat == "services")
 # Split by gini, ratio of 1's in each tree, average over trees
 #################################################
 
-
 rf_model_p_manu <- train(
   formula(paste0("high_growth_factor ~ ", paste0(rfvars , collapse = " + "))),
   method = "ranger",
   data = manu_work,
   tuneGrid = tune_grid,
   trControl = train_control,
-  importance = "impurity"
+  importance = "impurity",
+  save.info = "all"
 )
 
 rf_model_p_manu$results
@@ -1470,19 +1500,26 @@ rf_model_plots$rf_model_plot_10_3
 # 2) varimp plot grouped to (8)
 ##############################
 # grouped variable importance - keep binaries created off factors together
+# dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
+#                  data = bisnode, fullRank = TRUE)
 
 varnames <- rf_model_p$finalModel$xNames
-#f_neighbourhood_cleansed_varnames <- grep("f_neighbourhood_cleansed",varnames, value = TRUE)
-#f_property_type_varnames <- grep("f_property_type",varnames, value = TRUE)
-#f_room_type_varnames <- grep("f_room_type",varnames, value = TRUE)
+ind_varnames <- grep("ind",varnames, value = TRUE)
+ind2_varnames <- grep("ind2",varnames, value = TRUE) # change
+ind2_cat_varnames <- grep("ind2_cat",varnames, value = TRUE)# change 
+gender_varnames <- grep("gender",varnames, value = TRUE)
+origin_varnames <- grep("origin",varnames, value = TRUE)
+region_m_varnames <- grep("region_m",varnames, value = TRUE)
+urban_m_varnames <- grep("urban_m",varnames, value = TRUE)
 
-groups <- list(f_neighbourhood_cleansed=f_neighbourhood_cleansed_varnames,
-               f_property_type = f_property_type_varnames,
-               f_room_type = f_room_type_varnames,
-               bathroom = "bathroom",
-               n_days_since = "n_days_since",
-               accommodates = "accommodates",
-               beds = "beds")
+
+groups <- list(ind=ind_varnames,
+               ind2 = ind2_varnames,
+               ind2_cat = ind2_cat_varnames,
+               gender = gender_varnames,
+               origin = origin_varnames,
+               region_m =region_m_varnames,
+               urban_m = urban_m_varnames)
 
 rf_model_var_imp_grouped <- group.importance(rf_old$finalModel, groups)
 rf_model_var_imp_grouped_df <- data.frame(varname = rownames(rf_model_var_imp_grouped),
@@ -1514,8 +1551,8 @@ rfvars
 ### correct facors chosen?? 
 
 # define one-hot encoding function
-dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
-                 data = bisnode_holdout, fullRank = TRUE)
+# dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
+#                  data = bisnode_holdout, fullRank = TRUE)
 
 # #perform one-hot encoding on data frame
 
@@ -1528,7 +1565,14 @@ names(data_holdout_ohe) <- gsub(x = names(data_holdout_ohe),
 # # unify model for treeshap
 ## now porblem appa. with RF? 
 
-rf_model_unified <- ranger.unify(rf_model_p$finalModel, data_holdout_ohe)
+rf_model_unified <- ranger.unify(rf_model_p_manu$finalModel, bisnode_holdout)
+
+
+ranger_model <- rf_model_p_manu$finalModel
+
+tree_info <- ranger_model$unique.tree.info
+
+
 
 # # when: Error in set_reference_dataset(ret, as.data.frame(data)) : 
 # # Dataset does not contain all features occurring in the model.
