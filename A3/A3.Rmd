@@ -999,11 +999,15 @@ CV_AUC[["LASSO"]] <- mean(CV_AUC_folds[["LASSO"]]$AUC)
 
 <!-- Task1.1: Evaluation  -->
 ```{r}
-
 # discrete ROC (with thresholds in steps) on holdout -------------------------------------------------
 # continuous ROC on holdout with best model (Logit 4) -------------------------------------------
 # Confusion table with different thresholds ----------------------------------------------------------
 # Calibration curve -----------------------------------------------------------
+
+# Create table that compares models based on RMSE and AUC and also shows number of predictors and number of coefficients
+
+
+
 
 ## ADD
 ```
@@ -1013,7 +1017,6 @@ CV_AUC[["LASSO"]] <- mean(CV_AUC_folds[["LASSO"]]$AUC)
 
 
 ```{r}
-
 #############################################
 # PART II.
 # We have a loss function
@@ -1028,8 +1031,10 @@ cost = FN/FP
 prevalence = sum(bisnode_work$high_growth)/length(bisnode_work$high_growth)
 
 # Draw ROC Curve and find optimal threshold with loss function --------------------------
+```
 
 
+```{r}
 ################################
 # incorporate loss function for logit models
 best_tresholds <- list()
@@ -1191,17 +1196,67 @@ holdout_treshold <- coords(roc_obj_holdout, x = best_tresholds[["rf_p"]] , input
 expected_loss_holdout <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/length(bisnode_holdout$high_growth)
 expected_loss_holdout
 ```
-
-
 <!-- Task1.2: For each of the three models: predict probabilities, look for the optimal classification threshold, calculate expected loss with your loss function  -->
 <!-- Task1.2: Pick model with smallest expected loss -->
+
 ```{r}
+# compare all models: to pick the one with lowest expected loss
+###############################################
+
+# calculate number of variables and coefficients for all models
+ncoeff <- list()
+ncoeff[["logit_no_interactions"]] <- length(logit_models[["logit_no_interactions"]]$coefnames)
+ncoeff[["logit_incl_interactions"]] <- length(logit_models[["logit_incl_interactions"]]$coefnames)
+ncoeff[["LASSO"]] <- length(logit_models[["LASSO"]]$coefnames)
+ncoeff[["rf_p"]] <- length(rf_model_p$coefnames)
+
+# calculate number of variables for all models
+##### OPEN TODO: include number of variables (have to unselect quadratics and interactions for logit)
+##### OPEN: make nice row_names names
+
+summary_all_mods <- data.frame("Coefficients" = unlist(ncoeff),
+                              "CV RMSE" = unlist(CV_RMSE),
+                              "CV AUC" = unlist(CV_AUC),
+                              "CV threshold" = unlist(best_tresholds),
+                              "CV expected Loss" = unlist(expected_loss))
+
+kable(x = summary_all_mods, format = "latex", booktabs=TRUE,  digits = 3, row.names = TRUE,
+      linesep = "", col.names = c("Coefficients", "CV RMSE", "CV AUC",
+                                  "CV threshold", "CV expected Loss"))
+
 
 ```
+
+
+
 
 <!-- Task1.3: Show a confusion table (on a selected fold or holdout set) -->
 <!-- Task1.3: Discuss results, evaluate how useful your model may be -->
 ```{r}
+###############################################
+# Create Confusion table for the RF model
+###############################################
+
+
+# Confusion table on holdout for RF
+holdout_prediction <-
+  ifelse(bisnode_holdout$rf_p_prediction < best_tresholds[["rf_p"]], "low_growth", "high_growth") %>%
+  factor(levels = c("low_growth", "high_growth"))
+cm_object4 <- confusionMatrix(holdout_prediction,bisnode_holdout$high_growth_factor)
+cm4 <- cm_object4$table
+
+# observations in holdout
+obs_holdout <- nrow(bisnode_holdout)
+
+# add a version of the table where each cell is divided by the total number of observations
+cm4_perc <- cm4/obs_holdout
+
+# add column and row totals
+cm4_perc <- cbind(cm4_perc, rowSums(cm4_perc))
+cm4_perc <- rbind(cm4_perc, colSums(cm4_perc))
+
+
+
 
 ```
 
