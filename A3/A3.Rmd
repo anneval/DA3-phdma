@@ -1042,7 +1042,7 @@ for (model_name in names(logit_models)) {
     best_treshold <- coords(roc_obj, "best", ret="all", transpose = FALSE,
                             best.method="youden", best.weights=c(cost, prevalence))
     best_tresholds_cv[[fold]] <- best_treshold$threshold
-    expected_loss_cv[[fold]] <- (best_treshold$fp*FP + best_treshold$fn*FN)/length(cv_fold$dhigh_growth)
+    expected_loss_cv[[fold]] <- (best_treshold$fp*FP + best_treshold$fn*FN)/length(cv_fold$high_growth)
   }
 
   # average
@@ -1122,7 +1122,7 @@ for (fold in c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")) {
   best_treshold <- coords(roc_obj, "best", ret="all", transpose = FALSE,
                           best.method="youden", best.weights=c(cost, prevalence))
   best_tresholds_cv[[fold]] <- best_treshold$threshold
-  expected_loss_cv[[fold]] <- (best_treshold$fp*FP + best_treshold$fn*FN)/length(cv_fold$default)
+  expected_loss_cv[[fold]] <- (best_treshold$fp*FP + best_treshold$fn*FN)/length(cv_fold$high_growth)
 }
 
 # average
