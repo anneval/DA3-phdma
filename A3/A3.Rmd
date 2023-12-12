@@ -989,14 +989,10 @@ CV_RMSE_folds[["LASSO"]] <- logit_lasso_model$resample[,c("Resample", "RMSE")]
 
 <!-- Task1.1: Evaluation  -->
 ```{r}
-# collect all models in a list
-
-
-
 
 # discrete ROC (with thresholds in steps) on holdout -------------------------------------------------
 # continuous ROC on holdout with best model (Logit 4) -------------------------------------------
-# Confusion table with different tresholds ----------------------------------------------------------
+# Confusion table with different thresholds ----------------------------------------------------------
 # Calibration curve -----------------------------------------------------------
 
 ## ADD
@@ -1025,6 +1021,7 @@ prevalence = sum(bisnode_work$high_growth)/length(bisnode_work$high_growth)
 
 
 ################################
+# incorporate loss function for logit models
 best_tresholds <- list()
 expected_loss <- list()
 logit_cv_rocs <- list()
@@ -1117,7 +1114,14 @@ cm3
 
 
 
-# here loss function for RF
+```
+
+<!-- Task1.1: Loss function RF -->
+
+```{r}
+################################
+# loss function for RF
+################################
 
 # Now use loss function and search for best thresholds and expected loss over folds -----
 best_tresholds_cv <- list()
@@ -1177,9 +1181,6 @@ holdout_treshold <- coords(roc_obj_holdout, x = best_tresholds[["rf_p"]] , input
                            ret="all", transpose = FALSE)
 expected_loss_holdout <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/length(bisnode_holdout$high_growth)
 expected_loss_holdout
-
-
-
 ```
 
 
