@@ -71,17 +71,9 @@ library(vars)
 library(ranger)
 ```
 
-```{r}
-# maybe eaasier version load entire data insetad of just RF
-# githubURL <- "https://github.com/anneval/MA_data/blob/main/All.RData?raw=true"
-# #load(url(githubURL))
-# 
-# load(file(githubURL))
-```
-
 ```{r data,include=FALSE}
 data_in <- paste(data_dir,"bisnode-firms", sep = "/")
-
+load(paste(data_in,"A2.RData",sep = "/")) 
 rf_old <- read_rds(paste(data_in,"rf_A2.rds",sep = "/")) # save in data dir!!!
 ```
 

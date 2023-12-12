@@ -999,3 +999,8 @@ summary(ols_model)
 
 ```
 
+
+```{r}
+save.image(file = "A2.RData")
+```
+
