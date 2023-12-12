@@ -17,6 +17,7 @@ output:
       - {icon: "fa-github", 
          title: "Repository", 
          href: "https://github.com/anneval/DA3-phdma/tree/main/A3", align: right, target: blank}
+    runtime: shiny
 ---
 
 <!-- README:  By default dashboards are standard HTML documents that can be deployed on any web server or even attached to an email message. You can optionally add Shiny components for additional interactivity and then deploy on Shiny Server or shinyapps.io. -->
@@ -27,6 +28,8 @@ output:
 
 <!-- replace RF with entire date environment AND
 Replace code with graphs "ready"-->
+
+<!-- PLACE ALL GRAPHS INTO A3.rmd!!! just call here to be faster-->
 
 ```{r global setup, include=FALSE}
 # Clear memory
@@ -69,11 +72,15 @@ library(readxl)
 library(stargazer)
 library(vars)
 library(ranger)
+library(shiny)
+library(treeshap)
+library(pdp)
+
 ```
 
 ```{r data,include=FALSE}
 data_in <- paste(data_dir,"bisnode-firms", sep = "/")
-load(paste(data_in,"A2.RData",sep = "/")) 
+#load(paste(data_in,"A2.RData",sep = "/")) #activate once we have correct data
 rf_old <- read_rds(paste(data_in,"rf_A2.rds",sep = "/")) # save in data dir!!!
 ```
 
@@ -175,6 +182,7 @@ rf_model_var_imp_grouped_plot <- ggplot(rf_model_var_imp_grouped_df, aes(x = reo
         axis.title.y = element_text(size = 6))
 rf_model_var_imp_grouped_plot
 ```
+
 ```{r, include=T}
 rf_model_var_imp_grouped_plot
 ```
@@ -215,10 +223,11 @@ rf_model_var_imp_plot
 
 ```{r,echo=FALSE, include=FALSE, warning=F}
 ## SHAP VALUES ##
+#### all done in code before 
 # devtools::install_github('ModelOriented/treeshap')
 
 # #define one-hot encoding function
-# dummy <- dummyVars(" ~  accommodates + beds + f_property_type + f_room_type + n_days_since + flag_days_since + neighbourhood_cleansed + bathrooms + f_number_of_reviews + review_scores_rating + flag_review_scores_rating + a_Parking + a_LongTermStay + a_Kitchen + a_Childfriendly + a_Laundry + a_OutdoorArea + a_Heating + a_Toiletry + a_TeaCoffee + a_Internet + a_Entertainment + a_Security + a_Selfcheckin + a_HomeOffice + a_Petfriendly", data=listings_holdout, fullRank=T, sep = NULL)
+# dummy <- dummyVars(" ~  ., fullRank=T, sep = NULL)
 # 
 # #perform one-hot encoding on data frame
 # data_holdout_ohe <- data.frame(predict(dummy, newdata=listings_holdout))
@@ -284,22 +293,120 @@ rf_model_var_imp_plot
 # Partial Dependence Plots -------------------------------------------------------
 #########################################################################################
 
-
 #### add loop other predictors but also store each graph so if I change pred different graph some kind of drop down 
+```
 
-# pdp_n_acc <- pdp::partial(rf_old, pred.var = "accomodates", pred.grid = distinct_(listings_holdout, "accommodates"), train = listings_holdout)
-# pdp_n_acc_plot <- pdp_n_acc %>%
-#   autoplot( ) +
-#   geom_point(color=color[1], size=2) +
-#   geom_line(color=color[1], size=1) +
-#   ylab("Predicted price") +
-#   xlab("Accommodates (persons)") +
-#   scale_x_continuous(limit=c(1,7), breaks=seq(1,7,1))+
-#   theme_bg()
+## Sidebar {.sidebar}
 
-#pdp_n_acc_plot
+```{r, include=TRUE}
+# CHANGE ACCORDING TO OUR DATASET rf_variables
+# Assume 'features' is a vector of feature names in your dataset
+features <- c("accommodates", "room_type", "other_feature")
+
+selectInput("feature_selector", "Select Feature:", choices = features, selected = features[1])
 
 ```
+
+
+```{r, include=TRUE}
+# Assuming rf_old and listings_holdout are defined earlier
+
+### does it work like this or do I need a loop over my features still? (- shiny code together with selectInput above..)In one chunk? 
+## add something for displaying?
+
+renderPlot({
+  selected_feature <- input$feature_selector
+  
+  # Check if the selected feature is numeric or categorical
+  if (is.numeric(listings_holdout[[selected_feature]])) {
+    # Create PDP for numeric feature
+    pdp_result <- pdp::partial(rf_old, pred.var = selected_feature, 
+                               pred.grid = distinct_(listings_holdout, selected_feature), 
+                               train = listings_holdout)
+    
+    # Customize PDP plot for numeric feature
+    pdp_plot <- pdp_result %>%
+      autoplot() +
+      geom_point(color = color[1], size = 2) +
+      geom_line(color = color[1], size = 1) +
+      ylab("Predicted price") +
+      xlab(paste("Partial Dependence on", selected_feature)) +
+      theme_bg()
+    
+    # Print the plot
+    print(pdp_plot)
+    
+  } else if (is.factor(listings_holdout[[selected_feature]])) {
+    # Create PDP for categorical feature
+    pdp_result <- pdp::partial(rf_old, pred.var = selected_feature, 
+                               pred.grid = unique(listings_holdout[[selected_feature]]), 
+                               train = listings_holdout)
+    
+    # Customize PDP plot for categorical feature
+    pdp_plot <- pdp_result %>%
+      autoplot() +
+      geom_point(color = color[1], size = 2) +
+      ylab("Predicted price") +
+      xlab(paste("Partial Dependence on", selected_feature)) +
+      theme_bg()
+    
+    # Print the plot
+    print(pdp_plot)
+  }
+})
+
+```
+
+
+```{r}
+# library(dplyr)
+# library(pdp)
+# library(ggplot2)
+# 
+# # Assume 'features' is a vector of feature names in your dataset
+# features <- c("accommodates", "room_type", "other_feature") 
+#  
+# for (feature in features) {
+#   # Check if the feature is numeric or categorical
+#   if (is.numeric(listings_holdout[[feature]])) {
+#     # Create PDP for numeric feature
+#     pdp_result <- pdp::partial(rf_old, pred.var = feature, 
+#                                pred.grid = distinct_(listings_holdout, feature), 
+#                                train = listings_holdout)
+#     
+#     # Customize PDP plot for numeric feature
+#     pdp_plot <- pdp_result %>%
+#       autoplot() +
+#       geom_point(color = color[1], size = 2) +
+#       geom_line(color = color[1], size = 1) +
+#       ylab("Predicted price") +
+#       xlab(paste("Partial Dependence on", feature)) +
+#       theme_bg()
+#     
+#     # Save the plot as an image file (adjust the filename and format as needed)
+#     ggsave(paste0("pdp_plot_", feature, ".png"), pdp_plot, width = 6, height = 4)
+#     
+#   } else if (is.factor(listings_holdout[[feature]])) {
+#     # Create PDP for categorical feature
+#     pdp_result <- pdp::partial(rf_old, pred.var = feature, 
+#                                pred.grid = unique(listings_holdout[[feature]]), 
+#                                train = listings_holdout)
+#     
+#     # Customize PDP plot for categorical feature
+#     pdp_plot <- pdp_result %>%
+#       autoplot() +
+#       geom_point(color = color[1], size = 2) +
+#       ylab("Predicted price") +
+#       xlab(paste("Partial Dependence on", feature)) +
+#       theme_bg()
+#     
+#     # Save the plot as an image file (adjust the filename and format as needed)
+#     ggsave(paste0("pdp_plot_", feature, ".png"), pdp_plot, width = 6, height = 4)
+#   }
+# }
+
+```
+
 
 # <font size="3">Manufacturing</font> {data-navmenu="Key variables"}
 #### **Importance of key variables**

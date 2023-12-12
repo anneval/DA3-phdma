@@ -28,7 +28,7 @@ options(scipen = 999)
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies')
+knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
@@ -866,7 +866,7 @@ RMSE(bisnode_holdout[, "best_logit_no_loss_pred", drop=TRUE], bisnode_holdout$hi
 #################################################
 
 tune_grid <- expand.grid(
-  .mtry = c(5, 6, 7),
+  .mtry = c(5, 6, 7), # sq root is 6.244
   .splitrule = "gini",
   .min.node.size = c(10, 15))
 
@@ -876,7 +876,8 @@ rf_model_p <- train(
   method = "ranger",
   data = bisnode_work,
   tuneGrid = tune_grid,
-  trControl = train_control
+  trControl = train_control,
+  importance = "impurity"
 )
 
 rf_model_p$results
@@ -943,7 +944,6 @@ CV_RMSE_folds[["LASSO"]] <- logit_lasso_model$resample[,c("Resample", "RMSE")]
 # Split by Gini, majority vote in each tree, majority vote over trees
 #################################################
 ```
-
 
 
 <!-- Task1.1: Evaluation  -->
@@ -1124,8 +1124,95 @@ expected_loss[["rf_p"]] <- mean(unlist(expected_loss_cv))
 <!-- Task2.1: 2 Samples (service & manufacturing)  --> 
 
 ```{r}
+# work sets for the two sub samples 
+manu_work <- bisnode_work %>% filter(ind2_cat == "manufacturing")
+serv_work <- bisnode_work %>% filter(ind2_cat == "services")
+
+# holdout sets for the two sub samples 
+manu_holdout <- bisnode_work %>% filter(ind2_cat == "manufacturing")
+serv_holdout <- bisnode_work %>% filter(ind2_cat == "services")
+```
+
+<!-- Task2.1: 2 Samples (service & manufacturing) Random forest (WITHOUT LOSS FUNCTION!!!)  --> 
+```{r}
+#################################################
+# Probability forest for manufacturing sample!
+# Split by gini, ratio of 1's in each tree, average over trees
+#################################################
+
+rf_model_p_manu <- train(
+  formula(paste0("high_growth_factor ~ ", paste0(rfvars , collapse = " + "))),
+  method = "ranger",
+  data = manu_work,
+  tuneGrid = tune_grid,
+  trControl = train_control,
+  importance = "impurity"
+)
+
+rf_model_p_manu$results
+
+best_mtry <- rf_model_p_manu$bestTune$mtry
+best_min_node_size <- rf_model_p_manu$bestTune$min.node.size
+
+# Get average (ie over the folds) RMSE and AUC ------------------------------------
+CV_RMSE_folds[["rf_p_manu"]] <- rf_model_p_manu$resample[,c("Resample", "RMSE")]
+
+auc <- list()
+for (fold in c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")) {
+  cv_fold <-
+    rf_model_p_manu$pred %>%
+    filter(Resample == fold)
+
+  roc_obj <- roc(cv_fold$obs, cv_fold$high_growth)
+  auc[[fold]] <- as.numeric(roc_obj$auc)
+}
+CV_AUC_folds[["rf_p_manu"]] <- data.frame("Resample" = names(auc),
+                                         "AUC" = unlist(auc))
+
+CV_RMSE[["rf_p_manu"]] <- mean(CV_RMSE_folds[["rf_p_manu"]]$RMSE)
+CV_AUC[["rf_p_manu"]] <- mean(CV_AUC_folds[["rf_p_manu"]]$AUC)
 
 ```
+```{r}
+#################################################
+# Probability forest for service sample!
+# Split by gini, ratio of 1's in each tree, average over trees
+#################################################
+
+rf_model_p_serv <- train(
+  formula(paste0("high_growth_factor ~ ", paste0(rfvars , collapse = " + "))),
+  method = "ranger",
+  data = manu_work,
+  tuneGrid = tune_grid,
+  trControl = train_control,
+  importance = "impurity"
+)
+
+rf_model_p_serv$results
+
+best_mtry <- rf_model_p_serv$bestTune$mtry
+best_min_node_size <- rf_model_p_serv$bestTune$min.node.size
+
+# Get average (ie over the folds) RMSE and AUC ------------------------------------
+CV_RMSE_folds[["rf_p_serv"]] <- rf_model_p_serv$resample[,c("Resample", "RMSE")]
+
+auc <- list()
+for (fold in c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")) {
+  cv_fold <-
+    rf_model_p_serv$pred %>%
+    filter(Resample == fold)
+
+  roc_obj <- roc(cv_fold$obs, cv_fold$high_growth)
+  auc[[fold]] <- as.numeric(roc_obj$auc)
+}
+CV_AUC_folds[["rf_p_serv"]] <- data.frame("Resample" = names(auc),
+                                         "AUC" = unlist(auc))
+
+CV_RMSE[["rf_p_serv"]] <- mean(CV_RMSE_folds[["rf_p_serv"]]$RMSE)
+CV_AUC[["rf_p_serv"]] <- mean(CV_AUC_folds[["rf_p_serv"]]$AUC)
+
+```
+
 <!-- Task2.2: Define single loss function (Same loss function as before?) but use for samples separately (pick one prediction model) --> 
 
 ```{r}
@@ -1141,45 +1228,177 @@ expected_loss[["rf_p"]] <- mean(unlist(expected_loss_cv))
 <!-- Task3.1: Use some methods to interpret your random forest probability model (Shapley, PDP) --> 
 
 ```{r}
-# ideas:
-# Feature importance plot
-varImpPlot(rf_model)
-# Install and load 'pdp' package if not already installed
-# install.packages("pdp")
-library(pdp)
+### Variable importance top 10 
+# use RF model since performed the best!
+# first need a function to calculate grouped varimp
+group.importance <- function(rf.obj, groups) {
+  var.imp <- as.matrix(sapply(groups, function(g) {
+    sum(importance(rf.obj)[g], na.rm = TRUE)
+  }))
+  colnames(var.imp) <- "MeanDecreaseGini"
+  return(var.imp)
+}
+```
 
-# Partial dependence plot for 'var1'
-partial_plot <- partial(rf_model, pred.var = "var1", grid.resolution = 100)
-plot(partial_plot)
 
-# Install and load 'vip' package if not already installed
-# install.packages("vip")
-library(vip)
+```{r}
+####### CHANGE TO FORESTS WITH LOSS ########
+# Assuming you have three data sets named df1, df2, and df3
+rf_models <- list(rf_model_p, rf_model_p_manu, rf_model_p_serv)
+# Create an empty list to store the plots
+rf_model_plots <- list()
 
-# Permutation feature importance
-vip(rf_model)
+# Loop over the random forest models
+for (i in seq_along(rf_models)) {
+  current_rf_model <- rf_models[[i]]
 
-# Install and load 'shap' package if not already installed
-# install.packages("shap")
-library(shap)
-########################################
-# one-hot encoding of additional factors
-dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
-                 data = bisnode, fullRank = TRUE)
-new_dat <- data.frame(predict(dmy, newdata = bisnode))
-# add new variables to data
-bisnode <- cbind(bisnode, new_dat)
-rm(new_dat)
+rf_model_var_imp <- importance(current_rf_model$finalModel)/1000
 
-# Extract SHAP values
-shap_values <- predict_contrib(rf_model, holdout_set)
+rf_model_var_imp_df <-
+  data.frame(varname = names(rf_model_var_imp),imp = rf_model_var_imp) %>%
+  #mutate(varname = gsub("f_neighbourhood_cleansed", "Borough:", varname) ) %>%
+  #mutate(varname = gsub("f_room_type", "Room type:", varname) ) %>%
+  arrange(desc(imp)) %>%
+  mutate(imp_percentage = imp/sum(imp))
 
-# Summary plot of SHAP values
-shap_summary_plot(shap_values, holdout_set)
 
-# Explanation for a specific observation (replace 'index' with the actual index)
-shap_values_single <- predict_contrib(rf_model, holdout_set[index, ])
-shap_plot(shap_values_single)
+# Create plot all
+  current_plot <- ggplot(rf_model_var_imp_df, aes(x = reorder(varname, imp), y = imp_percentage)) +
+    geom_point(color = color[1], size = 1) +
+    geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
+    ylab("Importance (Percent)") +
+    xlab("Variable Name") +
+    coord_flip() +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    theme_minimal() +
+    theme(panel.grid.major.y = element_blank(),
+          axis.text.x = element_text(size = 6),
+          axis.text.y = element_text(size = 6),
+          axis.title.x = element_text(size = 6),
+          axis.title.y = element_text(size = 6))
+  
+  # Save the plot
+  rf_model_plots[[paste0("rf_model_plot_all_", i)]] <- current_plot
+
+# Create plot 
+  current_plot <- ggplot(rf_model_var_imp_df[1:10,], aes(x = reorder(varname, imp), y = imp_percentage)) +
+    geom_point(color = color[1], size = 1) +
+    geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
+    ylab("Importance (Percent)") +
+    xlab("Variable Name") +
+    coord_flip() +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    theme_minimal() +
+    theme(panel.grid.major.y = element_blank(),
+          axis.text.x = element_text(size = 6),
+          axis.text.y = element_text(size = 6),
+          axis.title.x = element_text(size = 6),
+          axis.title.y = element_text(size = 6))
+  
+  # Save the plot
+  rf_model_plots[[paste0("rf_model_plot_10_", i)]] <- current_plot
+}
+
+rf_model_plots$rf_model_plot_all_1
+rf_model_plots$rf_model_plot_10_1
+rf_model_plots$rf_model_plot_all_2
+rf_model_plots$rf_model_plot_10_2
+rf_model_plots$rf_model_plot_all_3
+rf_model_plots$rf_model_plot_10_3
+```
+
+```{r,echo=FALSE, include=F, warning=F}
+##############################
+# 1) full varimp plot, top 10 only
+##############################
+#
+rf_model_var_imp_plot_10 <- ggplot(rf_model_var_imp_df[1:10,], aes(x = reorder(varname, imp), y = imp_percentage)) +
+  geom_point(color = color[1], size = 1) +
+  geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
+  ylab("Importance (Percent)") +
+  xlab("Variable Name") +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme_minimal() +  # Change to theme_minimal or another theme of your choice
+  theme(panel.grid.major.y = element_blank(),  # Remove horizontal grid lines only
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6),
+        axis.title.x = element_text(size = 6),
+        axis.title.y = element_text(size = 6))
+
+rf_model_var_imp_plot_10
+```
+
+### Variable importance grouped 
+
+```{r,echo=FALSE, include=F, warning=F}
+##############################
+# 2) varimp plot grouped to (8)
+##############################
+# grouped variable importance - keep binaries created off factors together
+
+varnames <- rf_model_p$finalModel$xNames
+#f_neighbourhood_cleansed_varnames <- grep("f_neighbourhood_cleansed",varnames, value = TRUE)
+#f_property_type_varnames <- grep("f_property_type",varnames, value = TRUE)
+#f_room_type_varnames <- grep("f_room_type",varnames, value = TRUE)
+
+groups <- list(f_neighbourhood_cleansed=f_neighbourhood_cleansed_varnames,
+               f_property_type = f_property_type_varnames,
+               f_room_type = f_room_type_varnames,
+               bathroom = "bathroom",
+               n_days_since = "n_days_since",
+               accommodates = "accommodates",
+               beds = "beds")
+
+rf_model_var_imp_grouped <- group.importance(rf_old$finalModel, groups)
+rf_model_var_imp_grouped_df <- data.frame(varname = rownames(rf_model_var_imp_grouped),
+                                            imp = rf_model_var_imp_grouped[,1])  %>%
+  mutate(imp_percentage = imp/sum(imp))
+
+rf_model_var_imp_grouped_plot <- ggplot(rf_model_var_imp_grouped_df, aes(x = reorder(varname, imp), y = imp_percentage)) +
+  geom_point(color = color[1], size = 1) +
+  geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
+  ylab("Importance (Percent)") +
+  xlab("Variable Name") +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme_minimal() +  # Change to theme_minimal or another theme of your choice
+  theme(panel.grid.major.y = element_blank(),  # Remove horizontal grid lines only
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6),
+        axis.title.x = element_text(size = 6),
+        axis.title.y = element_text(size = 6))
+rf_model_var_imp_grouped_plot
+```
+
+### Variable importance all 
+
+```{r,echo=FALSE, include=F, warning=F}
+##############################
+# 3) full varimp plot, above a cutoff
+##############################
+
+rf_model_var_imp_plot_all <- ggplot(rf_model_var_imp_df, aes(x = reorder(varname, imp), y = imp_percentage)) +
+  geom_point(color = color[1], size = 1) +
+  geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
+  ylab("Importance (Percent)") +
+  xlab("Variable Name") +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme_minimal() +  # Change to theme_minimal or another theme of your choice
+  theme(panel.grid.major.y = element_blank(),  # Remove horizontal grid lines only
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6),
+        axis.title.x = element_text(size = 6),
+        axis.title.y = element_text(size = 6))
+
+rf_model_var_imp_plot_all
+```
+
+<!-- Save data environment for dashboard  -->
+
+```{r}
+save.image(file = "A3.RData")
 ```
 
 
