@@ -676,14 +676,14 @@ colSums(is.na(bisnode))/nrow(bisnode)*100
 
 #### Logit Model
 
-For the logit, we try out two specifications. Both of them include the variable on past growth in sales, engineered variables (i.e. ratios of financial variables, windsorized), the detected quadratic terms and the flags we created for extreme, missing and potentially erroneous data. Also, both specifications include quality variables (balance sheet information) and information on HR (e.g. CEO information) and the firm itself (e.g. regarding the location and industry). The difference lies in interactions included: Whilst the first specification does not include any interactions, the second one interacts selected variables with the industry variable. This gives us XX variables. 
+For the logit, we try out two specifications. Both of them include the variable on past growth in sales, engineered variables (i.e. ratios of financial variables, windsorized), the detected quadratic terms and the flags we created for extreme, missing and potentially erroneous data. Also, both specifications include quality variables (balance sheet information) and information on HR (e.g. CEO information) and the firm itself (e.g. regarding the location and industry). The difference lies in interactions included: Whilst the first specification does not include any interactions, the second one interacts selected variables with the industry variable. The first model entails **81** terms and the second one entails **90** terms. 
 
 #### Probability Forest
 
-Since the probability forest can deal with complicated relationships between variables, we do not include any quadratics, interacted, modified and/or  windsorized variables. Thus, the raw financial, quality, sales, HR and firm variables are added. Also, potentially highly correlated variables are considered together. Categorical variables are encoded as factors. This gives us XX variables. 
+Since the probability forest can deal with complicated relationships between variables, we do not include any quadratics, interacted, modified and/or  windsorized variables. Thus, the raw financial, quality, sales, HR and firm variables are added. Also, potentially highly correlated variables are considered. Categorical variables are encoded as factors. This gives us **49** variables. 
 
 #### LASSO Logit
-For the LASSO logit, we consider the same variables as in the second logit specification (including one additional highly correlated variable). This yields in total XXX vars.
+For the LASSO logit, we consider the same variables as in the second logit specification (including one additional highly correlated variable). This yields in total **91** vars.
 
 
 <!-- Task1.1: Define variable groups for differnet models  --> 
@@ -691,6 +691,23 @@ For the LASSO logit, we consider the same variables as in the second logit speci
 ```{r}
 #####################
 # Group Variables
+<<<<<<< Updated upstream
+=======
+
+# one-hot encode factor variables (to use in random forest and later for SHAP values)
+variable_types <- sapply(bisnode, class)
+# Identify factor variables
+factor_variables <- names(variable_types[variable_types == "factor"])
+
+dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
+                 data = bisnode, fullRank = TRUE)
+new_dat <- data.frame(predict(dmy, newdata = bisnode))
+# add new variables to data
+bisnode <- cbind(bisnode, new_dat)
+rm(new_dat)
+
+
+>>>>>>> Stashed changes
 rawvars <-  c("curr_assets", "curr_liab", "extra_exp", "extra_inc", "extra_profit_loss", 
               "fixed_assets", "inc_bef_tax", "intang_assets", "inventories", "liq_assets", 
               "material_exp", "personnel_exp", "profit_loss_year", "share_eq", "subscribed_cap")
@@ -723,6 +740,8 @@ hr <- c("ceo_old", "ceo_young", "ceo_age", "flag_missing_ceo_age",
 
 firm <- c("age", "new", "urban_m", "region_m", "ind2")
 
+onehot <- names(bisnode[, c(133:150)])
+  
 # test <- c(rawvars, qualityvars, engvar, engvar2, engvar3, sales, hr, firm)
 # setdiff(names(bisnode), test);setdiff(test, names(bisnode))
 
@@ -757,7 +776,8 @@ logit_model_vars <- list("logit_no_interactions" = logitvars1, "logit_incl_inter
 
 # random forest (no interactions, no modified features)
 rfvars  <-  c("d1_sales_mil_log", "flag_missing_d1_sales_mil_log", 
-              "ceo_count", "labor_avg", "ind", "ind2_cat", rawvars, qualityvars, hr, firm)
+              "ceo_count", "labor_avg", rawvars, qualityvars, hr, firm, onehot)
+rfvars <- rfvars[!rfvars %in% c("origin", "gender", "urban_m", "region_m", "ind2")]
 length(rfvars)
 
 # for logit LASSO
@@ -765,7 +785,6 @@ lassovars <- c("ceo_count", qualityvars, engvar, engvar2, engvar3, sales, hr, fi
 length(lassovars)
 
 ```
-
 
 <!-- Preparation for prediction & CV  --> 
 
@@ -790,24 +809,32 @@ train_control <- trainControl(method = "cv",
                               savePredictions = TRUE, # save the predictions for each fold
                               verboseIter = TRUE)
 ```
+## Model Estimation
+
+We divide our data set into a work (80 percent, 15,229 observations) and holdout set (20 percent, 3,807 observations). The workout set will be used to train our models. We use 5-fold cross validation to evaluate performance of our models. 
+
+### Probability Prediction
+
+look at cv performance and pick best model (then RMSE and ROC on holdout)
+#### Logit Models
+The below plot compares the RMSE and AUC of both logit model specifications.
+
 
 <!-- Task1.1: Model 1 - Logit  --> 
 
 ```{r}
 #######################################################
 # PART I PREDICT PROBABILITIES
-# Predict logit model ----------------------------------------------
 #######################################################
 
-# No loss function
-# RMSE (AUC also?based on threshold that corresponds to prevalence of pos/neg in dataset)
 
-# Train Logit Models ----------------------------------------------
-## keep maybe for shiny but decide which is our main model!
+# Train 2 Logit Models ---------------------------------------------------------
 
 CV_RMSE_folds <- list()
 logit_models <- list()
 
+
+# train model (5-fold CV) and get RMSE
 for (model_name in names(logit_model_vars)) {
 
   features <- logit_model_vars[[model_name]]
@@ -828,12 +855,7 @@ for (model_name in names(logit_model_vars)) {
 }
 
 
-#############################################x
-# PART I
-# No loss fn
-########################################
-
-# Draw ROC Curve and calculate AUC for each folds --------------------------------
+# draw ROC Curve and calculate AUC for each fold -------------------------------
 CV_AUC_folds <- list()
 
 for (model_name in names(logit_models)) {
@@ -853,7 +875,7 @@ for (model_name in names(logit_models)) {
                                               "AUC" = unlist(auc))
 }
 
-# For each model: average RMSE and average AUC for models ----------------------------------
+# obtain average RMSE and average AUC over folds -------------------------------
 
 CV_RMSE <- list()
 CV_AUC <- list()
@@ -863,30 +885,28 @@ for (model_name in names(logit_models)) {
   CV_AUC[[model_name]] <- mean(CV_AUC_folds[[model_name]]$AUC)
 }
 
-# Take best model and estimate RMSE on holdout  -------------------------------------------
-
-best_logit_no_loss <- logit_models[["logit_no_interactions"]]
-
-logit_predicted_probabilities_holdout <- predict(best_logit_no_loss, newdata = bisnode_holdout, type = "prob")
-bisnode_holdout[,"best_logit_no_loss_pred"] <- logit_predicted_probabilities_holdout[,"high_growth"]
-RMSE(bisnode_holdout[, "best_logit_no_loss_pred", drop=TRUE], bisnode_holdout$high_growth)
+# # take best model and estimate RMSE on holdout  --------------------------------
+# 
+# best_logit_no_loss <- logit_models[["logit_no_interactions"]]
+# 
+# logit_predicted_probabilities_holdout <- predict(best_logit_no_loss, newdata = bisnode_holdout, type = "prob")
+# bisnode_holdout[,"best_logit_no_loss_pred"] <- logit_predicted_probabilities_holdout[,"high_growth"]
+# RMSE(bisnode_holdout[, "best_logit_no_loss_pred", drop=TRUE], bisnode_holdout$high_growth)
 
 ```
 
 <!-- Task1.1: Model 2 - Probability forest  --> 
 
 ```{r}
-#################################################
-# Probability forest
+
+# Train probability forest -----------------------------------------------------
 # Split by gini, ratio of 1's in each tree, average over trees
-#################################################
 
 tune_grid <- expand.grid(
   .mtry = c(5, 6, 7), # sq root is 6.244
   .splitrule = "gini",
   .min.node.size = c(10, 15))
 
-# getModelInfo("ranger")
 rf_model_p <- train(
   formula(paste0("high_growth_factor ~ ", paste0(rfvars , collapse = " + "))),
   method = "ranger",
@@ -901,7 +921,7 @@ rf_model_p$results
 best_mtry <- rf_model_p$bestTune$mtry
 best_min_node_size <- rf_model_p$bestTune$min.node.size
 
-# Get average (ie over the folds) RMSE and AUC ------------------------------------
+# get average (ie over the folds) RMSE and AUC ---------------------------------
 CV_RMSE_folds[["rf_p"]] <- rf_model_p$resample[,c("Resample", "RMSE")]
 
 auc <- list()
@@ -919,19 +939,22 @@ CV_AUC_folds[["rf_p"]] <- data.frame("Resample" = names(auc),
 CV_RMSE[["rf_p"]] <- mean(CV_RMSE_folds[["rf_p"]]$RMSE)
 CV_AUC[["rf_p"]] <- mean(CV_AUC_folds[["rf_p"]]$AUC)
 
+<<<<<<< Updated upstream
 # Now use loss function and search for best thresholds and expected loss over folds -----### SECOND PART 
 
 
 ############### LOSS FUNCTION PART missing!
 
 # Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
+=======
+# # Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
+>>>>>>> Stashed changes
 # 
 # rf_predicted_probabilities_holdout <- predict(rf_model_p, newdata = bisnode_holdout, type = "prob")
 # bisnode_holdout$rf_p_prediction <- rf_predicted_probabilities_holdout[,"high_growth"]
 # RMSE(bisnode_holdout$rf_p_prediction, bisnode_holdout$high_growth)
 
 ```
-
 
 
 
@@ -959,7 +982,6 @@ tuned_logit_lasso_model <- logit_lasso_model$finalModel
 best_lambda <- logit_lasso_model$bestTune$lambda
 logit_models[["LASSO"]] <- logit_lasso_model
 lasso_coeffs <- as.matrix(coef(tuned_logit_lasso_model, best_lambda))
-#write.csv(lasso_coeffs, paste0(output, "lasso_logit_coeffs.csv"))
 
 CV_RMSE_folds[["LASSO"]] <- logit_lasso_model$resample[,c("Resample", "RMSE")]
 
