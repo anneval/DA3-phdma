@@ -691,7 +691,6 @@ For the LASSO logit, we consider the same variables as in the second logit speci
 ```{r}
 #####################
 # Group Variables
-
 rawvars <-  c("curr_assets", "curr_liab", "extra_exp", "extra_inc", "extra_profit_loss", 
               "fixed_assets", "inc_bef_tax", "intang_assets", "inventories", "liq_assets", 
               "material_exp", "personnel_exp", "profit_loss_year", "share_eq", "subscribed_cap")
@@ -923,16 +922,13 @@ CV_AUC[["rf_p"]] <- mean(CV_AUC_folds[["rf_p"]]$AUC)
 # Now use loss function and search for best thresholds and expected loss over folds -----### SECOND PART 
 
 
-bisnode_work$high_growth_factor
-
-
 ############### LOSS FUNCTION PART missing!
 
 # Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
-
-rf_predicted_probabilities_holdout <- predict(rf_model_p, newdata = bisnode_holdout, type = "prob")
-bisnode_holdout$rf_p_prediction <- rf_predicted_probabilities_holdout[,"high_growth"]
-RMSE(bisnode_holdout$rf_p_prediction, bisnode_holdout$high_growth)
+# 
+# rf_predicted_probabilities_holdout <- predict(rf_model_p, newdata = bisnode_holdout, type = "prob")
+# bisnode_holdout$rf_p_prediction <- rf_predicted_probabilities_holdout[,"high_growth"]
+# RMSE(bisnode_holdout$rf_p_prediction, bisnode_holdout$high_growth)
 
 ```
 
@@ -1213,10 +1209,10 @@ CV_AUC[["rf_p_manu"]] <- mean(CV_AUC_folds[["rf_p_manu"]]$AUC)
 
 
 # Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
-
-rf_manu_predicted_probabilities_holdout <- predict(rf_model_p_manu, newdata = manu_holdout, type = "prob")
-manu_holdout$rf_p_manu_prediction <- rf_manu_predicted_probabilities_holdout[,"high_growth"]
-RMSE(manu_holdout$rf_p_manu_prediction, manu_holdout$high_growth)
+# 
+# rf_manu_predicted_probabilities_holdout <- predict(rf_model_p_manu, newdata = manu_holdout, type = "prob")
+# manu_holdout$rf_p_manu_prediction <- rf_manu_predicted_probabilities_holdout[,"high_growth"]
+# RMSE(manu_holdout$rf_p_manu_prediction, manu_holdout$high_growth)
 ```
 
 ```{r}
@@ -1261,9 +1257,9 @@ CV_AUC[["rf_p_serv"]] <- mean(CV_AUC_folds[["rf_p_serv"]]$AUC)
 
 # Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
 
-rf_serv_predicted_probabilities_holdout <- predict(rf_model_p_serv, newdata = serv_holdout, type = "prob")
-serv_holdout$rf_p_serv_prediction <- rf_serv_predicted_probabilities_holdout[,"high_growth"]
-RMSE(serv_holdout$rf_p_serv_prediction, serv_holdout$high_growth)
+# rf_serv_predicted_probabilities_holdout <- predict(rf_model_p_serv, newdata = serv_holdout, type = "prob")
+# serv_holdout$rf_p_serv_prediction <- rf_serv_predicted_probabilities_holdout[,"high_growth"]
+# RMSE(serv_holdout$rf_p_serv_prediction, serv_holdout$high_growth)
 ```
 
 <!-- Task2.2: Define single loss function (Same loss function as before?) but use for samples separately (pick one prediction model) --> 
@@ -1408,24 +1404,22 @@ rf_model_var_imp_grouped_plot
 
 ```{r,echo=FALSE, include=FALSE, warning=F}
 ## SHAP VALUES ##
-rfvars
 
-### correct facors chosen?? 
-
-# define one-hot encoding function
-dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
-                 data = bisnode_holdout, fullRank = TRUE)
-
-# #perform one-hot encoding on data frame
-
- data_holdout_ohe <- data.frame(predict(dmy, newdata=bisnode_holdout))
+# # define one-hot encoding function
+# dmy <- dummyVars("~ d1_sales_mil_log + flag_missing_d1_sales_mil_log + ceo_count + labor_avg + ind + ind2_cat + curr_assets + curr_liab + extra_exp + extra_inc + extra_profit_loss + fixed_assets+ inc_bef_tax + intang_assets + inventories + liq_assets + material_exp + personnel_exp + profit_loss_year +share_eq +subscribed_cap +balsheet_flag +balsheet_length+balsheet_notfullyear + ceo_old + ceo_young + ceo_age + flag_missing_ceo_age +gender +  multiple_ceo +origin+ ln_labor_avg +flag_miss_labor_avg+ age +new+ urban_m +region_m +ind2 ", data = bisnode_holdout, fullRank = TRUE)
 # 
-# # replace "." character to " " to match model object names
-names(data_holdout_ohe) <- gsub(x = names(data_holdout_ohe),
-                                pattern = "\\.",
-                                replacement = " ")
-# # unify model for treeshap
-## now porblem appa. with RF? 
+# 
+# 
+# # #perform one-hot encoding on data frame
+# 
+#  data_holdout_ohe <- data.frame(predict(dmy, newdata=bisnode_holdout))
+# # 
+# # # replace "." character to " " to match model object names
+# names(data_holdout_ohe) <- gsub(x = names(data_holdout_ohe),
+#                                 pattern = "\\.",
+#                                 replacement = " ")
+# # # unify model for treeshap
+# ## now porblem appa. with RF? 
 
 rf_model_unified <- ranger.unify(rf_model_p$finalModel, data_holdout_ohe)
 
