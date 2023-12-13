@@ -79,6 +79,7 @@ library(modelsummary)
 library(treeshap)
 library(summarytools)
 library(pROC)
+library(plotly)
 # add
 ```
 
@@ -2101,9 +2102,132 @@ pdp_n_roomtype_plot <- pdp_n_roomtype %>%
 pdp_n_roomtype_plot
 ```
 
+<!-- Task 3.2: Show expected loss based on different thresholds. -->
+<!-- Kick out this chunk if the one below works for shiny-->
+```{r}
+#######
+# does make some custom plots (but Gabor's are nicer)
+all_thresholds_cv <- list()
+all_losses_cv <- list()
+
+for (fold in c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")) {
+  cv_fold <- 
+    rf_model_p$pred %>%
+    filter(mtry == best_mtry,
+           min.node.size == best_min_node_size,
+           Resample == fold)
+
+  roc_obj <- roc(cv_fold$obs, cv_fold$high_growth)
+
+  # Evaluate at several thresholds
+  thresholds <- seq(0, 1, by = 0.01)
+  losses <- numeric(length(thresholds))
+
+  for (i in seq_along(thresholds)) {
+    threshold <- thresholds[i]
+    coords_obj <- coords(roc_obj, x=threshold, input="threshold", ret="all", transpose=FALSE)
+    
+    # Calculate expected loss
+    losses[i] <- (coords_obj$fp*FP + coords_obj$fn*FN)/length(cv_fold$high_growth)
+  }
+
+  all_thresholds_cv[[fold]] <- thresholds
+  all_losses_cv[[fold]] <- losses
+}
+
+# Now you can plot the losses for each fold
+for (fold in names(all_thresholds_cv)) {
+  plot(all_thresholds_cv[[fold]], all_losses_cv[[fold]], type="l", 
+       xlab="Threshold", ylab="Expected Loss", main=paste("Expected Loss for", fold))
+  lines(all_thresholds_cv[[fold]], all_losses_cv[[fold]], col="blue")
+}
+
+
+```
+```{r}
+
+
+
+createInteractLossPlot <- function(r, best_coords, file_name, myheight_small = 5.625, mywidth_small = 7.5) {
+  t <- best_coords$threshold[1]
+  sp <- best_coords$specificity[1]
+  se <- best_coords$sensitivity[1]
+  n <- rowSums(best_coords[c("tn", "tp", "fn", "fp")])[1]
+
+  all_coords <- coords(r, x="all", ret="all", transpose = FALSE)
+  all_coords <- all_coords %>%
+    mutate(loss = (fp*FP + fn*FN)/n)
+  l <- all_coords[all_coords$threshold == t, "loss"]
+
+  loss_plot <- ggplot(data = all_coords, aes(x = threshold, y = loss)) +
+    geom_line(color=color[1], size=0.7) +
+    scale_x_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.1)) +
+    geom_vline(xintercept = t, color = color[2]) +
+    theme_bg()
+
+  # Convert to plotly for interactivity
+  interactive_plot <- ggplotly(loss_plot) %>%
+    layout(hovermode = 'x') %>%
+     layout(annotations = list(
+        list(
+            x = t,
+            y = min(all_coords$loss),
+            text = paste0("best threshold: ", round(t,2)),
+            showarrow = TRUE,
+            arrowhead = 1,
+            ax = 20,  # adjust for better positioning
+            ay = -30, # adjust for better positioning
+            xanchor = 'center',
+            yanchor = 'bottom',
+            font = list(
+                family = "Arial",
+                size = 12,
+                color = color[2]
+            )
+        )
+    ))
+    
+
+  # Save or display the interactive plot
+  # ggsave(plot = interactive_plot, paste0(file_name,".html"), width=mywidth_small, height=myheight_small)
+  # or
+  interactive_plot
+}
+
+# re-run losses for RF s.t roc_object is correctly stored
+
+# Now use loss function and search for best thresholds and expected loss over folds -----
+best_tresholds_cv <- list()
+expected_loss_cv <- list()
+
+for (fold in c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")) {
+  cv_fold <-
+    rf_model_p$pred %>%
+    filter(mtry == best_mtry,
+           min.node.size == best_min_node_size,
+           Resample == fold)
+
+  roc_obj <- roc(cv_fold$obs, cv_fold$high_growth)
+  best_treshold <- coords(roc_obj, "best", ret="all", transpose = FALSE,
+                          best.method="youden", best.weights=c(cost, prevalence))
+  best_tresholds_cv[[fold]] <- best_treshold$threshold
+  expected_loss_cv[[fold]] <- (best_treshold$fp*FP + best_treshold$fn*FN)/length(cv_fold$high_growth)
+}
+
+createInteractLossPlot(roc_obj, best_treshold, "rf_p_interact_loss_plot")
+
+```
+
+```{r}
+# experimenting with shapper
+
+install.packages("shapper")
+```
+
+
 # Overall Summary
 
-
+Write 2-3 paragraphs overall summary of what we found
 
 
 <!-- Save data environment for dashboard  -->
