@@ -2218,16 +2218,20 @@ createInteractLossPlot(roc_obj, best_treshold, "rf_p_interact_loss_plot")
 
 ```
 
-```{r}
-# experimenting with shapper
-
-install.packages("shapper")
-```
 
 
 # Overall Summary
 
-Write 2-3 paragraphs overall summary of what we found
+We estimated three models to predict high growth firms (logit, logit LASSO, random forest). Random forest turned out to be the best model, both, when evaluated based on RMSE or AUC as well as expected loss.
+
+Our definition of high growth is based on average annual sales growth over two years ahead above 30%. In our loss function we assigned 50% higher costs to false positives, reflecting our desire to avoid bad investments. This decision lead to a high specificity of our classification but at the same time to a low sensitivity. We prefer this trade-off since we do not need to identify all high growth firms but rather just find some of them with enough confidence to make an investment. 
+
+## Section on variable importance/PDP/Shapley here
+What is more, we analyzed the influence of the variables entering our model. We find that XXXX.
+
+In a next step we applied our model to the two segments of manufacturing and services. The model performs better in the services sector leading to lower false positives and lower false negatives.
+
+XXXX
 
 
 <!-- Save data environment for dashboard  -->
