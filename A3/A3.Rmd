@@ -1867,67 +1867,67 @@ kable(x = cm6_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = 
 
 ```{r}
 
-rf_models <- list(rf_model_p, rf_model_p_manu, rf_model_p_serv)
-# Create an empty list to store the plots
-rf_model_plots <- list()
-
-# Loop over the random forest models
-for (i in seq_along(rf_models)) {
-  current_rf_model <- rf_models[[i]]
-
-rf_model_var_imp <- importance(current_rf_model$finalModel)/1000
-
-rf_model_var_imp_df <-
-  data.frame(varname = names(rf_model_var_imp),imp = rf_model_var_imp) %>%
-  #mutate(varname = gsub("f_neighbourhood_cleansed", "Borough:", varname) ) %>%
-  #mutate(varname = gsub("f_room_type", "Room type:", varname) ) %>%
-  arrange(desc(imp)) %>%
-  mutate(imp_percentage = imp/sum(imp))
-
-
-# Create plot VAR IMP ALL 
-  current_plot <- ggplot(rf_model_var_imp_df, aes(x = reorder(varname, imp), y = imp_percentage)) +
-    geom_point(color = color[1], size = 1) +
-    geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
-    ylab("Importance (Percent)") +
-    xlab("Variable Name") +
-    coord_flip() +
-    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-    theme_minimal() +
-    theme(panel.grid.major.y = element_blank(),
-          axis.text.x = element_text(size = 6),
-          axis.text.y = element_text(size = 6),
-          axis.title.x = element_text(size = 6),
-          axis.title.y = element_text(size = 6))
-  
-  # Save the plot
-  rf_model_plots[[paste0("rf_model_plot_all_", i)]] <- current_plot
-
-# Create plot VAR IMP TOP 10  
-  current_plot <- ggplot(rf_model_var_imp_df[1:10,], aes(x = reorder(varname, imp), y = imp_percentage)) +
-    geom_point(color = color[1], size = 1) +
-    geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
-    ylab("Importance (Percent)") +
-    xlab("Variable Name") +
-    coord_flip() +
-    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-    theme_minimal() +
-    theme(panel.grid.major.y = element_blank(),
-          axis.text.x = element_text(size = 6),
-          axis.text.y = element_text(size = 6),
-          axis.title.x = element_text(size = 6),
-          axis.title.y = element_text(size = 6))
-  
-  # Save the plot
-  rf_model_plots[[paste0("rf_model_plot_10_", i)]] <- current_plot
-}
-
-rf_model_plots$rf_model_plot_all_1
-rf_model_plots$rf_model_plot_10_1
-rf_model_plots$rf_model_plot_all_2
-rf_model_plots$rf_model_plot_10_2
-rf_model_plots$rf_model_plot_all_3
-rf_model_plots$rf_model_plot_10_3
+# rf_models <- list(rf_model_p, rf_model_p_manu, rf_model_p_serv)
+# # Create an empty list to store the plots
+# rf_model_plots <- list()
+# 
+# # Loop over the random forest models
+# for (i in seq_along(rf_models)) {
+#   current_rf_model <- rf_models[[i]]
+# 
+# rf_model_var_imp <- importance(current_rf_model$finalModel)/1000
+# 
+# rf_model_var_imp_df <-
+#   data.frame(varname = names(rf_model_var_imp),imp = rf_model_var_imp) %>%
+#   #mutate(varname = gsub("f_neighbourhood_cleansed", "Borough:", varname) ) %>%
+#   #mutate(varname = gsub("f_room_type", "Room type:", varname) ) %>%
+#   arrange(desc(imp)) %>%
+#   mutate(imp_percentage = imp/sum(imp))
+# 
+# 
+# # Create plot VAR IMP ALL 
+#   current_plot <- ggplot(rf_model_var_imp_df, aes(x = reorder(varname, imp), y = imp_percentage)) +
+#     geom_point(color = color[1], size = 1) +
+#     geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
+#     ylab("Importance (Percent)") +
+#     xlab("Variable Name") +
+#     coord_flip() +
+#     scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+#     theme_minimal() +
+#     theme(panel.grid.major.y = element_blank(),
+#           axis.text.x = element_text(size = 6),
+#           axis.text.y = element_text(size = 6),
+#           axis.title.x = element_text(size = 6),
+#           axis.title.y = element_text(size = 6))
+#   
+#   # Save the plot
+#   rf_model_plots[[paste0("rf_model_plot_all_", i)]] <- current_plot
+# 
+# # Create plot VAR IMP TOP 10  
+#   current_plot <- ggplot(rf_model_var_imp_df[1:10,], aes(x = reorder(varname, imp), y = imp_percentage)) +
+#     geom_point(color = color[1], size = 1) +
+#     geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
+#     ylab("Importance (Percent)") +
+#     xlab("Variable Name") +
+#     coord_flip() +
+#     scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+#     theme_minimal() +
+#     theme(panel.grid.major.y = element_blank(),
+#           axis.text.x = element_text(size = 6),
+#           axis.text.y = element_text(size = 6),
+#           axis.title.x = element_text(size = 6),
+#           axis.title.y = element_text(size = 6))
+#   
+#   # Save the plot
+#   rf_model_plots[[paste0("rf_model_plot_10_", i)]] <- current_plot
+# }
+# 
+# rf_model_plots$rf_model_plot_all_1
+# rf_model_plots$rf_model_plot_10_1
+# rf_model_plots$rf_model_plot_all_2
+# rf_model_plots$rf_model_plot_10_2
+# rf_model_plots$rf_model_plot_all_3
+# rf_model_plots$rf_model_plot_10_3
 ```
 
 ```{r}
@@ -1980,6 +1980,7 @@ for (i in seq_along(rf_model_plots)) {
 
 
 
+
 ```
 
 
@@ -2007,48 +2008,48 @@ group.importance <- function(rf.obj, groups) {
 # dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
 #                  data = bisnode, fullRank = TRUE)
 
-# Loop over the random forest models
-for (i in seq_along(rf_models)) {
-  current_rf_model <- rf_models[[i]]
-
-varnames <- current_rf_model$finalModel$xNames
-ind_varnames <- grep("ind",varnames, value = TRUE)
-gender_varnames <- grep("gender",varnames, value = TRUE)
-origin_varnames <- grep("origin",varnames, value = TRUE)
-region_m_varnames <- grep("region_m",varnames, value = TRUE)
-urban_m_varnames <- grep("urban_m",varnames, value = TRUE)
-
-groups <- list(ind=ind_varnames,
-               gender = gender_varnames,
-               origin = origin_varnames,
-               region_m =region_m_varnames,
-               urban_m = urban_m_varnames)
-
-rf_model_var_imp_grouped <- group.importance(current_rf_model$finalModel, groups)
-rf_model_var_imp_grouped_df <- data.frame(varname = rownames(rf_model_var_imp_grouped),
-                                            imp = rf_model_var_imp_grouped[,1])  %>%
-  mutate(imp_percentage = imp/sum(imp))
-
-current_plot_group <- ggplot(rf_model_var_imp_grouped_df, aes(x = reorder(varname, imp), y = imp_percentage)) +
-  geom_point(color = color[1], size = 1) +
-  geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
-  ylab("Importance (Percent)") +
-  xlab("Variable Name") +
-  coord_flip() +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-  theme_minimal() +  # Change to theme_minimal or another theme of your choice
-  theme(panel.grid.major.y = element_blank(),  # Remove horizontal grid lines only
-        axis.text.x = element_text(size = 6),
-        axis.text.y = element_text(size = 6),
-        axis.title.x = element_text(size = 6),
-        axis.title.y = element_text(size = 6))
-
- # Save the plot
-  rf_model_plots[[paste0("rf_model_var_imp_grouped_plot", i)]] <- current_plot_group
-}
-rf_model_plots$rf_model_var_imp_grouped_plot1
-rf_model_plots$rf_model_var_imp_grouped_plot2
-rf_model_plots$rf_model_var_imp_grouped_plot3
+# # Loop over the random forest models
+# for (i in seq_along(rf_models)) {
+#   current_rf_model <- rf_models[[i]]
+# 
+# varnames <- current_rf_model$finalModel$xNames
+# ind_varnames <- grep("ind",varnames, value = TRUE)
+# gender_varnames <- grep("gender",varnames, value = TRUE)
+# origin_varnames <- grep("origin",varnames, value = TRUE)
+# region_m_varnames <- grep("region_m",varnames, value = TRUE)
+# urban_m_varnames <- grep("urban_m",varnames, value = TRUE)
+# 
+# groups <- list(ind=ind_varnames,
+#                gender = gender_varnames,
+#                origin = origin_varnames,
+#                region_m =region_m_varnames,
+#                urban_m = urban_m_varnames)
+# 
+# rf_model_var_imp_grouped <- group.importance(current_rf_model$finalModel, groups)
+# rf_model_var_imp_grouped_df <- data.frame(varname = rownames(rf_model_var_imp_grouped),
+#                                             imp = rf_model_var_imp_grouped[,1])  %>%
+#   mutate(imp_percentage = imp/sum(imp))
+# 
+# current_plot_group <- ggplot(rf_model_var_imp_grouped_df, aes(x = reorder(varname, imp), y = imp_percentage)) +
+#   geom_point(color = color[1], size = 1) +
+#   geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
+#   ylab("Importance (Percent)") +
+#   xlab("Variable Name") +
+#   coord_flip() +
+#   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+#   theme_minimal() +  # Change to theme_minimal or another theme of your choice
+#   theme(panel.grid.major.y = element_blank(),  # Remove horizontal grid lines only
+#         axis.text.x = element_text(size = 6),
+#         axis.text.y = element_text(size = 6),
+#         axis.title.x = element_text(size = 6),
+#         axis.title.y = element_text(size = 6))
+# 
+#  # Save the plot
+#   rf_model_plots[[paste0("rf_model_var_imp_grouped_plot", i)]] <- current_plot_group
+# }
+# rf_model_plots$rf_model_var_imp_grouped_plot1
+# rf_model_plots$rf_model_var_imp_grouped_plot2
+# rf_model_plots$rf_model_var_imp_grouped_plot3
 ```
 
 
