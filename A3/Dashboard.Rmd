@@ -75,25 +75,21 @@ library(ranger)
 library(shiny)
 library(treeshap)
 library(pdp)
-
+library(pROC)
 ```
 
-```{r data,include=FALSE}
+```{r data import,include=FALSE}
 data_in <- paste(data_dir,"bisnode-firms", sep = "/")
 load(paste(data_in,"A3.RData",sep = "/")) #activate once we have correct data
 #rf_old <- read_rds(paste(data_in,"rf_A3.rds",sep = "/")) # save in data dir!!!
 ```
-
-# <font size="3">Bisnode</font> {data-navmenu="Key variables"}
+# Variable Importance
 #### **Importance of key variables**
 ### {style="border: 0px; background: none"}
-
-TEXT 
-
+ 
 ## Row {.tabset .tabset-fade}
-### Variable importance top 10 
-
-
+### Bisnode 
+Variable importance top 10 
 ```{r, include=T}
 ##############################
 # 1) full varimp plot, top 10 only
@@ -102,8 +98,28 @@ rf_model_plots$rf_model_plot_10_1
 ```
 
 
-### Variable importance grouped 
+###  Manufacturing
+Variable importance top 10 
+```{r, include=T}
+##############################
+# 1) full varimp plot, top 10 only
+##############################
+rf_model_plots$rf_model_plot_10_2
+```
 
+### Services
+Variable importance top 10 
+```{r, include=T}
+##############################
+# 1) full varimp plot, top 10 only
+##############################
+rf_model_plots$rf_model_plot_10_3
+```
+
+
+## Row {.tabset .tabset-fade}
+### Bisnode 
+Variable importance grouped
 ```{r, include=T}
 ##############################
 # 2) varimp plot grouped to (8)
@@ -113,7 +129,34 @@ rf_model_plots$rf_model_var_imp_grouped_plot1
 
 ```
 
-### Variable importance all 
+
+###  Manufacturing
+Variable importance grouped
+
+```{r, include=T}
+##############################
+# 2) varimp plot grouped to (8)
+##############################
+# grouped variable importance - keep binaries created off factors together
+rf_model_plots$rf_model_var_imp_grouped_plot2
+
+```
+
+### Services
+Variable importance grouped
+
+```{r, include=T}
+##############################
+# 2) varimp plot grouped to (8)
+##############################
+# grouped variable importance - keep binaries created off factors together
+rf_model_plots$rf_model_var_imp_grouped_plot3
+
+```
+
+## Row {.tabset .tabset-fade}
+### Bisnode 
+Variable importance all features
 
 ```{r, include=T}
 ##############################
@@ -122,49 +165,39 @@ rf_model_plots$rf_model_var_imp_grouped_plot1
 rf_model_plots$rf_model_plot_all_1
 ```
 
-## Row {.tabset .tabset-fade}
-### Shapley
+###  Manufacturing
+Variable importance all features
 
-```{r,echo=FALSE, include=FALSE, warning=F}
-## SHAP VALUES ##
-
+```{r, include=T}
+##############################
+# 3) full varimp plot, above a cutoff
+##############################
+rf_model_plots$rf_model_plot_all_2
 ```
 
-```{r, figures-Shap, fig.show="hold", out.width="50%", echo =FALSE, warning=FALSE}
-#treeshap_res
+### Services
+Variable importance all features
 
+```{r, include=T}
+##############################
+# 3) full varimp plot, above a cutoff
+##############################
+rf_model_plots$rf_model_plot_all_3
 ```
 
-```{r, figures-VARIMP, fig.show="hold", out.width="50%", echo =FALSE, warning=FALSE}
-
-#treeshap_featureIMP
-```
-
-## Row {.tabset .tabset-fade}
-### Partial dependence plot
-
-
-
-```{r,echo=FALSE, include=FALSE, warning=F}
-#########################################################################################
-# Partial Dependence Plots -------------------------------------------------------
-#########################################################################################
-
-#### add loop other predictors but also store each graph so if I change pred different graph some kind of drop down 
-```
+# <font size="3">Bisnode</font> {data-navmenu="PDP"}
+### {style="border: 0px; background: none"}
 
 ## Sidebar {.sidebar}
 
 ```{r, include=TRUE}
-# CHANGE ACCORDING TO OUR DATASET rf_variables
-# Assume 'features' is a vector of feature names in your dataset
-features <- rfvars
-selectInput("feature_selector", "Select Feature:", choices = features, selected = features[1])
+features <- rfvars# nicer names? 
+selectInput("feature_selector", "Select Feature form Random forest model:", choices = features, selected = features[1])
 
 ```
 
 
-```{r, include=TRUE}
+```{r PDP, include=TRUE}
 #renderPlot
 renderPlot({
   selected_feature <- input$feature_selector
@@ -208,6 +241,7 @@ renderPlot({
 })
 
 ```
+
 ```{r}
 # function(input, output) {
 #   renderCachedPlot(
@@ -273,108 +307,12 @@ renderPlot({
 
 ```
 
-
-# <font size="3">Manufacturing</font> {data-navmenu="Key variables"}
-#### **Importance of key variables**
+# <font size="3">Manufacturing</font> {data-navmenu="PDP"}
 ### {style="border: 0px; background: none"}
 
-TEXT 
 
-## Row {.tabset .tabset-fade}
-### Variable importance top 10 
-
-```{r, include=T}
-##############################
-# 2) full varimp plot, top 10 only
-##############################
-rf_model_plots$rf_model_plot_10_2
-```
-
-
-### Variable importance grouped 
-
-```{r, include=T}
-##############################
-# 2) varimp plot grouped to (8)
-##############################
-rf_model_plots$rf_model_var_imp_grouped_plot2
-
-```
-
-### Variable importance all 
-```{r, include=T}
-##############################
-# 3) full varimp plot
-##############################
-rf_model_plots$rf_model_plot_all_2
-```
-
-## Row {.tabset .tabset-fade}
-### Shapley
-
-```{r}
-
-```
-
-
-## Row {.tabset .tabset-fade}
-### Partial dependence plot
-
-
-```{r}
-
-```
-
-
-
-# <font size="3">Services</font> {data-navmenu="Key variables"}
-#### **Importance of key variables**
+# <font size="3">Services</font> {data-navmenu="PDP"}
 ### {style="border: 0px; background: none"}
-
-TEXT 
-
-## Row {.tabset .tabset-fade}
-### Variable importance top 10 
-```{r, include=T}
-##############################
-# 2) full varimp plot, top 10 only
-##############################
-rf_model_plots$rf_model_plot_10_3
-```
-
-### Variable importance grouped
-```{r, include=T}
-##############################
-# 2) varimp plot grouped to (8)
-##############################
-rf_model_plots$rf_model_var_imp_grouped_plot3
-```
-
-### Variable importance all 
-```{r, include=T}
-##############################
-# 1) full varimp plot
-##############################
-rf_model_plots$rf_model_plot_all_3
-```
-
-## Row {.tabset .tabset-fade}
-### Shapley
-
-```{r}
-
-```
-
-
-## Row {.tabset .tabset-fade}
-### Partial dependence plot
-
-
-```{r}
-
-```
-
-
 
 
 # Threshold decision
@@ -382,34 +320,27 @@ rf_model_plots$rf_model_plot_all_3
 
 TEXT 
 
-```{r}
-## add model test RF here 
-
-
-### call results from other sheet 
-# source? 
-```
-
-
-
 ## Row {.tabset .tabset-fade}
 ### Bisnode
+
+
 ```{r}
-
-
-#dygraph(economic_sentiment,group = "keywords")%>%
- # dyAxis("x", drawGrid = FALSE)%>%
-  #dySeries("value", label = "Index")%>%
- # dyEvent(events$date, events$event, labelLoc = "bottom") %>%
- # dyRangeSelector(dateWindow = c("2006-01-01", today))%>%
- # dyOptions(useDataTimezone = TRUE)
+# re-run losses for RF s.t roc_object is correctly stored
+# Now use loss function and search for best thresholds and expected loss over folds -----
+rf_model_p_InteractLossPlot
 ```
+
 ### Manufacturing
 
 ```{r}
-
+# re-run losses for RF s.t roc_object is correctly stored
+# Now use loss function and search for best thresholds and expected loss over folds -----
+rf_model_manu_InteractLossPlot
 ```
-
 ### Services
-
+```{r}
+# re-run losses for RF s.t roc_object is correctly stored
+# Now use loss function and search for best thresholds and expected loss over folds -----
+rf_model_serv_InteractLossPlot
+```
 
