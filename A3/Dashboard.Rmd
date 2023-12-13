@@ -95,6 +95,7 @@ Variable importance top 10
 # 1) full varimp plot, top 10 only
 ##############################
 rf_model_plots$rf_model_plot_10_1
+
 ```
 
 
@@ -114,6 +115,7 @@ Variable importance top 10
 # 1) full varimp plot, top 10 only
 ##############################
 rf_model_plots$rf_model_plot_10_3
+
 ```
 
 
@@ -125,7 +127,7 @@ Variable importance grouped
 # 2) varimp plot grouped to (8)
 ##############################
 # grouped variable importance - keep binaries created off factors together
-rf_model_plots$rf_model_var_imp_grouped_plot1
+rf_model_plots_grouped$rf_model_var_imp_grouped_plot1
 
 ```
 
@@ -138,7 +140,7 @@ Variable importance grouped
 # 2) varimp plot grouped to (8)
 ##############################
 # grouped variable importance - keep binaries created off factors together
-rf_model_plots$rf_model_var_imp_grouped_plot2
+rf_model_plots_grouped$rf_model_var_imp_grouped_plot2
 
 ```
 
@@ -150,8 +152,7 @@ Variable importance grouped
 # 2) varimp plot grouped to (8)
 ##############################
 # grouped variable importance - keep binaries created off factors together
-rf_model_plots$rf_model_var_imp_grouped_plot3
-
+rf_model_plots_grouped$rf_model_var_imp_grouped_plot3
 ```
 
 ## Row {.tabset .tabset-fade}
@@ -173,6 +174,7 @@ Variable importance all features
 # 3) full varimp plot, above a cutoff
 ##############################
 rf_model_plots$rf_model_plot_all_2
+
 ```
 
 ### Services
