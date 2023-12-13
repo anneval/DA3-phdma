@@ -10,7 +10,7 @@ output:
 ---
 
 # Summary
-The goal of our analysis is to classify fast growing firms in order to identify lucrative investment opportunities. This report includes three different predictive models to predict fast growing firms. It is based on bisnode panel data and firm growth is defined by average annual percentage growth in sales over two years. We use data from 2012 to predict sales growth two years ahead. The models are logit, random forest and logit lasso. The models' predictive power is evaluated once without once with the use of a loss function. After the introduction of a loss function we identified XXX as strongest model. This model is also used on the subsets manufacturing and services In comparison, XXXX. Further results and interactive graphs can be found in the shiny app linked to this report.
+The goal of our analysis is to classify fast growing firms in order to identify lucrative investment opportunities. This report includes three different models to predict fast growing firms. It is based on bisnode panel data. Firm growth is defined by average annual percentage growth in sales over two years. We use data from 2012 to predict sales growth two years ahead. The models are logit, random forest and logit lasso. The models' predictive power is evaluated once without and once with the use of a loss function. After the introduction of a loss function we identified random forest as strongest model. This model is also used on the subsets manufacturing and services In comparison, XXXX. Further results and interactive graphs can be found in the shiny app linked to this report.
 
 {{< pagebreak >}}
 
@@ -28,7 +28,7 @@ options(scipen = 999)
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/AnjaHahn/OneDrive - DataScience Service GmbH/WU/Courses/CEU Prediction with Machine Learning for Economists/da_case_studies')
+knitr::opts_knit$set(root.dir = 'C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
@@ -97,7 +97,7 @@ bisnode %>%
 
 ## Sample Design
 
-We exclude some variables that have extremely high rates of missing values (above 90%) and only look at firms that are active, that is, they have some sales. What is more, our analysis is only based on firms with sales between 1000 and 10 million euros. We believe this subset presents the most attractive investment opportunities. First, very small firms with sales below 1000 EUR in sales are likely not to seek investment and high growth events might happen at random more easily. Second, very large firms are well represented in various indices and any expected growth is likely to be already incorporated in the stock price. Hence, our sample selection represents a business decision to focus on a segment that is more predictable and more promising for investors.
+We exclude some variables that have extremely high rates of missing values (above 90%) and only look at firms that are active in 2012, that is, they have some sales. What is more, our analysis is only based on firms with annual sales between 1000 and 10 million euros. We believe this subset presents the most attractive investment opportunities. First, very small firms with sales below 1000 EUR in sales are likely not to seek investment and high growth events might happen at random more easily. Second, very large firms are well represented in various indices and any expected growth is likely to be already incorporated in the stock price. Hence, our sample selection represents a business decision to focus on a segment that is more predictable and more promising for investors.
 
 <!-- Sample design  --> 
 
@@ -171,8 +171,8 @@ plot_labor_avg
 
 ## Label Engineering
 
-We are exploring multiple alternatives as target variable to represent high growth firms. In our selection we pay attention to the following dimensions: i) the indicator to choose, ii) the measurement, iii) the time horizon, and iv) the threshold. The literature does not yield one consensus over a definition of high growth firms, it rather points out that any decision along these dimensions depends on the goal of the analysis.[^1] We decided for relative average annual sales growth over two years for the following reasons: First, sales provided a more relevant and reliable target than number of employees. Sales data is missing only in 2.6% of cases whereas number of employees is missing in 50.9% of cases. What is more, 85% of firms had less than 1 employee on average. Second, we decided to use relative growth instead of absolute growth. This decision will favor smaller firms since high relative growth is harder to achieve for larger firms. We believe relative growth to be more relevant since it is more closely linked to our expected return on investment. To be more specific, we calculated percentage change and did not rely on log differences. Even though this decision does not affect the ranking of firms, it does affect the magnitude of the growth rate in the subset of high growth firms. We favored percentage change because of its more intuitive interpretation. Third, we decided for a two year time horizon instead of a one year horizon to relate more closely to the OECD definition of high growth firms that is defined over a three year horizon. 
-Third, we decided for a threshold of 30% annual growth. In our sample this is equivalent to classifying the fastest growing 20% of firms as HGF. In the literature, both thresholds on a certain growth rates and a certain percentile of firms are used. We decided for a threshold based on a specific growth rates since we will analyze different sectors (manufacturing and services) with a fixed benchmark.
+We are exploring multiple alternatives as target variable to represent high growth firms. In our selection we pay attention to the following dimensions: i) the indicator to choose, ii) the measurement, iii) the time horizon, and iv) the threshold. The literature does not yield one consensus over a definition of high growth firms, it rather points out that any decision along these dimensions depends on the goal of the analysis.[^1] We decided for relative average annual sales growth over two years for the following reasons: First, sales provided a more relevant and reliable target than number of employees. Sales data is missing only in 2.6% of cases whereas number of employees is missing in 50.9% of cases. Also, sales growth is more closely linked to higher profits. What is more, 85% of firms had less than 1 employee on average. Second, we decided to use relative growth instead of absolute growth. This decision will favor smaller firms since high relative growth is harder to achieve for larger firms. We believe relative growth to be more relevant since it is more closely linked to our expected return on investment. To be more specific, we calculated percentage change and did not rely on log differences. Even though this decision does not affect the ranking of firms, it does affect the magnitude of the growth rate in the subset of high growth firms. We favored percentage change because of its more intuitive interpretation. Third, we decided for a two year time horizon instead of a one year horizon to relate more closely to the OECD definition of high growth firms that is defined over a three year horizon. 
+Third, we decided for a threshold of 30% annual growth. In our sample this is equivalent to classifying roughly the fastest growing 20% of firms as HGF. In the literature, both thresholds on a certain growth rates and a certain percentile of firms are used. We decided for a threshold based on a specific growth rates since we want to analyze different sectors (manufacturing and services) with a fixed benchmark.
 
 [^1] Alex Coad, Sven-Olov Daunfeldt, Werner Hölzl, Dan Johansson, Paul Nightingale, High-growth firms: introduction to the special section, Industrial and Corporate Change, Volume 23, Issue 1, February 2014, Pages 91–112, https://doi.org/10.1093/icc/dtt052
 
@@ -366,7 +366,7 @@ bisnode <- bisnode %>%
 
 Feature engineering of the bisnode data set comprises re-coding of existing variables s.t. they get the appropriate class and/or meaningful levels and values. Also, plausibility checks are conducted: As some of our financial variables (e.g. *inventories*, *fixed_assets* etc.) must not be negative, we flag them and set negative values to zero. Other implausible variables, such as  *ceo_age* below 18 years, we set to NA. 
 
-In the process of analysing missing values, we impute some important ones (*ceo_age*, *labor_avg*) and add flags for missing values. For other, very important variables (mainly on assets, ceo and industry information), we do not impute but rather drop missing values. Moreover, we intend to use the variable on previous firm growth as predictor for (future) fast growth -- very much in the same fashion as we know from time trends models. Thus, we include the lagged growth in sales (2011 to 2012). As this results in some NAs (due to some missing sales values in 2011), we again flag the observations concerned and impute them by replacing them with 0. This means we assume that said observations did not experience any growth. Although this solution is not ideal, it is based on the assumption that we compare a firm's (missing) sales value in 2011 to the value of its "nearest neighbour" -- the firm's sales in 2012.
+In the process of analysing missing values, we impute some important ones (*ceo_age*, *labor_avg*) and add flags for missing values. For other, very important variables (mainly on assets, ceo and industry information), we do not impute but rather drop missing values. Moreover, we intend to use the variable on previous firm growth as predictor for (future) fast growth -- very much in the same fashion as we know from time trend models. Thus, we include the lagged growth in sales (2011 to 2012). As this results in some NAs (due to some missing sales values in 2011), we again flag the observations concerned and impute them by replacing them with 0. This means we assume that said observations did not experience any growth. Although this solution is not ideal, it is based on the assumption that we compare a firm's (missing) sales value in 2011 to the value of its "nearest neighbour" -- the firm's sales in 2012.
 
 Moreover, we compute some new variables: *age* of the company, a dummy for whether it is a *new* company, has *multiple_ceo*s, a *foreign_management*. We classify the observations based on their two-digit NACE codes into "manufacturing" vs. "services" (*ind2_cat* variable), generate a variable for *total_assets* and compute ratios of some financial variables (with either *total_assets* or *sales* as reference). Lastly, we windsorize tails of numeric variables and add flags accordingly.
 
@@ -1172,7 +1172,7 @@ kable(x = cm2_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = 
 # Introduce loss function
 # relative cost of of a false negative classification (as compared with a false positive classification)
 FP= 1
-FN= 5
+FN= 10
 cost = FN/FP
 # the prevalence, or the proportion of cases in the population (n.cases/(n.controls+n.cases))
 prevalence = sum(bisnode_work$high_growth)/length(bisnode_work$high_growth)
@@ -1351,20 +1351,25 @@ expected_loss_holdout
 # compare all models: to pick the one with lowest expected loss
 ###############################################
 
-
-
-# calculate number of variables for all models
-##### OPEN: make nice row_names names
-
-summary_all_mods <- data.frame("Predictors" = unlist(nvars),
-                               "Coefficients" = unlist(ncoeff),
-                               "CV RMSE" = unlist(CV_RMSE),
-                               "CV AUC" = unlist(CV_AUC),
-                               "CV threshold" = unlist(best_tresholds),
-                               "CV expected Loss" = unlist(expected_loss))
+summary_all_mods <- data.frame(Model = c("Logit w/o interactions", "Logit w interactions", 
+                                         "Logit LASSO", "Random Forest"),
+                              Preds = c(nvars$logit_no_interactions, 
+                                        nvars$logit_incl_interactions, nvars$LASSO, nvars$rf),
+                              Coeffs = c(ncoeff$logit_no_interactions, 
+                                         ncoeff$logit_incl_interactions, ncoeff$LASSO, ncoeff$rf),
+                              RMSE = c(CV_RMSE$logit_no_interactions, 
+                                       CV_RMSE$logit_incl_interactions, CV_RMSE$LASSO, CV_RMSE$rf_p),
+                              AUC = c(CV_AUC$logit_no_interactions, 
+                                      CV_AUC$logit_incl_interactions, CV_AUC$LASSO, CV_AUC$rf_p),
+                              threshold = c(best_tresholds$logit_no_interactions,
+                                            best_tresholds$logit_incl_interactions, 
+                                            best_tresholds$LASSO, best_tresholds$rf_p),
+                              exp_loss = c(expected_loss$logit_no_interactions,
+                                           expected_loss$logit_incl_interactions, 
+                                           expected_loss$LASSO, expected_loss$rf_p))
 
 kable(x = summary_all_mods, format = "latex", booktabs=TRUE,  digits = 3, row.names = TRUE,
-      linesep = "", col.names = c("Coefficients", "CV RMSE", "CV AUC",
+      linesep = "", col.names = c("Model", "Predictors", "Coefficients", "CV RMSE", "CV AUC",
                                   "CV threshold", "CV expected Loss"))
 
 
@@ -1465,6 +1470,7 @@ CV_AUC[["rf_p_manu"]] <- mean(CV_AUC_folds[["rf_p_manu"]]$AUC)
 
 
 ```
+
 ```{r}
 ######################################
 # loss function for RF manufacturing
@@ -1573,7 +1579,7 @@ CV_AUC[["rf_p_serv"]] <- mean(CV_AUC_folds[["rf_p_serv"]]$AUC)
 
 ```{r}
 ######################################
-# loss function for RF manufacturing
+# loss function for RF services
 ######################################
 
 # Now use loss function and search for best thresholds and expected loss over folds -----
@@ -1638,11 +1644,6 @@ expected_loss_holdout_serv
 ```
 
 
-<!-- Task2.2: Define single loss function (Same loss function as before?) but use for samples separately (pick one prediction model) --> 
-
-```{r}
-
-```
 
 <!-- Task2.3: Compare the model performance across two samples -->
 
