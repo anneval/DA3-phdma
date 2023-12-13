@@ -42,7 +42,7 @@ options(scipen = 999)
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies')
+knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
@@ -1669,7 +1669,7 @@ as.numeric(roc_obj_manu_holdout$auc)
 holdout_treshold_manu <- coords(roc_obj_manu_holdout, x = best_tresholds[["rf_p_manu"]] , input= "threshold",
                            ret="all", transpose = FALSE)
 expected_loss_holdout_manu <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/length(manu_holdout$high_growth)
-expected_loss_holdout_manu
+#expected_loss_holdout_manu
 ```
 
 ```{r}
@@ -1775,7 +1775,7 @@ as.numeric(roc_obj_serv_holdout$auc)
 holdout_treshold_serv <- coords(roc_obj_serv_holdout, x = best_tresholds[["rf_p_serv"]] , input= "threshold",
                            ret="all", transpose = FALSE)
 expected_loss_holdout_serv <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/length(serv_holdout$high_growth)
-expected_loss_holdout_serv
+#expected_loss_holdout_serv
 ```
 
 ### Comparison of models in manufacturing and services
@@ -1930,6 +1930,60 @@ rf_model_plots$rf_model_plot_all_3
 rf_model_plots$rf_model_plot_10_3
 ```
 
+```{r}
+library(plotly)
+
+# Create an empty list to store the plots
+rf_model_plots <- list()
+
+# Loop over the random forest models
+for (i in seq_along(rf_models)) {
+  current_rf_model <- rf_models[[i]]
+
+  rf_model_var_imp <- importance(current_rf_model$finalModel) / 1000
+
+  rf_model_var_imp_df <- data.frame(varname = names(rf_model_var_imp), imp = rf_model_var_imp) %>%
+    arrange(desc(imp)) %>%
+    mutate(imp_percentage = imp / sum(imp))
+
+  # Create plot VAR IMP ALL 
+  current_plot_all <- plot_ly(rf_model_var_imp_df, x = ~imp_percentage, y = ~reorder(varname, imp), type = 'bar', orientation = 'h') %>%
+    layout(
+      xaxis = list(title = "Importance", range = c(0, 0.07), tickvals = seq(0, 0.07, by = 0.01), tickformat = ".0%"),
+      yaxis = list(title = "Variable Name"),
+      showlegend = FALSE,
+      barmode = 'stack',  # Use 'stack' mode to adjust bar width
+      bargap = 0.2  # Adjust the bar width by changing bargap
+    )
+
+  # Save the plot
+  rf_model_plots[[paste0("rf_model_plot_all_", i)]] <- current_plot_all
+
+  # Create plot VAR IMP TOP 10  
+  current_plot_10 <- plot_ly(rf_model_var_imp_df[1:10, ], x = ~imp_percentage, y = ~reorder(varname, imp), type = 'bar', orientation = 'h') %>%
+    layout(
+      xaxis = list(title = "Importance", range = c(0, 0.07), tickvals = seq(0, 0.07, by = 0.01), tickformat = ".0%"),
+      yaxis = list(title = "Variable Name"),
+      showlegend = FALSE,
+      barmode = 'stack',  # Use 'stack' mode to adjust bar width
+      bargap = 0.2  # Adjust the bar width by changing bargap
+    )
+
+  # Save the plot
+  rf_model_plots[[paste0("rf_model_plot_10_", i)]] <- current_plot_10
+}
+
+# Print or view the plots
+for (i in seq_along(rf_model_plots)) {
+  print(rf_model_plots[[i]])
+}
+
+
+
+```
+
+
+
 ### Variable importance grouped
 
 ```{r}
@@ -1995,6 +2049,63 @@ current_plot_group <- ggplot(rf_model_var_imp_grouped_df, aes(x = reorder(varnam
 rf_model_plots$rf_model_var_imp_grouped_plot1
 rf_model_plots$rf_model_var_imp_grouped_plot2
 rf_model_plots$rf_model_var_imp_grouped_plot3
+```
+
+
+```{r,echo=FALSE, include=F, warning=F}
+######################################################
+
+library(plotly)
+
+# Create an empty list to store the plots
+rf_model_plots_grouped <- list()
+
+# Loop over the random forest models
+for (i in seq_along(rf_models)) {
+  current_rf_model <- rf_models[[i]]
+
+  varnames <- current_rf_model$finalModel$xNames
+  ind_varnames <- grep("ind", varnames, value = TRUE)
+  gender_varnames <- grep("gender", varnames, value = TRUE)
+  origin_varnames <- grep("origin", varnames, value = TRUE)
+  region_m_varnames <- grep("region_m", varnames, value = TRUE)
+  urban_m_varnames <- grep("urban_m", varnames, value = TRUE)
+
+  groups <- list(ind = ind_varnames,
+                 gender = gender_varnames,
+                 origin = origin_varnames,
+                 region_m = region_m_varnames,
+                 urban_m = urban_m_varnames)
+
+  rf_model_var_imp_grouped <- group.importance(current_rf_model$finalModel, groups)
+  rf_model_var_imp_grouped_df <- data.frame(
+    varname = rownames(rf_model_var_imp_grouped),
+    imp = rf_model_var_imp_grouped[, 1]
+  ) %>%
+    mutate(imp_percentage = imp / sum(imp))
+
+  current_plot_group <- plot_ly(
+    rf_model_var_imp_grouped_df,
+    x = ~imp_percentage,
+    y = ~reorder(varname, imp),
+    type = 'bar',
+    orientation = 'h',
+    marker = list( width = 0.5)
+  ) %>%
+    layout(
+      xaxis = list(title = "Importance", tickformat = ".0%", range = c(0, max(rf_model_var_imp_grouped_df$imp_percentage) + 0.01)),
+      yaxis = list(title = "Variable Name"),
+      showlegend = FALSE
+    )
+
+  # Save the plot
+  rf_model_plots_grouped[[paste0("rf_model_var_imp_grouped_plot", i)]] <- current_plot_group
+}
+
+# Print or view the plots
+for (i in seq_along(rf_model_plots_grouped)) {
+  print(rf_model_plots_grouped[[i]])
+}
 
 ```
 
@@ -2244,7 +2355,7 @@ for (fold in c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")) {
 }
 
 rf_model_p_manu_InteractLossPlot <- createInteractLossPlot(roc_obj, best_treshold, "rf_p_manu_interact_loss_plot")
-rf_model_p_manu_InteractLossPlot
+#rf_model_p_manu_InteractLossPlot
 ```
 
 ```{r}
@@ -2271,7 +2382,7 @@ for (fold in c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")) {
 }
 
 rf_model_p_serv_InteractLossPlot <- createInteractLossPlot(roc_obj, best_treshold, "rf_p_serv_interact_loss_plot")
-rf_model_p_serv_InteractLossPlot
+#rf_model_p_serv_InteractLossPlot
 ```
 # Overall Summary
 
@@ -2279,13 +2390,12 @@ We estimated three models to predict high growth firms (logit, logit LASSO, rand
 
 Our definition of high growth is based on average annual sales growth over two years ahead above 30%. In our loss function we assigned 50% higher costs to false positives, reflecting our desire to avoid bad investments. This decision lead to a high specificity of our classification but at the same time to a low sensitivity. We prefer this trade-off since we do not need to identify all high growth firms but rather just find some of them with enough confidence to make an investment. 
 
-## Section on variable importance/PDP/Shapley here
+## Section on variable importance/PDP/Shapley here (into dashboard)
 What is more, we analyzed the influence of the variables entering our model. We find that XXXX.
 
 In a next step we applied our model to the two segments of manufacturing and services. The model performs better in the services sector leading to lower false positives and lower false negatives.
 
 XXXX
-
 
 <!-- Save data environment for dashboard  -->
 
@@ -2294,4 +2404,10 @@ save.image(file = "A3.RData") # specify location
 # delete all data not needed !!!! to make shiny faster!!! 
 ```
 
-<!-- Task3.2: Create a shiny (flexdashboard) app for the project where you can show (1) how key variables influence the prediction (!Shapley) and (2) show expected loss based on different thresholds. -->
+<!-- References 
+ChatGPT, Shiny Package: selectInput Function, December 13, 2023.
+Retrieved from: https://chat.openai.com/share/7029becb-1062-49e2-9755-eb1baa46ea26
+
+Békés,G., Kézdi,G.(2021).R, Python and Stata code for Data Analysis for Business, Economics, and Policy, ch17-predicting-firm-exit  , GitHub repository, https://github.com/gabors-data-analysis/da_case_studies/tree/master/ch17-predicting-firm-exit
+
+Békés, G., & Kézdi, G. (2021). Data analysis for business, economics, and policy. Cambridge University Press, chapter 17.!--> 

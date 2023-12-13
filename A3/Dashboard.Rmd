@@ -197,48 +197,48 @@ selectInput("feature_selector", "Select Feature form Random forest model:", choi
 ```
 
 
-```{r PDP, include=TRUE}
+```{r PDP1, include=TRUE}
 #renderPlot
-renderPlot({
-  selected_feature <- input$feature_selector
-  
-  # Check if the selected feature is numeric or categorical
-  if (is.numeric(bisnode_holdout[[selected_feature]])) {
-    # Create PDP for numeric feature
-    pdp_result <- pdp::partial(rf_model_p, pred.var = selected_feature, 
-                               pred.grid = distinct_(bisnode_holdout, selected_feature), 
-                               train = bisnode_work)
-    
-    # Customize PDP plot for numeric feature
-    pdp_plot <- pdp_result %>%
-      autoplot() +
-      geom_point(color = color[1], size = 2) +
-      geom_line(color = color[1], size = 1) +
-      ylab("Growth") +
-      xlab(paste("Partial Dependence on", selected_feature)) +
-      theme_bg()
-    
-    # Print the plot
-    print(pdp_plot)
-    
-  } else if (is.factor(bisnode_holdout[[selected_feature]])) {
-    # Create PDP for categorical feature
-    pdp_result <- pdp::partial(rf_model_p, pred.var = selected_feature, 
-                               pred.grid = unique(bisnode_holdout[[selected_feature]]), 
-                               train = bisnode_work)
-    
-    # Customize PDP plot for categorical feature
-    pdp_plot <- pdp_result %>%
-      autoplot() +
-      geom_point(color = color[1], size = 2) +
-      ylab("Growth") +
-      xlab(paste("Partial Dependence on", selected_feature)) +
-      theme_bg()
-    
-    # Print the plot
-    print(pdp_plot)
-    }#,cacheKeyExpr = {input$feature_selector }
-})
+# renderPlot({
+#   selected_feature <- input$feature_selector
+#   
+#   # Check if the selected feature is numeric or categorical
+#   if (is.numeric(bisnode_holdout[[selected_feature]])) {
+#     # Create PDP for numeric feature
+#     pdp_result <- pdp::partial(rf_model_p, pred.var = selected_feature, 
+#                                pred.grid = distinct_(bisnode_holdout, selected_feature), 
+#                                train = bisnode_work)
+#     
+#     # Customize PDP plot for numeric feature
+#     pdp_plot <- pdp_result %>%
+#       autoplot() +
+#       geom_point(color = color[1], size = 2) +
+#       geom_line(color = color[1], size = 1) +
+#       ylab("Growth") +
+#       xlab(paste("Partial Dependence on", selected_feature)) +
+#       theme_bg()
+#     
+#     # Print the plot
+#     print(pdp_plot)
+#     
+#   } else if (is.factor(bisnode_holdout[[selected_feature]])) {
+#     # Create PDP for categorical feature
+#     pdp_result <- pdp::partial(rf_model_p, pred.var = selected_feature, 
+#                                pred.grid = unique(bisnode_holdout[[selected_feature]]), 
+#                                train = bisnode_work)
+#     
+#     # Customize PDP plot for categorical feature
+#     pdp_plot <- pdp_result %>%
+#       autoplot() +
+#       geom_point(color = color[1], size = 2) +
+#       ylab("Growth") +
+#       xlab(paste("Partial Dependence on", selected_feature)) +
+#       theme_bg()
+#     
+#     # Print the plot
+#     print(pdp_plot)
+#     }#,cacheKeyExpr = {input$feature_selector }
+# })
 
 ```
 
@@ -310,11 +310,111 @@ renderPlot({
 # <font size="3">Manufacturing</font> {data-navmenu="PDP"}
 ### {style="border: 0px; background: none"}
 
+```{r, include=TRUE}
+features <- rfvars# nicer names? 
+selectInput("feature_selector", "Select Feature form Random forest model:", choices = features, selected = features[1])
 
+```
+
+
+```{r PDP2, include=TRUE}
+#renderPlot
+# renderPlot({
+#   selected_feature <- input$feature_selector
+#   
+#   # Check if the selected feature is numeric or categorical
+#   if (is.numeric(bisnode_holdout[[selected_feature]])) {
+#     # Create PDP for numeric feature
+#     pdp_result <- pdp::partial(rf_model_p, pred.var = selected_feature, 
+#                                pred.grid = distinct_(bisnode_holdout, selected_feature), 
+#                                train = bisnode_work)
+#     
+#     # Customize PDP plot for numeric feature
+#     pdp_plot <- pdp_result %>%
+#       autoplot() +
+#       geom_point(color = color[1], size = 2) +
+#       geom_line(color = color[1], size = 1) +
+#       ylab("Growth") +
+#       xlab(paste("Partial Dependence on", selected_feature)) +
+#       theme_bg()
+#     
+#     # Print the plot
+#     print(pdp_plot)
+#     
+#   } else if (is.factor(bisnode_holdout[[selected_feature]])) {
+#     # Create PDP for categorical feature
+#     pdp_result <- pdp::partial(rf_model_p_manu, pred.var = selected_feature, 
+#                                pred.grid = unique(bisnode_holdout[[selected_feature]]), 
+#                                train = bisnode_work)
+#     
+#     # Customize PDP plot for categorical feature
+#     pdp_plot <- pdp_result %>%
+#       autoplot() +
+#       geom_point(color = color[1], size = 2) +
+#       ylab("Growth") +
+#       xlab(paste("Partial Dependence on", selected_feature)) +
+#       theme_bg()
+#     
+#     # Print the plot
+#     print(pdp_plot)
+#     }#,cacheKeyExpr = {input$feature_selector }
+# })
+
+```
 # <font size="3">Services</font> {data-navmenu="PDP"}
 ### {style="border: 0px; background: none"}
 
+```{r, include=TRUE}
+features <- rfvars# nicer names? 
+selectInput("feature_selector", "Select Feature form Random forest model:", choices = features, selected = features[1])
 
+```
+
+
+```{r PDP3, include=TRUE}
+#renderPlot
+# renderPlot({
+#   selected_feature <- input$feature_selector
+#   
+#   # Check if the selected feature is numeric or categorical
+#   if (is.numeric(bisnode_holdout[[selected_feature]])) {
+#     # Create PDP for numeric feature
+#     pdp_result <- pdp::partial(rf_model_p_serv, pred.var = selected_feature, 
+#                                pred.grid = distinct_(bisnode_holdout, selected_feature), 
+#                                train = bisnode_work)
+#     
+#     # Customize PDP plot for numeric feature
+#     pdp_plot <- pdp_result %>%
+#       autoplot() +
+#       geom_point(color = color[1], size = 2) +
+#       geom_line(color = color[1], size = 1) +
+#       ylab("Growth") +
+#       xlab(paste("Partial Dependence on", selected_feature)) +
+#       theme_bg()
+#     
+#     # Print the plot
+#     print(pdp_plot)
+#     
+#   } else if (is.factor(bisnode_holdout[[selected_feature]])) {
+#     # Create PDP for categorical feature
+#     pdp_result <- pdp::partial(rf_model_p, pred.var = selected_feature, 
+#                                pred.grid = unique(bisnode_holdout[[selected_feature]]), 
+#                                train = bisnode_work)
+#     
+#     # Customize PDP plot for categorical feature
+#     pdp_plot <- pdp_result %>%
+#       autoplot() +
+#       geom_point(color = color[1], size = 2) +
+#       ylab("Growth") +
+#       xlab(paste("Partial Dependence on", selected_feature)) +
+#       theme_bg()
+#     
+#     # Print the plot
+#     print(pdp_plot)
+#     }#,cacheKeyExpr = {input$feature_selector }
+# })
+
+```
 # Threshold decision
 #### **Expected loss based on different thresholds:**
 
@@ -324,7 +424,7 @@ TEXT
 ### Bisnode
 
 
-```{r}
+```{r, include=TRUE}
 # re-run losses for RF s.t roc_object is correctly stored
 # Now use loss function and search for best thresholds and expected loss over folds -----
 rf_model_p_InteractLossPlot
@@ -332,15 +432,15 @@ rf_model_p_InteractLossPlot
 
 ### Manufacturing
 
-```{r}
+```{r, include=TRUE}
 # re-run losses for RF s.t roc_object is correctly stored
 # Now use loss function and search for best thresholds and expected loss over folds -----
-rf_model_manu_InteractLossPlot
+rf_model_p_manu_InteractLossPlot
 ```
 ### Services
-```{r}
+```{r, include=TRUE}
 # re-run losses for RF s.t roc_object is correctly stored
 # Now use loss function and search for best thresholds and expected loss over folds -----
-rf_model_serv_InteractLossPlot
+rf_model_p_serv_InteractLossPlot
 ```
 
