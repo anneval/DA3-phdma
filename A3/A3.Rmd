@@ -22,7 +22,7 @@ two years ahead. The models are logit, random forest and logit lasso.
 The models' predictive power is evaluated once without and once with the
 use of a loss function. After the introduction of a loss function we
 identified random forest as strongest model. This model is also used on
-the subsets manufacturing and services In comparison, XXXX. Further
+the subsets manufacturing and services. In comparison, XXXX. Further
 results and interactive graphs can be found in the shiny app linked to
 this report.
 
@@ -42,7 +42,7 @@ options(scipen = 999)
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies')
+knitr::opts_knit$set(root.dir = 'C:/Users/AnjaHahn/OneDrive - DataScience Service GmbH/WU/Courses/CEU Prediction with Machine Learning for Economists/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
@@ -54,16 +54,14 @@ knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/S
 <!-- Set directory, load functions and theme  -->
 
 ```{r, include=FALSE}
-#getwd()
+# getwd()
 source("set-data-directory.R")
 source("ch00-tech-prep/theme_bg.R")
 source("ch00-tech-prep/da_helper_functions.R")
 
-
 data_in <- paste(data_dir,"bisnode-firms","clean/", sep = "/")
-#use_case_dir <- "ch17-predicting-firm-exit/"
 
-#set output directory
+# set output directory (to github folder)
 output <- "output/"
 
 ```
@@ -91,7 +89,7 @@ bisnode <- read_csv(paste(data_in,"cs_bisnode_panel.csv", sep = "/")) # 287829 o
 
 <!-- Data summary  -->
 
-```{r, include=FALSE}
+```{r data summary, include=FALSE}
 # count missing values
 colSums(is.na(bisnode))
 colSums(is.na(bisnode))/nrow(bisnode)*100
@@ -117,7 +115,7 @@ bisnode %>%
 We exclude some variables that have extremely high rates of missing
 values (above 90%) and only look at firms that are active in 2012, that
 is, they have some sales. What is more, our analysis is only based on
-firms with annual sales between 1000 and 10 million euros. We believe
+firms with annual sales between 1,000 and 10 million euros. We believe
 this subset presents the most attractive investment opportunities.
 First, very small firms with sales below 1000 EUR in sales are likely
 not to seek investment and high growth events might happen at random
@@ -129,7 +127,7 @@ promising for investors.
 
 <!-- Sample design  -->
 
-```{r, include=FALSE}
+```{r sample design, include=FALSE}
 ####################################
 # Sample design
 ####################################
@@ -174,7 +172,7 @@ bisnode <- bisnode %>%
 
 <!-- Data visualization  -->
 
-```{r, include=FALSE}
+```{r data visualisation, include=FALSE}
 # visualize sales
 plot_sales <-  ggplot(bisnode, aes(x = sales)) +
   geom_histogram(bins = 100, fill = color[1], color = color.outline, alpha = 0.8) +
@@ -198,7 +196,7 @@ plot_labor_avg
 ## Label Engineering
 
 We are exploring multiple alternatives as target variable to represent
-high growth firms. In our selection we pay attention to the following
+high growth firms. In our selection, we pay attention to the following
 dimensions: i) the indicator to choose, ii) the measurement, iii) the
 time horizon, and iv) the threshold. The literature does not yield one
 consensus over a definition of high growth firms, it rather points out
@@ -223,8 +221,8 @@ definition of high growth firms that is defined over a three year
 horizon. Third, we decided for a threshold of 30% annual growth. In our
 sample this is equivalent to classifying roughly the fastest growing 20%
 of firms as HGF. In the literature, both thresholds on a certain growth
-rates and a certain percentile of firms are used. We decided for a
-threshold based on a specific growth rates since we want to analyze
+rate and a certain percentile of firms are used. We decided for a
+threshold based on a specific growth rate since we want to analyze
 different sectors (manufacturing and services) with a fixed benchmark.
 
 [\^1] Alex Coad, Sven-Olov Daunfeldt, Werner Hölzl, Dan Johansson, Paul
@@ -234,7 +232,7 @@ Pages 91--112, <https://doi.org/10.1093/icc/dtt052>
 
 <!-- Label engineering  -->
 
-```{r, include=FALSE}
+```{r label engineering, include=FALSE}
 ####################################
 # Label engineering
 ####################################
@@ -270,7 +268,7 @@ bisnode <- bisnode %>%
   ungroup()
 
 # 2-year ahead average annual sales growth as percentage change
-# our target!!!
+# our target
 bisnode <- bisnode %>%
   group_by(comp_id) %>%
   arrange(year) %>%
@@ -426,7 +424,7 @@ implausible variables, such as *ceo_age* below 18 years, we set to NA.
 
 In the process of analysing missing values, we impute some important
 ones (*ceo_age*, *labor_avg*) and add flags for missing values. For
-other, very important variables (mainly on assets, ceo and industry
+other, very important variables (mainly on assets, CEO and industry
 information), we do not impute but rather drop missing values. Moreover,
 we intend to use the variable on previous firm growth as predictor for
 (future) fast growth -- very much in the same fashion as we know from
@@ -440,17 +438,17 @@ in 2011 to the value of its "nearest neighbour" -- the firm's sales in
 2012.
 
 Moreover, we compute some new variables: *age* of the company, a dummy
-for whether it is a *new* company, has *multiple_ceo*s, a
+for whether it is a *new* company, has *multiple_ceo*s or a
 *foreign_management*. We classify the observations based on their
-two-digit NACE codes into "manufacturing" vs. "services" (*ind2_cat*
-variable), generate a variable for *total_assets* and compute ratios of
+two-digit NACE codes into "manufacturing" vs. "services", generate a 
+variable for *total_assets* and compute ratios of
 some financial variables (with either *total_assets* or *sales* as
 reference). Lastly, we windsorize tails of numeric variables and add
 flags accordingly.
 
 <!-- Feature engineering  -->
 
-```{r, include=FALSE}
+```{r feature engineering, include=FALSE}
 # re-code one character variable
 bisnode <- bisnode %>%
   mutate(urban_m = case_when(
@@ -801,7 +799,7 @@ variable). This yields in total 91 vars.
 
 <!-- Task1.1: Define variable groups for differnet models  -->
 
-```{r}
+```{r variable selection}
 #####################
 # Group Variables
 
@@ -862,9 +860,6 @@ interactions1 <- c("ind2*age", "ind2*age_quad",
                    "ind2*ceo_age", "ind2*origin", "ind2*gender",
                    "ind2*urban_m", "ind2*ln_labor_avg", "ind2*multiple_ceo")
 
-# interactions2 <- c("sales_mil_log*age", "sales_mil_log*gender",
-                   # "sales_mil_log*profit_loss_year_rel", "sales_mil_log*origin",
-                   # "sales_mil_log*multiple_ceo")
 
 ####################
 # Variable Selection
@@ -877,20 +872,6 @@ logitvars2 <- c(qualityvars, engvar, engvar2, engvar3, sales, hr, firm, interact
 length(logitvars2)
 logit_model_vars <- list("logit_no_interactions" = logitvars1, "logit_incl_interactions" = logitvars2)
 
-# caret always (no matter if all sales vars excluded or not) gives warnings: 
-# Angepasste Wahrscheinlichkeiten mit numerischem Wert 0 oder 1 aufgetreten
-# Warnung: Vorhersage durch Fit ohne vollen Rang mag täuschen
-# below works with d1_sales_mil_log variables
-# below does not work with sales_mil_log variables
-# below shows no warnings on multicollinearity
-# also, Gabor's code shows warnings: Vorhersage durch Fit ohne vollen Rang mag täuschen
-# idea: exclude sales_mil_log variables and ignore warnings
-# glm_1 <- glm(formula(paste0("high_growth_factor ~", paste0(logitvars1, collapse = " + "))),
-#              family = "binomial",
-#              data = bisnode_work)
-
-# summary(glm_1)
-
 # random forest (no interactions, no modified features)
 rfvars  <-  c("d1_sales_mil_log", "flag_missing_d1_sales_mil_log", 
               "ceo_count", "labor_avg", rawvars, qualityvars, hr, firm)
@@ -899,6 +880,7 @@ rfvars  <-  c("d1_sales_mil_log", "flag_missing_d1_sales_mil_log",
 #rfvars <- rfvars[!rfvars %in% c("origin", "gender", "urban_m", "region_m", "ind2")]
 
 length(rfvars)
+
 # for logit LASSO
 lassovars <- c("ceo_count", qualityvars, engvar, engvar2, engvar3, sales, hr, firm, interactions1)
 length(lassovars)
@@ -941,7 +923,7 @@ performance of our models.
 
 <!-- Task1.1: Model 1 - Logit  -->
 
-```{r}
+```{r logit}
 #######################################################
 # PART I PREDICT PROBABILITIES
 # Predict logit model ----------------------------------------------
@@ -1023,7 +1005,7 @@ for (model_name in names(logit_models)) {
 
 <!-- Task1.1: Model 2 - Probability forest  -->
 
-```{r}
+```{r probability forest}
 #################################################
 # Probability forest
 # Split by gini, ratio of 1's in each tree, average over trees
@@ -1034,16 +1016,17 @@ tune_grid <- expand.grid(
   .splitrule = "gini",
   .min.node.size = c(10, 15))
 
-# getModelInfo("ranger")
-rf_model_p <- train(
-  formula(paste0("high_growth_factor ~ ", paste0(rfvars , collapse = " + "))),
-  method = "ranger",
-  data = bisnode_work,
-  tuneGrid = tune_grid,
-  trControl = train_control,
-  importance = "impurity"
-)
 
+# rf_model_p <- train(
+#   formula(paste0("high_growth_factor ~ ", paste0(rfvars , collapse = " + "))),
+#   method = "ranger",
+#   data = bisnode_work,
+#   tuneGrid = tune_grid,
+#   trControl = train_control,
+#   importance = "impurity"
+# )
+# saveRDS(rf_model_p, paste0(output, "rf_model_p.RDS"))
+rf_model_p <- readRDS(paste0(output, "rf_model_p.RDS"))
 rf_model_p$results
 
 best_mtry <- rf_model_p$bestTune$mtry
@@ -1071,7 +1054,7 @@ CV_AUC[["rf_p"]] <- mean(CV_AUC_folds[["rf_p"]]$AUC)
 
 <!-- Task1.1: Model 3 - Logit LASSO  -->
 
-```{r}
+```{r logit lasso}
 # Logit lasso -----------------------------------------------------------
 
 lambda <- 10^seq(-1, -4, length = 10)
@@ -1285,7 +1268,7 @@ kable(x = cm2_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = 
 
 Next, we introduce a loss function specifically tailored for our business case. In selecting the best model, our primary objective is to minimize false positives. This is crucial because we aim to avoid investing in firms that do not exhibit strong growth potential. However, there's a challenge: only 20% of firms in our dataset are categorized as fast-growing. Overemphasizing the cost of false positives could inadvertently lead the model to classify all observations as low growth. Such an approach would undermine our goal of identifying high-potential business opportunities.
 
-To address this, we have calibrated the cost associated with false positives (FP) and false negatives (FN) in a balanced manner. We have set the cost of a false positive at 150% of that of a false negative. This ratio reflects a strategic decision: while avoiding unfruitful investments is important, we also don't want to miss out on promising firms. Additionally, we have incorporated the prevalence of high-growth firms into the model's weighting system. This adjustment ensures that our model remains sensitive to the relatively scarce yet valuable high-growth opportunities in our dataset, thereby aligning the model's predictions more closely with our business objectives.
+To address this, we have calibrated the cost associated with false positives (FP) and false negatives (FN) in a balanced manner. We have set the cost of a false positive at 150% of that of a false negative. This ratio reflects a strategic decision: while avoiding unfruitful investments is important, we also do not want to miss out on promising firms. Additionally, we have incorporated the prevalence of high-growth firms into the model's weighting system. This adjustment ensures that our model remains sensitive to the relatively scarce yet valuable high-growth opportunities in our dataset, thereby aligning the model's predictions more closely with our business objectives.
 
 <!-- Task1.2: Loss function design -->
 
@@ -1306,7 +1289,7 @@ prevalence = sum(bisnode_work$high_growth)/length(bisnode_work$high_growth)
 # Draw ROC Curve and find optimal threshold with loss function --------------------------
 ```
 
-```{r}
+```{r logit w loss}
 
 # incorporate loss function for logit models
 best_tresholds <- list()
@@ -1363,8 +1346,7 @@ kable(x = logit_summary, format = "latex", booktabs=TRUE,  digits = 3, row.names
                                   "Avg expected loss","Expected loss for fold #5"))
 
 ## Create plots based on Fold5 in CV ----------------------------------------------
-## below loop does not run!!!
- for (model_name in names(logit_cv_rocs)) {
+for (model_name in names(logit_cv_rocs)) {
 
    r <- logit_cv_rocs[[model_name]]
    best_coords <- logit_cv_threshold[[model_name]]
@@ -1372,7 +1354,7 @@ kable(x = logit_summary, format = "latex", booktabs=TRUE,  digits = 3, row.names
                   paste0(model_name, "_loss_plot"))
    createRocPlotWithOptimal(r, best_coords,
                             paste0(model_name, "_roc_plot"))
- }
+}
 
 
 # Pick best model based on average expected loss ----------------------------------
@@ -1404,7 +1386,7 @@ cm3
 
 <!-- Task1.1: Loss function RF -->
 
-```{r}
+```{r rf with loss}
 ################################
 # loss function for RF
 ################################
@@ -1447,7 +1429,6 @@ kable(x = rf_summary, format = "latex", booktabs=TRUE,  digits = 3, row.names = 
 
 
 # Create plots - this is for Fold5
-# below functions do not run!!!
 createLossPlot(roc_obj, best_treshold, "rf_p_loss_plot")
 createRocPlotWithOptimal(roc_obj, best_treshold, "rf_p_roc_plot")
 
@@ -1516,7 +1497,7 @@ Of course, we realize that we could not test the external validity of our model 
 
 <!-- Task1.3: Discuss results, evaluate how useful your model may be -->
 
-```{r}
+```{r confusion table rf}
 ###############################################
 # Create Confusion table for the RF model
 ###############################################
@@ -1564,21 +1545,22 @@ serv_holdout <- bisnode_work %>% filter(ind2_cat == "services")
 
 <!-- Task2.1: 2 Samples (service & manufacturing) Random forest (WITHOUT LOSS FUNCTION!!!)  -->
 
-```{r}
+```{r rf manufacturing}
 #################################################
 # Probability forest for manufacturing sample!
 # Split by gini, ratio of 1's in each tree, average over trees
 #################################################
 
-rf_model_p_manu <- train(
-  formula(paste0("high_growth_factor ~ ", paste0(rfvars , collapse = " + "))),
-  method = "ranger",
-  data = manu_work,
-  tuneGrid = tune_grid,
-  trControl = train_control,
-  importance = "impurity"
-)
-
+# rf_model_p_manu <- train(
+#   formula(paste0("high_growth_factor ~ ", paste0(rfvars , collapse = " + "))),
+#   method = "ranger",
+#   data = manu_work,
+#   tuneGrid = tune_grid,
+#   trControl = train_control,
+#   importance = "impurity"
+# )
+# saveRDS(rf_model_p_manu, paste0(output, "rf_model_p_manu.RDS"))
+rf_model_p_manu <- readRDS(paste0(output, "rf_model_p_manu.RDS"))
 rf_model_p_manu$results
 
 best_mtry <- rf_model_p_manu$bestTune$mtry
@@ -1606,7 +1588,7 @@ CV_AUC[["rf_p_manu"]] <- mean(CV_AUC_folds[["rf_p_manu"]]$AUC)
 
 ```
 
-```{r}
+```{r loss function rf manufacturing}
 ######################################
 # loss function for RF manufacturing
 ######################################
@@ -1649,7 +1631,6 @@ kable(x = rf_summary_manu, format = "latex", booktabs=TRUE,  digits = 3, row.nam
 
 
 # Create plots - this is for Fold5
-# below function do not run!!!
 createLossPlot(roc_obj, best_treshold, "rf_p_manu_loss_plot")
 createRocPlotWithOptimal(roc_obj, best_treshold, "rf_p_manu_roc_plot")
 
@@ -1672,21 +1653,22 @@ expected_loss_holdout_manu <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/
 #expected_loss_holdout_manu
 ```
 
-```{r}
+```{r rf services}
 #################################################
 # Probability forest for service sample!
 # Split by gini, ratio of 1's in each tree, average over trees
 #################################################
 
-rf_model_p_serv <- train(
-  formula(paste0("high_growth_factor ~ ", paste0(rfvars , collapse = " + "))),
-  method = "ranger",
-  data = serv_work,
-  tuneGrid = tune_grid,
-  trControl = train_control,
-  importance = "impurity"
-)
-
+# rf_model_p_serv <- train(
+#   formula(paste0("high_growth_factor ~ ", paste0(rfvars , collapse = " + "))),
+#   method = "ranger",
+#   data = serv_work,
+#   tuneGrid = tune_grid,
+#   trControl = train_control,
+#   importance = "impurity"
+# )
+# saveRDS(rf_model_p_serv, paste0(output,"rf_model_p_serv.RDS"))
+rf_model_p_serv <- readRDS(paste0(output, "rf_model_p_serv.RDS"))
 rf_model_p_serv$results
 
 best_mtry <- rf_model_p_serv$bestTune$mtry
@@ -1712,7 +1694,7 @@ CV_AUC[["rf_p_serv"]] <- mean(CV_AUC_folds[["rf_p_serv"]]$AUC)
 
 ```
 
-```{r}
+```{r loss function rf services}
 ######################################
 # loss function for RF services
 ######################################
@@ -1755,7 +1737,6 @@ kable(x = rf_summary_serv, format = "latex", booktabs=TRUE,  digits = 3, row.nam
 
 
 # Create plots - this is for Fold5
-# below functions do not run!!
 createLossPlot(roc_obj, best_treshold, "rf_p_serv_loss_plot")
 createRocPlotWithOptimal(roc_obj, best_treshold, "rf_p_serv_roc_plot")
 
@@ -1779,7 +1760,7 @@ expected_loss_holdout_serv <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/
 ```
 
 ### Comparison of models in manufacturing and services
-The random forest performs better in the services sector. It exhibits a lower RMSE, a higher AUC and a lower expected loss. More differences can be seen in the respective confusion tables. First, manufacturing exhibits a higher prevalence of high growth firms (20.6% versus 17.6%). The mode
+The random forest performs better in the services sector. It exhibits a lower RMSE, a higher AUC and a lower expected loss. More differences can be seen in the respective confusion tables. First, manufacturing exhibits a higher prevalence of high growth firms (20.6% versus 17.6%). The mode XXX.
 
 In both subsets our random forest exhibits similar performance. Interestingly RMSE, AUC and expected loss are all identical up to three digits. The optimal threshold is somewhat lower in the services subset. This already hints at the more profound difference between the samples that we can see in the confusion matrices. Even though expected losses are identical, they are not identically distributed over false positives and false negatives. First, it should be noted that the prevalence of high growth firms is lower in the services sector (17.6%) than in the manufacturing sector (20.6%). Second, the model is much more cautious in predicting high growth in the services sector. Here only 4.5% of all firms are predicted as high growth compared to 14.4% in manufacturing. Still, the false positive rate is lower in manufacturing. It seems to be the case that it is easier to avoid predicting false positives in this subset. Hence, the model can arrive at a rate of positive predictions that is closer to the prevalence in the data.  
 
@@ -1865,9 +1846,9 @@ kable(x = cm6_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = 
 
 <!-- RF VAR IMP (all 3) W/OUT LOSS adjust  -->
 
-```{r}
+```{r var imp}
 
-# rf_models <- list(rf_model_p, rf_model_p_manu, rf_model_p_serv)
+rf_models <- list(rf_model_p, rf_model_p_manu, rf_model_p_serv)
 # # Create an empty list to store the plots
 # rf_model_plots <- list()
 # 
@@ -2053,7 +2034,7 @@ group.importance <- function(rf.obj, groups) {
 ```
 
 
-```{r,echo=FALSE, include=F, warning=F}
+```{r plotly,echo=FALSE, include=F, warning=F}
 ######################################################
 
 library(plotly)
@@ -2178,7 +2159,7 @@ rf_model_plots_grouped$rf_model_var_imp_grouped_plot1
 # # #summary(treeshap_res)
 ```
 
-```{r,echo=FALSE, include=FALSE, warning=F, eval=FALSE}
+```{r pdp,echo=FALSE, include=FALSE, warning=F, eval=FALSE}
 #########################################################################################
 # Partial Dependence Plots -------------------------------------------------------
 #########################################################################################
@@ -2258,7 +2239,7 @@ pdp_n_roomtype_plot
 ```
 
 
-```{r}
+```{r interactlossplot}
 createInteractLossPlot <- function(r, best_coords, file_name, myheight_small = 5.625, mywidth_small = 7.5) {
   t <- best_coords$threshold[1]
   sp <- best_coords$specificity[1]
@@ -2305,7 +2286,7 @@ createInteractLossPlot <- function(r, best_coords, file_name, myheight_small = 5
 ```
 
 
-```{r}
+```{r loss rerun}
 # re-run losses for RF s.t roc_object is correctly stored
 
 ## bisnode
@@ -2332,7 +2313,7 @@ rf_model_p_InteractLossPlot <- createInteractLossPlot(roc_obj, best_treshold, "r
 
 ```
 
-```{r}
+```{r loss rerun2}
 # re-run losses for RF s.t roc_object is correctly stored
 
 ## manu
@@ -2359,7 +2340,7 @@ rf_model_p_manu_InteractLossPlot <- createInteractLossPlot(roc_obj, best_treshol
 #rf_model_p_manu_InteractLossPlot
 ```
 
-```{r}
+```{r loss rerun3}
 # re-run losses for RF s.t roc_object is correctly stored
 
 ## services
