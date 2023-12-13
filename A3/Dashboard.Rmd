@@ -87,6 +87,38 @@ load(paste(data_in,"A3.RData",sep = "/")) #activate once we have correct data
 #### **Importance of key variables**
 ### {style="border: 0px; background: none"}
  
+ ## Row {.tabset .tabset-fade}
+### Bisnode 
+Variable importance all features
+
+```{r, include=T}
+##############################
+# 3) full varimp plot, above a cutoff
+##############################
+rf_model_plots$rf_model_plot_all_1
+```
+
+###  Manufacturing
+Variable importance all features
+
+```{r, include=T}
+##############################
+# 3) full varimp plot, above a cutoff
+##############################
+rf_model_plots$rf_model_plot_all_2
+
+```
+
+### Services
+Variable importance all features
+
+```{r, include=T}
+##############################
+# 3) full varimp plot, above a cutoff
+##############################
+rf_model_plots$rf_model_plot_all_3
+```
+
 ## Row {.tabset .tabset-fade}
 ### Bisnode 
 Variable importance top 10 
@@ -155,37 +187,7 @@ Variable importance grouped
 rf_model_plots_grouped$rf_model_var_imp_grouped_plot3
 ```
 
-## Row {.tabset .tabset-fade}
-### Bisnode 
-Variable importance all features
 
-```{r, include=T}
-##############################
-# 3) full varimp plot, above a cutoff
-##############################
-rf_model_plots$rf_model_plot_all_1
-```
-
-###  Manufacturing
-Variable importance all features
-
-```{r, include=T}
-##############################
-# 3) full varimp plot, above a cutoff
-##############################
-rf_model_plots$rf_model_plot_all_2
-
-```
-
-### Services
-Variable importance all features
-
-```{r, include=T}
-##############################
-# 3) full varimp plot, above a cutoff
-##############################
-rf_model_plots$rf_model_plot_all_3
-```
 
 # <font size="3">Bisnode</font> {data-navmenu="PDP"}
 ### {style="border: 0px; background: none"}

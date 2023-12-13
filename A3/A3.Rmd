@@ -1977,10 +1977,6 @@ for (i in seq_along(rf_models)) {
 for (i in seq_along(rf_model_plots)) {
   print(rf_model_plots[[i]])
 }
-
-
-rf_model_plots$rf_model_plot_all_1
-
 ```
 
 
@@ -2107,7 +2103,6 @@ for (i in seq_along(rf_models)) {
 for (i in seq_along(rf_model_plots_grouped)) {
   print(rf_model_plots_grouped[[i]])
 }
-rf_model_plots_grouped$rf_model_var_imp_grouped_plot1
 ```
 
 <!-- Shapley (all 3) AGAIN W/OUT LOSS adjust  -->
