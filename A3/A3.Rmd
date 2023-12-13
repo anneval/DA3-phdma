@@ -1861,7 +1861,8 @@ rf_model_plots$rf_model_var_imp_grouped_plot3
 varnames
 
 # below code does not work!!!
-pdp_n_acc <- pdp::partial(rf_model_p, pred.var = "age", pred.grid = distinct_(bisnode_holdout, "d1_sales_mil_log"), train = bisnode_work)
+pdp_n_acc <- pdp::partial(rf_model_p, pred.var = "ceo_count", pred.grid = distinct_(bisnode_holdout, "ceo_count"), train = bisnode_work)
+
 
 
 pdp_n_acc_plot <- pdp_n_acc %>%
@@ -1877,13 +1878,14 @@ pdp_n_acc_plot
 
 ### factors?? 
 
-pdp_n_roomtype <- pdp::partial(rf_model_p, pred.var = "originmix", pred.grid = distinct_(bisnode_holdout, "originmix"), train = bisnode_work)
+rfvars
+pdp_n_roomtype <- pdp::partial(rf_model_p, pred.var = "origin", pred.grid = distinct_(bisnode_holdout, "origin"), train = bisnode_work)
 pdp_n_roomtype_plot <- pdp_n_roomtype %>%
   autoplot( ) +
   geom_point(color=color[1], size=2) +
   ylab("Predicted price") +
   xlab("Room type") +
-  scale_y_continuous(limits=c(60,120), breaks=seq(60,120, by=10)) +
+  #scale_y_continuous(limits=c(60,120), breaks=seq(60,120, by=10)) +
   theme_bg()
 pdp_n_roomtype_plot
 ```
@@ -1893,6 +1895,7 @@ pdp_n_roomtype_plot
 <!-- Save data environment for dashboard  -->
 ```{r}
 save.image(file = "A3.RData") # specify location 
+# delete all data not needed !!!! to make shiny faster!!! 
 ```
 
 

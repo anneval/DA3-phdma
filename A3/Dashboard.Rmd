@@ -158,18 +158,13 @@ rf_model_plots$rf_model_plot_all_1
 ```{r, include=TRUE}
 # CHANGE ACCORDING TO OUR DATASET rf_variables
 # Assume 'features' is a vector of feature names in your dataset
-features <- c("ceo_old", "ceo_count", "ceo_age")
-
+features <- rfvars
 selectInput("feature_selector", "Select Feature:", choices = features, selected = features[1])
 
 ```
 
 
 ```{r, include=TRUE}
-# Assuming rf_old and listings_holdout are defined earlier
-
-### does it work like this or do I need a loop over my features still? (- shiny code together with selectInput above..)In one chunk? 
-## add something for displaying?
 #renderPlot
 renderPlot({
   selected_feature <- input$feature_selector
