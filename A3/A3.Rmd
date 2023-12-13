@@ -1867,7 +1867,6 @@ kable(x = cm6_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = 
 
 ```{r}
 
-# rf_models <- list(rf_model_p, rf_model_p_manu, rf_model_p_serv)
 # # Create an empty list to store the plots
 # rf_model_plots <- list()
 # 
@@ -1931,6 +1930,8 @@ kable(x = cm6_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = 
 ```
 
 ```{r}
+rf_models <- list(rf_model_p, rf_model_p_manu, rf_model_p_serv)
+
 library(plotly)
 
 # Create an empty list to store the plots
@@ -2051,9 +2052,6 @@ group.importance <- function(rf.obj, groups) {
 
 ```{r,echo=FALSE, include=F, warning=F}
 ######################################################
-
-library(plotly)
-
 # Create an empty list to store the plots
 rf_model_plots_grouped <- list()
 
