@@ -1822,7 +1822,7 @@ cm6_perc_kable <- kable(x = cm6_perc, format = "latex", booktabs = TRUE,  digits
 ```
 
 #### Comparison of models in manufacturing and services
-The random forest performs better in the services sector. It exhibits a lower RMSE, a higher AUC and a lower expected loss. More differences can be seen in the respective confusion tables. 
+The random forest performs better in the services sector. It exhibits a lower RMSE, a higher AUC and a lower expected loss. 
 
 ```{r include table manu serv, echo=FALSE, include=TRUE}
 # ------------------------------------------------------------------------------
@@ -1832,7 +1832,7 @@ summary_manu_serv_kable
 ```
 
 More differences can be seen in the respective confusion tables. First, manufacturing exhibits a higher prevalence of high growth firms (20.6% versus 17.6%).
-Nevertheless, the model performs better in predicting high growth firms in services. In this sector it exhibits a lower false positive rate and a lower false negative rate. Notably, the false positive rate in our holdout set is at zero, meaning we classified no firm in the services sector as fast growing that did not turn out to become a high growth firm. This finding points to the services industry as an attractive market albeit its lower average growth rates. It seems to be the case that the characteristics of firms in services make their future growth more predictable.
+Nevertheless, the model performs slightly better in predicting high growth firms in services. In this sector it exhibits a lower false positive rate which is our main goal. (However, it has a higher false negative rate). Notably, the false positive rate in our holdout set is basically at zero, meaning we classified (almost) no firm in the services sector as fast growing that did not turn out to become a high growth firm. This finding points to the services industry as an attractive market albeit its lower average growth rates. It seems to be the case that the characteristics of firms in services make their future growth quite predictable.
 
 ```{r include cf matrix manu, echo=FALSE, include=TRUE}
 # ------------------------------------------------------------------------------
