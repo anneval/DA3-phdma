@@ -26,10 +26,6 @@ output:
 
 <!-- Task3.2: Create a shiny (flexdashboard) app for the project where you can show (1) how key variables influence the prediction (!Shapley) and (2) show expected loss based on different thresholds. -->
 
-<!-- replace RF with entire date environment AND
-Replace code with graphs "ready"-->
-
-<!-- PLACE ALL GRAPHS INTO A3.rmd!!! just call here to be faster-->
 
 ```{r global setup, include=FALSE}
 # Clear memory
@@ -192,10 +188,8 @@ rf_model_plots_grouped$rf_model_var_imp_grouped_plot3
 ## Sidebar {.sidebar}
 ```{r}
 # Sample list of saved graphs
-saved_graphs <- list(
-  graph1 = ggplot(data = mtcars, aes(x = mpg, y = wt)) + geom_point(),
-  graph2 = ggplot(data = iris, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) + geom_point()
-)
+saved_graphs <- rf_pdp_plot
+
 ```
 
 ```{r, include=TRUE}
@@ -210,13 +204,14 @@ selectInput("feature_selector", "Select a Feature", choices = names(saved_graphs
 Column
 -----------------------------------------------------------------------
 
-### Geyser Eruption Duration
+### Partial dependence plot
 ```{r, include=TRUE}
+
+
 renderPlot({
   selected_feature <- input$feature_selector
   print(saved_graphs[[selected_feature]])
 })
-
 ```
  
  
@@ -252,7 +247,7 @@ renderPlot({
 # 
 #     # Print the plot
 #     print(pdp_plot)
-#     }#,cacheKeyExpr = {input$feature_selector }
+#     }
 # })
 
 ```
