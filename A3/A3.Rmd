@@ -1970,18 +1970,25 @@ for (i in seq_along(rf_models)) {
 #   print(rf_model_plots_grouped[[i]])
 # }
 ```
-#try with small list loop... 
+
+
 ```{r pdp,echo=FALSE, include=FALSE, warning=F, eval=FALSE}
-# below code does not work!!! T: Attention included eval = false s.t I  could knit, delete this once the PDP code works!!!
 #########################################################################################
-# Partial Dependence Plots -------------------------------------------------------
+# Partial Dependence Plots bisnode -------------------------------------------------------
 #########################################################################################
+top10rfvar  <- c("material_exp","d1_sales_mil_log","personnel_exp","liq_assets","curr_liab","curr_assets","inc_bef_tax","share_eq","profit_loss_year","ceo_age")
+```
+
+
+```{r pdp,echo=FALSE, include=FALSE, warning=F, eval=FALSE}
+# ONLY DO ONCE AND STORE 
 # Create a list to store the PDP outputs
 pdp_outputs <- list()
 
-rfvars_test <- c("ceo_age","origin","")
+top10rfvar <- c("ceo_age")
+
 # Loop over predictor variables
-for (pred_var in rfvars_test) {
+for (pred_var in top10rfvar) {
   # Generate PDP for the current predictor variable
   pdp_output <- pdp::partial(rf_model_p, pred.var = pred_var, pred.grid = distinct_(bisnode_holdout, pred_var), train = bisnode_work)
   
@@ -1991,7 +1998,6 @@ for (pred_var in rfvars_test) {
 ```
 
 ```{r}
-
 rf_pdp_plot <- list()
 # Loop over PDP outputs
 for (pred_var in names(pdp_outputs)) {
@@ -2023,30 +2029,112 @@ for (pred_var in names(pdp_outputs)) {
 ```
 
 ```{r pdp,echo=FALSE, include=FALSE, warning=F, eval=FALSE}
-# pdp_n_acc_plot <- pdp_outputs$pdp_ceo_age %>%
-#   autoplot( ) +
-#   geom_point(color=color[1], size=2) +
-#   geom_line(color=color[1], size=1) +
-#   ylab("Growth") +
-#   xlab("ceo_count") +
-#  # scale_x_continuous(limit=c(1,7), breaks=seq(1,7,1))+
-# theme_bg()
-# pdp_n_acc_plot
-# 
-# 
-# ### factors?? 
-# 
-# pdp_n_roomtype <- pdp::partial(rf_model_p, pred.var = "origin", pred.grid = distinct_(bisnode_holdout, "origin"), train = bisnode_work)
-# pdp_n_roomtype_plot <- pdp_outputs$pdp_origin %>%
-#   autoplot( ) +
-#   geom_point(color=color[1], size=2) +
-#   ylab("Predicted price") +
-#   xlab("Room type") +
-#   #scale_y_continuous(limits=c(60,120), breaks=seq(60,120, by=10)) +
-#   theme_bg()
-# pdp_n_roomtype_plot
+
+#########################################################################################
+# Partial Dependence Plots MANU -------------------------------------------------------
+#########################################################################################
+
+# ONLY DO ONCE AND STORE 
+
+# Create a list to store the PDP outputs
+pdp_outputs_manu <- list()
+
+#rfvars_test <- c("ceo_age","origin","")
+# Loop over predictor variables
+for (pred_var in top10rfvar) {
+  # Generate PDP for the current predictor variable
+  pdp_output <- pdp::partial(rf_model_p_manu, pred.var = pred_var, pred.grid = distinct_(manu_holdout, pred_var), train = manu_work)
+  
+  # Save the PDP output
+  pdp_outputs_manu[[paste0("pdp_", pred_var)]] <- pdp_output
+}
 ```
 
+```{r}
+rf_pdp_plot_manu  <- list()
+# Loop over PDP outputs
+for (pred_var in names(pdp_outputs_manu)) {
+  # Extract PDP output for the current predictor variable
+  pdp_output <- pdp_outputs_manu[[pred_var]]
+
+  # Customize plot based on the type of variable (numeric or factor)
+  if (is.factor(manu_holdout[[pred_var]])) {
+    dp_plot <- pdp_output %>%
+      autoplot() +
+      geom_point(color = color[1], size = 2) +
+      ylab("Predicted price") +
+      xlab(pred_var) +
+      theme_bg()
+    
+  } else {
+    pdp_plot <- pdp_output %>%
+      autoplot() +
+      geom_point(color = color[1], size = 2) +
+      geom_line(color = color[1], size = 1) +
+      ylab("Growth") +
+      xlab(pred_var) +
+      theme_bg()
+    
+    # Save the plot
+  rf_pdp_plot_manu[[paste0(pred_var)]] <- pdp_plot
+  }
+}
+```
+
+```{r pdp,echo=FALSE, include=FALSE, warning=F, eval=FALSE}
+
+#########################################################################################
+# Partial Dependence Plots SERV -------------------------------------------------------
+#########################################################################################
+
+# ONLY DO ONCE AND STORE 
+
+# Create a list to store the PDP outputs
+pdp_outputs_serv <- list()
+
+#rfvars_test <- c("ceo_age","origin","")
+# Loop over predictor variables
+for (pred_var in top10rfvar) {
+  # Generate PDP for the current predictor variable
+  pdp_output <- pdp::partial(rf_model_p_serv, pred.var = pred_var, pred.grid = distinct_(serv_holdout, pred_var), train = serv_work)
+  
+  # Save the PDP output
+  pdp_outputs_serv[[paste0("pdp_", pred_var)]] <- pdp_output
+}
+
+
+```
+
+```{r}
+rf_pdp_plot_serv <- list()
+# Loop over PDP outputs
+for (pred_var in names(pdp_outputs_serv)) {
+  # Extract PDP output for the current predictor variable
+  pdp_output <- pdp_outputs_serv[[pred_var]]
+
+  # Customize plot based on the type of variable (numeric or factor)
+  if (is.factor(serv_holdout[[pred_var]])) {
+    dp_plot <- pdp_output %>%
+      autoplot() +
+      geom_point(color = color[1], size = 2) +
+      ylab("Predicted price") +
+      xlab(pred_var) +
+      theme_bg()
+    
+  } else {
+    pdp_plot <- pdp_output %>%
+      autoplot() +
+      geom_point(color = color[1], size = 2) +
+      geom_line(color = color[1], size = 1) +
+      ylab("Growth") +
+      xlab(pred_var) +
+      theme_bg()
+    
+    # Save the plot
+  rf_pdp_plot_serv[[paste0(pred_var)]] <- pdp_plot
+  }
+}
+```
 <!-- Task 3.2: Show expected loss based on different thresholds. -->
 <!-- Kick out this chunk if the one below works for shiny-->
 
@@ -2195,7 +2283,7 @@ XXXX
 ```{r}
 save.image(file = "A3.RData") # specify location 
 
-save(list = c("bisnode", "bisnode_work","bisnode_holdout","rf_model_p","rf_model_p_manu","rf_model_p_serv","rf_model_p_InteractLossPlot","rf_model_p_manu_InteractLossPlot","rf_model_p_serv_InteractLossPlot","rf_model_plots","rf_model_plots_grouped","rfvars","pdp_outputs","rf_pdp_plot"), file = "A3_dashboard.RData")
+save(list = c("bisnode", "bisnode_work","bisnode_holdout","rf_model_p","rf_model_p_manu","rf_model_p_serv","rf_model_p_InteractLossPlot","rf_model_p_manu_InteractLossPlot","rf_model_p_serv_InteractLossPlot","rf_model_plots","rf_model_plots_grouped","rfvars","pdp_outputs","rf_pdp_plot","rf_pdp_plot_manu","rf_pdp_plot_serv"), file = "A3_dashboard.RData")
 ```
 
 <!-- References 

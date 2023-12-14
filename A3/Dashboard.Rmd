@@ -180,23 +180,13 @@ Variable importance grouped
 rf_model_plots_grouped$rf_model_var_imp_grouped_plot3
 ```
 
-
-
 # <font size="3">Bisnode</font> {data-navmenu="PDP"}
 ### {style="border: 0px; background: none"}
 
 ## Sidebar {.sidebar}
-```{r}
+```{r, include=TRUE}
 # Sample list of saved graphs
 saved_graphs <- rf_pdp_plot
-
-```
-
-```{r, include=TRUE}
-#features <- rfvars# nicer names? 
- #features <- c("ceo_age","origin")# nicer names? 
-#selectInput("feature_selector", "Select Feature form Random forest model:", choices = features, selected = features[1])
-
 selectInput("feature_selector", "Select a Feature", choices = names(saved_graphs))
 
 ```
@@ -206,139 +196,56 @@ Column
 
 ### Partial dependence plot
 ```{r, include=TRUE}
-
-
 renderPlot({
   selected_feature <- input$feature_selector
   print(saved_graphs[[selected_feature]])
 })
 ```
  
- 
-```{r PDP1}
-# renderPlot({
-#   selected_feature <- input$feature_selector
-# 
-#   # Check if the selected feature is numeric or categorical
-#   if (is.numeric(bisnode_holdout[[selected_feature]])) {
-# 
-#     # Customize PDP plot for numeric feature
-#     
-#     pdp_plot <- CHANGE %>%
-#       autoplot() +
-#       geom_point(color = color[1], size = 2) +
-#       geom_line(color = color[1], size = 1) +
-#       ylab("Growth") +
-#       xlab(paste("Partial Dependence on", selected_feature)) +
-#       theme_bg()
-# 
-#     # Print the plot
-#     print(pdp_plot)
-# 
-#   } else if (is.factor(bisnode_holdout[[selected_feature]])) {
-# 
-#     # Customize PDP plot for categorical feature
-#     pdp_plot <- pdp_result %>%
-#       autoplot() +
-#       geom_point(color = color[1], size = 2) +
-#       ylab("Growth") +
-#       xlab(paste("Partial Dependence on", selected_feature)) +
-#       theme_bg()
-# 
-#     # Print the plot
-#     print(pdp_plot)
-#     }
-# })
-
-```
-
-
-
-
-```{r, include=TRUE}
-#### correct version
-# output$pdp_plot <- renderPlotly({
-#   selected_feature <- input$feature_selector
-# 
-#   # Check if the selected feature is numeric or categorical
-#   if (is.numeric(bisnode_holdout[[selected_feature]])) {
-# 
-#     # Retrieve the PDP output for the numeric feature
-#     pdp_output <- pdp_outputs[[paste0("pdp_", selected_feature)]]
-# 
-#     # Customize PDP plot for numeric feature
-#     pdp_plot <- pdp_output %>%
-#       autoplot() +
-#       geom_point(color = color[1], size = 2) +
-#       geom_line(color = color[1], size = 1) +
-#       ylab("Growth") +
-#       xlab(paste("Partial Dependence on", selected_feature)) +
-#       theme_bg()
-# 
-#     # Print the plot
-#     print(pdp_plot)
-# 
-#   } else if (is.factor(bisnode_holdout[[selected_feature]])) {
-# 
-#     # Retrieve the PDP output for the categorical feature
-#     pdp_output <- pdp_outputs[[paste0("pdp_", selected_feature)]]
-# 
-#     # Customize PDP plot for categorical feature
-#     pdp_plot <- pdp_output %>%
-#       autoplot() +
-#       geom_point(color = color[1], size = 2) +
-#       ylab("Growth") +
-#       xlab(paste("Partial Dependence on", selected_feature)) +
-#       theme_bg()
-# 
-#     # Print the plot
-#     print(pdp_plot)
-#   }
-# })
-
-```
-
-
-
-```{r}
-# function(input, output) {
-#   renderCachedPlot(
-#     {
-#       rownums <- seq_len(input$n)
-#       plot(cars$speed[rownums], cars$dist[rownums])
-#     },
-#     cacheKeyExpr = { input$n }
-#   )
-# }
-
-#https://shiny.posit.co/r/articles/improve/plot-caching/
-#Usage is simple: in the most basic form, simply replace your renderPlot() with renderCachedPlot(), and add a cache key expression argument. For example, your server function might look like this:
-```
-
 # <font size="3">Manufacturing</font> {data-navmenu="PDP"}
 ### {style="border: 0px; background: none"}
 
+## Sidebar {.sidebar}
 ```{r, include=TRUE}
-features <- rfvars# nicer names? 
-selectInput("feature_selector", "Select Feature form Random forest model:", choices = features, selected = features[1])
+# Sample list of saved graphs
+saved_graphs <- rf_pdp_plot_manu
+selectInput("feature_selector", "Select a Feature", choices = names(saved_graphs))
+
 ```
 
+Column
+-----------------------------------------------------------------------
 
-```{r PDP2, include=TRUE}
+### Partial dependence plot
+```{r, include=TRUE}
+renderPlot({
+  selected_feature <- input$feature_selector
+  print(saved_graphs[[selected_feature]])
+})
 ```
+
 # <font size="3">Services</font> {data-navmenu="PDP"}
 ### {style="border: 0px; background: none"}
 
+## Sidebar {.sidebar}
 ```{r, include=TRUE}
-features <- rfvars# nicer names? 
-selectInput("feature_selector", "Select Feature form Random forest model:", choices = features, selected = features[1])
+# Sample list of saved graphs
+saved_graphs <- rf_pdp_plot_serv
+selectInput("feature_selector", "Select a Feature", choices = names(saved_graphs))
 
 ```
 
+Column
+-----------------------------------------------------------------------
 
-```{r PDP3, include=TRUE}
-
+### Partial dependence plot
+```{r, include=TRUE}
+renderPlot({
+  selected_feature <- input$feature_selector
+  print(saved_graphs[[selected_feature]])
+})
 ```
+
 # Threshold decision
 #### **Expected loss based on different thresholds:**
 
