@@ -11,8 +11,6 @@ always_allow_html: true
 df_print: paged
 ---
 
-------------------------------------------------------------------------
-
 <!-- title: "Assignment 3 - Finding fast growing firms" subtitle: "Course: -->
 <!-- ECBS6067 - Prediction with Machine Learning for Economists" author: -->
 <!-- "Anja Hahn, Teresa Huebel & Anne Valder" date: "2023-12-14" output: -->
@@ -118,21 +116,6 @@ bisnode %>%
 
 ```
 
-### Sample Design
-
-We exclude some variables that have extremely high rates of missing
-values (above 90%) and only look at firms that are active in 2012, that
-is, they have some sales. What is more, our analysis is only based on
-firms with annual sales between 1,000 and 10 million euros. We believe
-this subset presents the most attractive investment opportunities.
-First, very small firms with sales below 1000 EUR in sales are likely
-not to seek investment and high growth events might happen at random
-more easily. Second, very large firms are well represented in various
-indices and any expected growth is likely to be already incorporated in
-the stock price. Hence, our sample selection represents a business
-decision to focus on a segment that is more predictable and more
-promising for investors.
-
 <!-- Sample design  -->
 
 ```{r sample design, include=FALSE}
@@ -177,6 +160,21 @@ bisnode <- bisnode %>%
 
 ```
 
+### Sample Design
+
+We exclude some variables that have extremely high rates of missing
+values (above 90%) and only look at firms that are active in 2012, that
+is, they have some sales. What is more, our analysis is only based on
+firms with annual sales between 1,000 and 10 million euros. We believe
+this subset presents the most attractive investment opportunities.
+First, very small firms with sales below 1000 EUR in sales are likely
+not to seek investment and high growth events might happen at random
+more easily. Second, very large firms are well represented in various
+indices and any expected growth is likely to be already incorporated in
+the stock price. Hence, our sample selection represents a business
+decision to focus on a segment that is more predictable and more
+promising for investors.
+
 <!-- Data visualization  -->
 
 ```{r data visualisation, include=FALSE}
@@ -200,44 +198,6 @@ plot_labor_avg
 
 ```
 
-### Label Engineering
-
-We are exploring multiple alternatives as target variable to represent
-high growth firms. In our selection, we pay attention to the following
-dimensions: i) the indicator to choose, ii) the measurement, iii) the
-time horizon, and iv) the threshold. The literature does not yield one
-consensus over a definition of high growth firms, it rather points out
-that any decision along these dimensions depends on the goal of the
-analysis.[^1] We decided for relative average annual sales growth over
-two years for the following reasons: First, sales provided a more
-relevant and reliable target than number of employees. Sales data is
-missing only in 2.6% of cases whereas number of employees is missing in
-50.9% of cases. Also, sales growth is more closely linked to higher
-profits. What is more, 85% of firms had less than 1 employee on average.
-Second, we decided to use relative growth instead of absolute growth.
-This decision will favor smaller firms since high relative growth is
-harder to achieve for larger firms. We believe relative growth to be
-more relevant since it is more closely linked to our expected return on
-investment. To be more specific, we calculated percentage change and did
-not rely on log differences. Even though this decision does not affect
-the ranking of firms, it does affect the magnitude of the growth rate in
-the subset of high growth firms. The difference is visualized in a plot that
-shows the distribution of growth rates for both measures, where log-differences
-are right-skewed. We favored percentage change primarily because of
-its more intuitive interpretation. Third, we decided for a two year time
-horizon instead of a one year horizon to relate more closely to the OECD
-definition of high growth firms that is defined over a three year
-horizon. Third, we decided for a threshold of 30% annual growth. In our
-sample this is equivalent to classifying roughly the fastest growing 20%
-of firms as HGF. In the literature, both thresholds on a certain growth
-rate and a certain percentile of firms are used. We decided for a
-threshold based on a specific growth rate since we want to analyze
-different sectors (manufacturing and services) with a fixed benchmark.
-
-[^1]: Alex Coad, Sven-Olov Daunfeldt, Werner Hölzl, Dan Johansson, Paul
-Nightingale, High-growth firms: introduction to the special section,
-Industrial and Corporate Change, Volume 23, Issue 1, February 2014,
-Pages 91--112, <https://doi.org/10.1093/icc/dtt052>
 
 <!-- Label engineering  -->
 
@@ -297,9 +257,13 @@ plot_sales_growth_both <- ggplot(bisnode, aes(x = sales_growth_ahead)) +
   labs(x = "Sales growth (log)", y = "Frequency") +
   scale_fill_manual(values = c("Percentage Change" = color[1], "Log-Differences" = color[2]), 
                     name = "Growth Measures") +
-  theme_bg()
+  theme_classic() +
+  theme(
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    legend.text = element_text(size = 10)
+  )
 
-# include_in_report
 plot_sales_growth_both
 # It makes a difference whether relative growth is measured in log(diff) or percentage change
 # since logdiff is an inaccurate approximation for high changes this is especially relevant for high growth firms
@@ -414,6 +378,53 @@ bisnode$high_growth_factor <- factor(bisnode$high_growth_factor, levels = c("low
 # add one extra employee are not classified as fast growing?
 ```
 
+### Label Engineering
+
+We are exploring multiple alternatives as target variable to represent
+high growth firms. In our selection, we pay attention to the following
+dimensions: i) the indicator to choose, ii) the measurement, iii) the
+time horizon, and iv) the threshold. The literature does not yield one
+consensus over a definition of high growth firms, it rather points out
+that any decision along these dimensions depends on the goal of the
+analysis.[^1] We decided for relative average annual sales growth over
+two years for the following reasons: First, sales provided a more
+relevant and reliable target than number of employees. Sales data is
+missing only in 2.6% of cases whereas number of employees is missing in
+50.9% of cases. Also, sales growth is more closely linked to higher
+profits. What is more, 85% of firms had less than 1 employee on average.
+Second, we decided to use relative growth instead of absolute growth.
+This decision will favor smaller firms since high relative growth is
+harder to achieve for larger firms. We believe relative growth to be
+more relevant since it is more closely linked to our expected return on
+investment. To be more specific, we calculated percentage change and did
+not rely on log differences. Even though this decision does not affect
+the ranking of firms, it does affect the magnitude of the growth rate in
+the subset of high growth firms. The difference is visualized in a plot that
+shows the distribution of growth rates for both measures, where log-differences
+are right-skewed. 
+
+```{r plot sales growth, include=TRUE, echo=FALSE, fig.align='center', fig.height=2.5, fig.width=8}
+plot_sales_growth_both
+```
+
+
+We favored percentage change primarily because of
+its more intuitive interpretation. Third, we decided for a two year time
+horizon instead of a one year horizon to relate more closely to the OECD
+definition of high growth firms that is defined over a three year
+horizon. Third, we decided for a threshold of 30% annual growth. In our
+sample this is equivalent to classifying roughly the fastest growing 20%
+of firms as HGF. In the literature, both thresholds on a certain growth
+rate and a certain percentile of firms are used. We decided for a
+threshold based on a specific growth rate since we want to analyze
+different sectors (manufacturing and services) with a fixed benchmark.
+
+[^1]: Alex Coad, Sven-Olov Daunfeldt, Werner Hölzl, Dan Johansson, Paul
+Nightingale, High-growth firms: introduction to the special section,
+Industrial and Corporate Change, Volume 23, Issue 1, February 2014,
+Pages 91--112, <https://doi.org/10.1093/icc/dtt052>
+
+
 <!-- Filter for 2012  -->
 
 ```{r}
@@ -423,39 +434,6 @@ bisnode <- bisnode %>%
   filter(year == 2012)
 
 ```
-
-### Feature Engineering
-
-Feature engineering of the bisnode data set comprises re-coding of
-existing variables s.t. they get the appropriate class and/or meaningful
-levels and values. Also, plausibility checks are conducted: As some of
-our financial variables (e.g. *inventories*, *fixed_assets* etc.) must
-not be negative, we flag them and set negative values to zero. Other
-implausible variables, such as *ceo_age* below 18 years, we set to NA.
-
-In the process of analysing missing values, we impute some important
-ones (*ceo_age*, *labor_avg*) and add flags for missing values. For
-other, very important variables (mainly on assets, CEO and industry
-information), we do not impute but rather drop missing values. Moreover,
-we intend to use the variable on previous firm growth as predictor for
-(future) fast growth -- very much in the same fashion as we know from
-time trend models. Thus, we include the lagged growth in sales (2011 to
-2012). As this results in some NAs (due to some missing sales values in
-2011), we again flag the observations concerned and impute them by
-replacing them with 0. This means we assume that said observations did
-not experience any growth. Although this solution is not ideal, it is
-based on the assumption that we compare a firm's (missing) sales value
-in 2011 to the value of its "nearest neighbour" -- the firm's sales in
-2012.
-
-Moreover, we compute some new variables: *age* of the company, a dummy
-for whether it is a *new* company, has *multiple_ceo*s or a
-*foreign_management*. We classify the observations based on their
-two-digit NACE codes into "manufacturing" vs. "services", generate a 
-variable for *total_assets* and compute ratios of
-some financial variables (with either *total_assets* or *sales* as
-reference). Lastly, we windsorize tails of numeric variables and add
-flags accordingly.
 
 <!-- Feature engineering  -->
 
@@ -655,22 +633,6 @@ bisnode <- bisnode %>%
          d1_sales_mil_log_mod_quad = d1_sales_mil_log_mod^2
          )
 
-```
-
-Next, we look at relationships between predictors and the binary
-response. We use the LOESS (locally estimated scatterplot smoothing)
-method to fit a smooth curve to the data points. In case the curve shows
-some clear non-linear behaviour, we add quadratic terms of predictors
-concerned. These decisions are re-assured by the estimation of simple
-GLMs, where we explain *high_growth* with the respective numeric
-variable and its quadratic -- whenever we detect a statistically
-significant relationship between a quadratic term and the binary
-response, we add that variable as quadratic predictor as well. From
-visual inspection of the plots, we can say that in general, asset
-variables do not show a lot of variation in the response i.e. do not
-seem to affect *fast_growth* as much (see examples below).
-
-```{r variable_relations}
 ########################################
 # relationships between variables
 
@@ -691,7 +653,10 @@ for (var in vars_num){
     plots[[var]] <- ggplot(data = bisnode, aes_string(x = var, y = "high_growth")) +
   geom_point(size = 1, fill = color[2], color = color[2]) +
   geom_smooth(method = "loess", se = F, colour = color[1], size = 1.5, span = 0.9) +
-  theme_bg()
+  theme_classic() +
+  theme(axis.title.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        legend.text = element_text(size = 10))
   }
 }
 
@@ -708,27 +673,6 @@ for (var in vars_num){
   
 }
 
-
-
-```
-
-```{r plots relation, include=TRUE, echo=FALSE, fig.align='center', fig.height=2.5, fig.width=8}
-# plots to show
-grid.arrange(plots$ceo_age, plots$curr_assets_rel, ncol = 2)
-
-```
-
-
-Moreover, we looked at the relationship between the binary response and
-binary/categorical predictors. In the plot below, we see, for example,
-that *high_growth* seems to be more prevalent with a young (defined as
-\< 40 years) CEO. Also, a firm being very young (\< 1 age) seems to play
-a role. As regards possible interactions, the below right plot hints towards a
-relationship between industry category (NACE 2 digit classification) and
-age of the company, as can be seen by the different slopes of the fitted
-line per category.
-
-```{r variable_relations_2, include=TRUE, echo=FALSE, fig.align='center', fig.height=2.5, fig.width=9}
 # add quadratics for chosen variables (based on plots and glms)
 quad <- c("intang_assets_rel", "inventories_rel", "liq_assets_rel", "material_exp_rel",
           "personnel_exp_rel", "subscribed_cap_rel", "inc_bef_tax_rel", 
@@ -747,15 +691,20 @@ binary_variables <- c("gender", "origin", "ind2", "ind", "ind2_cat", "urban_m",
 high_growth_new <- ggplot(bisnode, aes(x = factor(new), fill = factor(high_growth))) +
   geom_bar(position = "fill", stat = "count") +
   labs(y = "Proportion", fill = "High Growth") +
-  theme_bg() +
-  scale_fill_manual(values = c(color[1], color[2])) +
-  theme(legend.text = element_text(size = 10))
+  theme_classic() +
+  theme(axis.title.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        legend.text = element_text(size = 10))
+  scale_fill_manual(values = c(color[1], color[2]))
+  
 high_growth_young <- ggplot(bisnode, aes(x = factor(ceo_young), fill = factor(high_growth))) +
   geom_bar(position = "fill", stat = "count") +
   labs(y = "Proportion", fill = "High Growth") +
-  theme_bg() +
-  scale_fill_manual(values = c(color[1], color[2])) +
-  theme(legend.text = element_text(size = 10))
+  theme_classic() +
+  theme(axis.title.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        legend.text = element_text(size = 10))
+  scale_fill_manual(values = c(color[1], color[2]))
 
 # interactions
 high_growth_ind2 <- ggplot(bisnode, aes(x = age, y = high_growth, color = ind2)) +
@@ -774,43 +723,78 @@ bisnode <- bisnode %>%
 # check remaining data
 # colSums(is.na(bisnode))/nrow(bisnode)*100
 # datasummary_skim(bisnode, type='numeric', histogram = TRUE)
+```
+
+### Feature Engineering
+
+Feature engineering of the bisnode data set comprises re-coding of
+existing variables s.t. they get the appropriate class and/or meaningful
+levels and values. Also, plausibility checks are conducted: As some of
+our financial variables (e.g. *inventories*, *fixed_assets* etc.) must
+not be negative, we flag them and set negative values to zero. Other
+implausible variables, such as *ceo_age* below 18 years, we set to NA.
+
+In the process of analysing missing values, we impute some important
+ones (*ceo_age*, *labor_avg*) and add flags for missing values. For
+other, very important variables (mainly on assets, CEO and industry
+information), we do not impute but rather drop missing values. Moreover,
+we intend to use the variable on previous firm growth as predictor for
+(future) fast growth -- very much in the same fashion as we know from
+time trend models. Thus, we include the lagged growth in sales (2011 to
+2012). As this results in some NAs (due to some missing sales values in
+2011), we again flag the observations concerned and impute them by
+replacing them with 0. This means we assume that said observations did
+not experience any growth. Although this solution is not ideal, it is
+based on the assumption that we compare a firm's (missing) sales value
+in 2011 to the value of its "nearest neighbour" -- the firm's sales in
+2012.
+
+Moreover, we compute some new variables: *age* of the company, a dummy
+for whether it is a *new* company, has *multiple_ceo*s or a
+*foreign_management*. We classify the observations based on their
+two-digit NACE codes into "manufacturing" vs. "services", generate a 
+variable for *total_assets* and compute ratios of
+some financial variables (with either *total_assets* or *sales* as
+reference). Lastly, we windsorize tails of numeric variables and add
+flags accordingly.
+
+Next, we look at relationships between predictors and the binary
+response. We use the LOESS (locally estimated scatterplot smoothing)
+method to fit a smooth curve to the data points. In case the curve shows
+some clear non-linear behaviour, we add quadratic terms of predictors
+concerned. These decisions are re-assured by the estimation of simple
+GLMs, where we explain *high_growth* with the respective numeric
+variable and its quadratic -- whenever we detect a statistically
+significant relationship between a quadratic term and the binary
+response, we add that variable as quadratic predictor as well. From
+visual inspection of the plots, we can say that in general, asset
+variables do not show a lot of variation in the response i.e. do not
+seem to affect *fast_growth* as much (see examples below).
+
+
+```{r plots relation, include=TRUE, echo=FALSE, fig.align='center', fig.height=2.5, fig.width=8}
+# plots to show
+grid.arrange(plots$ceo_age, plots$curr_assets_rel, ncol = 2)
+
+```
+
+
+Moreover, we looked at the relationship between the binary response and
+binary/categorical predictors. In the plot below, we see, for example,
+that *high_growth* seems to be more prevalent with a young (defined as
+\< 40 years) CEO. Also, a firm being very young (\< 1 age) seems to play
+a role. As regards possible interactions, the below right plot hints towards a
+relationship between industry category (NACE 2 digit classification) and
+age of the company, as can be seen by the different slopes of the fitted
+line per category.
+
+```{r plots relation 2, include=TRUE, echo=FALSE, fig.align='center', fig.height=2.5, fig.width=9}
 
 grid.arrange(high_growth_new, high_growth_young, high_growth_ind2, ncol = 3)
 
 ```
 
-### Variable Selection
-
-#### Logit Model
-
-For the logit, we try out two specifications. Both of them include the
-sales variables (past growth), engineered variables (i.e. ratios of
-financial variables, windsorized), the detected (possible) quadratic
-terms and the flags we created for extreme, missing and potentially
-erroneous data. Also, both specifications include quality variables
-(balance sheet information) and information on HR (e.g. CEO information)
-and the firm itself (e.g. regarding the location and industry). The
-difference lies in interactions included: Whilst the first specification
-does not include any interactions, the second one interacts selected
-variables with the industry variable. The first model entails **81**
-terms and the second one entails **90** terms.
-
-#### Probability Forest
-
-Since the probability forest can deal with complicated relationships
-between variables, we do not include any quadratics, interacted,
-modified and/or windsorized variables. Thus, the raw financial, quality,
-sales, HR and firm variables are added. Also, potentially highly
-correlated variables are considered together. Categorical variables are
-encoded as factors. This gives us **49** variables.
-
-#### LASSO Logit
-
-For the LASSO logit, we consider the same variables as in the second
-logit specification (including one additional highly correlated
-variable). This yields in total 91 vars.
-
-<!-- Task1.1: Define variable groups for differnet models  -->
+<!-- Variable Selection  -->
 
 ```{r variable selection}
 #####################
@@ -899,6 +883,37 @@ lassovars <- c("ceo_count", qualityvars, engvar, engvar2, engvar3, sales, hr, fi
 length(lassovars)
 
 ```
+
+### Variable Selection
+
+#### Logit Model
+
+For the logit, we try out two specifications. Both of them include the
+sales variables (past growth), engineered variables (i.e. ratios of
+financial variables, windsorized), the detected (possible) quadratic
+terms and the flags we created for extreme, missing and potentially
+erroneous data. Also, both specifications include quality variables
+(balance sheet information) and information on HR (e.g. CEO information)
+and the firm itself (e.g. regarding the location and industry). The
+difference lies in interactions included: Whilst the first specification
+does not include any interactions, the second one interacts selected
+variables with the industry variable. 
+
+#### Probability Forest
+
+Since the probability forest can deal with complicated relationships
+between variables, we do not include any quadratics, interacted,
+modified and/or windsorized variables. Thus, the raw financial, quality,
+sales, HR and firm variables are added. Also, potentially highly
+correlated variables are considered together. Categorical variables are
+encoded as factors. 
+
+#### LASSO Logit
+
+For the LASSO logit, we consider the same variables as in the second
+logit specification (including one additional highly correlated
+variable).
+
 
 <!-- Preparation for prediction & CV  -->
 
@@ -1119,7 +1134,9 @@ CV_AUC[["LASSO"]] <- mean(CV_AUC_folds[["LASSO"]]$AUC)
 
 ```
 
-### Probability Prediction
+<!-- Task1.1: Evaluation  -->
+
+#### Probability Prediction
 
 The below plot shows the results for our different model specifications.
 We would choose the first simple logit model over the second, since it
@@ -1145,8 +1162,9 @@ summary_no_loss <- data.frame(Model = c("Logit w/o interactions", "Logit w inter
                               AUC = c(CV_AUC$logit_no_interactions, CV_AUC$logit_incl_interactions, CV_AUC$LASSO, CV_AUC$rf_p))
 
 kable(x = summary_no_loss, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
-      linesep = "") %>%
-  kable_styling(position = "center")
+      linesep = "", caption = "Summary of Prediction Models (no loss function)") %>%
+  kable_styling(position = "center",
+                latex_options = "HOLD_position")
 
 ```
 
@@ -1195,9 +1213,11 @@ discrete_roc_plot <- ggplot(
   scale_y_continuous(expand = c(0.01,0.01), limit=c(0,1), breaks = seq(0,1,0.1)) +
   theme_bg() +
   theme(legend.position ="right") +
-  theme(legend.title = element_text(size = 4), 
-        legend.text = element_text(size = 4),
-        legend.key.size = unit(.4, "cm")) 
+  theme(legend.title = element_text(size = 8), 
+        legend.text = element_text(size = 8),
+        legend.key.size = unit(.4, "cm"),
+        axis.title.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10)) 
 discrete_roc_plot
 ```
 
@@ -1233,8 +1253,9 @@ rownames(cm1_perc) <- c("Predicted Low Growth", "Predicted High Growth", "Total"
 cm1_perc[] <- lapply(cm1_perc, function(x) sprintf("%.2f%%", x * 100))
 
 kable(x = cm1_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
-      linesep = "") %>%
-  kable_styling(position = "center")
+      linesep = "", caption = "Confusion Matrix (Threshold: 0.5)") %>%
+  kable_styling(position = "center",
+                latex_options = "HOLD_position") # specify exact place in pdf ouput
 ```
 
 
@@ -1271,37 +1292,17 @@ rownames(cm2_perc) <- c("Predicted Low Growth", "Predicted High Growth", "Total"
 cm2_perc[] <- lapply(cm2_perc, function(x) sprintf("%.2f%%", x * 100))
 
 kable(x = cm2_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
-      linesep = "") %>%
-  kable_styling(position = "center")
+      linesep = "", caption = "Confusion Matrix (Threshold: 0.2)") %>%
+  kable_styling(position = "center",
+                latex_options = "HOLD_position")
 
 
 ```
 
-<!-- Task1.1: Evaluation  -->
-
-```{r}
-# discrete ROC (with thresholds in steps) on holdout -------------------------------------------------
-# continuous ROC on holdout with best model (Logit 4) -------------------------------------------
-# Confusion table with different thresholds ----------------------------------------------------------
-# Calibration curve -----------------------------------------------------------
-
-# Create table that compares models based on RMSE and AUC and also shows number of predictors and number of coefficients
-
-
-
-
-## ADD
-```
-
-### Introduction of Loss Function
-
-Next, we introduce a loss function specifically tailored for our business case. In selecting the best model, our primary objective is to minimize false positives. This is crucial because we aim to avoid investing in firms that do not exhibit strong growth potential. However, there's a challenge: only 20% of firms in our dataset are categorized as fast-growing. Overemphasizing the cost of false positives could inadvertently lead the model to classify all observations as low growth. Such an approach would undermine our goal of identifying high-potential business opportunities.
-
-To address this, we have calibrated the cost associated with false positives (FP) and false negatives (FN) in a balanced manner. We have set the cost of a false positive at 150% of that of a false negative. This ratio reflects a strategic decision: while avoiding unfruitful investments is important, we also do not want to miss out on promising firms. Additionally, we have incorporated the prevalence of high-growth firms into the model's weighting system. This adjustment ensures that our model remains sensitive to the relatively scarce yet valuable high-growth opportunities in our dataset, thereby aligning the model's predictions more closely with our business objectives.
 
 <!-- Task1.2: Loss function design -->
 
-```{r}
+```{r logit with loss}
 #############################################
 # PART II.
 # We have a loss function
@@ -1315,9 +1316,6 @@ cost = FN/FP
 # the prevalence, or the proportion of cases in the population (n.cases/(n.controls+n.cases))
 prevalence = sum(bisnode_work$high_growth)/length(bisnode_work$high_growth)
 
-```
-
-```{r logit w loss}
 # incorporate loss function for logit models
 best_tresholds <- list()
 expected_loss <- list()
@@ -1361,11 +1359,7 @@ for (model_name in names(logit_models)) {
   logit_cv_expected_loss[[model_name]] <- expected_loss_cv[[fold]]
 
 }
-```
 
-
-```{r}
-###############################################
 logit_summary <- data.frame("Avg of optimal thresholds" = unlist(best_tresholds),
                              "Threshold for Fold5" = sapply(logit_cv_threshold, function(x) {x$threshold}),
                              "Avg expected loss" = unlist(expected_loss),
@@ -1482,15 +1476,18 @@ expected_loss_holdout <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/lengt
 expected_loss_holdout
 ```
 
-### Model Comparison with Loss Function
-After the introduction of our loss function, we can now compare the models based on their average expected loss over all folds. The model with the lowest expected loss is still the random forest. The simple logistic regression without interactions has the second lowest expected loss.
 
+#### Introduction of Loss Function
+
+Next, we introduce a loss function specifically tailored for our business case. In selecting the best model, our primary objective is to minimize false positives. This is crucial because we aim to avoid investing in firms that do not exhibit strong growth potential. However, there's a challenge: only 20% of firms in our dataset are categorized as fast-growing. Overemphasizing the cost of false positives could inadvertently lead the model to classify all observations as low growth. Such an approach would undermine our goal of identifying high-potential business opportunities.
+
+To address this, we have calibrated the cost associated with false positives (FP) and false negatives (FN) in a balanced manner. We have set the cost of a false positive at 150% of that of a false negative. This ratio reflects a strategic decision: while avoiding unfruitful investments is important, we also do not want to miss out on promising firms. Additionally, we have incorporated the prevalence of high-growth firms into the model's weighting system. This adjustment ensures that our model remains sensitive to the relatively scarce yet valuable high-growth opportunities in our dataset, thereby aligning the model's predictions more closely with our business objectives.
 
 <!-- Task1.2: For each of the three models: predict probabilities, look for the optimal classification threshold, calculate expected loss with your loss function  -->
 
 <!-- Task1.2: Pick model with smallest expected loss -->
 
-```{r, include=TRUE, echo=FALSE}
+```{r}
 # compare all models: to pick the one with lowest expected loss
 ###############################################
 
@@ -1511,25 +1508,26 @@ summary_all_mods <- data.frame(Model = c("Logit w/o interactions", "Logit w inte
                                            expected_loss$logit_incl_interactions, 
                                            expected_loss$LASSO, expected_loss$rf_p))
 
-kable(x = summary_all_mods, format = "latex", booktabs=TRUE,  digits = 3, row.names = TRUE,
-      linesep = "", col.names = c("Model", "Predictors", "Coefficients", "CV RMSE", "CV AUC",
-                                  "CV threshold", "CV expected Loss")) %>%
-  kable_styling(position = "center")
-
 
 ```
 
-### Confusion Table
-The confusion table shows that we have an accuracy of 82.03% on the holdout set. The model only predicts 1.65% of models to have high growth whereas the prevalence of high growth firms in the data is 18.57%. This low sensitivity (6%) is necessary in order to arrive at the high specificity (99.3%) we desire. This is a trade off we are willing to engage in, in order to avoid investing in firms that will not outperform the market or might even go bankrupt. If we apply our model to similar datasets in multiple countries we will still arrive at a reasonably large number of predicted high growth firms such that our portfolio will be diversified. 
+#### Model Comparison with Loss Function
+After the introduction of our loss function, we can now compare the models based on their average expected loss over all folds. The model with the lowest expected loss is still the random forest. The simple logistic regression without interactions has the second lowest expected loss.
 
-Of course, we realize that we could not test the external validity of our model and applying it in other countries might lead to worse performance. To that end we conduct another exercise and apply our model to different market segments, that is, manufacturing and services.
 
+```{r, include=TRUE, echo=FALSE}
+kable(x = summary_all_mods, format = "latex", booktabs=TRUE,  digits = 3, #row.names = TRUE,
+      linesep = "", col.names = c("Model", "Preds", "Coeffs", "CV RMSE", "CV AUC",
+                                  "CV threshold", "CV expected Loss")) %>%
+  kable_styling(position = "center",
+                latex_options = "HOLD_position")
+```
 
 <!-- Task1.3: Show a confusion table (on a selected fold or holdout set) -->
 
 <!-- Task1.3: Discuss results, evaluate how useful your model may be -->
 
-```{r confusion table rf, include=TRUE, echo=FALSE}
+```{r confusion table rf}
 ###############################################
 # Create Confusion table for the RF model
 ###############################################
@@ -1564,6 +1562,14 @@ kable(x = cm4_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = 
 
 ```
 
+
+#### Confusion Table
+The confusion table shows that we have an accuracy of 82.03% on the holdout set. The model only predicts 1.65% of models to have high growth whereas the prevalence of high growth firms in the data is 18.57%. This low sensitivity (6%) is necessary in order to arrive at the high specificity (99.3%) we desire. This is a trade off we are willing to engage in, in order to avoid investing in firms that will not outperform the market or might even go bankrupt. If we apply our model to similar datasets in multiple countries we will still arrive at a reasonably large number of predicted high growth firms such that our portfolio will be diversified. 
+
+Of course, we realize that we could not test the external validity of our model and applying it in other countries might lead to worse performance. To that end we conduct another exercise and apply our model to different market segments, that is, manufacturing and services.
+
+
+
 <!-- Task2.1: 2 Samples (service & manufacturing)  -->
 
 ```{r}
@@ -1576,7 +1582,7 @@ manu_holdout <- bisnode_work %>% filter(ind2_cat == "manufacturing")
 serv_holdout <- bisnode_work %>% filter(ind2_cat == "services")
 ```
 
-<!-- Task2.1: 2 Samples (service & manufacturing) Random forest (WITHOUT LOSS FUNCTION!!!)  -->
+<!-- Task2.1: Random forest Manufacturing (WITHOUT LOSS FUNCTION!!!)  -->
 
 ```{r rf manufacturing}
 #################################################
@@ -1620,6 +1626,8 @@ CV_AUC[["rf_p_manu"]] <- mean(CV_AUC_folds[["rf_p_manu"]]$AUC)
 
 
 ```
+
+<!-- Task2.1: Random forest Manufacturing (INCLUDING LOSS FUNCTION!!!)  -->
 
 ```{r loss function rf manufacturing}
 ######################################
@@ -1688,6 +1696,8 @@ expected_loss_holdout_manu <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/
 #expected_loss_holdout_manu
 ```
 
+<!-- Task2.1: Random forest services (WITHOUT LOSS FUNCTION!!!)  -->
+
 ```{r rf services}
 #################################################
 # Probability forest for service sample!
@@ -1728,6 +1738,7 @@ CV_RMSE[["rf_p_serv"]] <- mean(CV_RMSE_folds[["rf_p_serv"]]$RMSE)
 CV_AUC[["rf_p_serv"]] <- mean(CV_AUC_folds[["rf_p_serv"]]$AUC)
 
 ```
+<!-- Task2.1: Random forest services (INCLUDING LOSS FUNCTION!!!)  -->
 
 ```{r loss function rf services}
 ######################################
@@ -1795,8 +1806,6 @@ expected_loss_holdout_serv <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/
 #expected_loss_holdout_serv
 ```
 
-### Comparison of models in manufacturing and services
-The random forest performs better in the services sector. It exhibits a lower RMSE, a higher AUC and a lower expected loss. More differences can be seen in the respective confusion tables. First, manufacturing exhibits a higher prevalence of high growth firms (20.6% versus 17.6%). Nevertheless, the model performs better in predicting high growth firms in services. In this sector it exhibits a lower false positive rate and a lower false negative rate. Notably, the false positive rate in our holdout set is at zero, meaning we classified no firm in the services sector as fast growing that did not turn out to become a high growth firm. This finding points to the services industry as an attractive market albeit its lower average growth rates. Int seems to be the case that the characteristics of firms in services make their future growth more predictable.
 
 <!-- Task2.3: Compare the model performance across two samples -->
 
@@ -1818,11 +1827,11 @@ summary_manu_serv <- data.frame(Model = c("Manufacturing", "Services"),
                                            expected_loss$rf_p_serv))
 # identical loss, different thresholds used look at CM to interpret this
 
-# include_in_report
-kable(x = summary_manu_serv, format = "latex", booktabs=TRUE,  digits = 3, row.names = TRUE,
+summary_manu_serv_kable <- kable(x = summary_manu_serv, format = "latex", booktabs=TRUE,  digits = 3, row.names = TRUE,
       linesep = "", col.names = c("Model", "CV RMSE", "CV AUC",
-                                  "CV threshold", "CV expected Loss")) %>%
-  kable_styling(position = "center")
+                                  "CV threshold", "CV expected Loss"), caption = "Comparing Manufacturing and Services Models") %>%
+  kable_styling(position = "center",
+                latex_options = "HOLD_position")
 
 ###############################################
 # make confusion table for both subsets
@@ -1870,16 +1879,42 @@ rownames(cm6_perc) <- c("Predicted Low Growth", "Predicted High Growth", "Total"
 cm5_perc[] <- lapply(cm5_perc, function(x) sprintf("%.2f%%", x * 100))
 cm6_perc[] <- lapply(cm6_perc, function(x) sprintf("%.2f%%", x * 100))
 
-#include_in_report
-kable(x = cm5_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
-      linesep = "")
-# include_in_report
-kable(x = cm6_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
-      linesep = "") %>%
-  kable_styling(position = "center")
+cm5_perc_kable <- kable(x = cm5_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
+      linesep = "", caption = "Confusion Matrix Manufacturing") %>%
+  kable_styling(position = "center",
+                latex_options = "HOLD_position")
+
+cm6_perc_kable <- kable(x = cm6_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
+      linesep = "", caption = "Confusion Matrix Services") %>%
+  kable_styling(position = "center",
+                latex_options = "HOLD_position") 
 
 
 ```
+
+#### Comparison of models in manufacturing and services
+The random forest performs better in the services sector. It exhibits a lower RMSE, a higher AUC and a lower expected loss. More differences can be seen in the respective confusion tables. First, manufacturing exhibits a higher prevalence of high growth firms (20.6% versus 17.6%).
+
+```{r include table manu serv, echo=FALSE, include=TRUE}
+
+summary_manu_serv_kable
+
+```
+
+
+Nevertheless, the model performs better in predicting high growth firms in services. In this sector it exhibits a lower false positive rate and a lower false negative rate. Notably, the false positive rate in our holdout set is at zero, meaning we classified no firm in the services sector as fast growing that did not turn out to become a high growth firm. This finding points to the services industry as an attractive market albeit its lower average growth rates. It seems to be the case that the characteristics of firms in services make their future growth more predictable.
+
+```{r include cf matrix manu, echo=FALSE, include=TRUE}
+
+cm5_perc_kable
+cm6_perc_kable
+
+```
+
+
+### Variable Importance
+
+As a last task, we looked at some methods to interpret our random forest probability model. Therefore, we set up a dashboard, which can be found in our dashboard (see github folder, incl. README).  
 
 <!-- Task3.1: Use some methods to interpret your random forest probability model -->
 
@@ -1934,7 +1969,7 @@ for (i in seq_along(rf_models)) {
 
 ```
 
-### Variable importance grouped
+
 
 ```{r}
 ### Variable importance top 10 
