@@ -263,6 +263,7 @@ plot_sales_growth_both <- ggplot(bisnode, aes(x = sales_growth_ahead)) +
     axis.title.y = element_text(size = 10),
     legend.text = element_text(size = 10)
   )
+# saveRDS(plot_sales_growth_both, paste0(output, "plot_sales_growth_both.RDS"))
 
 plot_sales_growth_both
 # It makes a difference whether relative growth is measured in log(diff) or percentage change
@@ -775,7 +776,8 @@ seem to affect *fast_growth* as much (see examples below).
 ```{r plots relation, include=TRUE, echo=FALSE, fig.align='center', fig.height=2.5, fig.width=8}
 # plots to show
 grid.arrange(plots$ceo_age, plots$curr_assets_rel, ncol = 2)
-
+# saveRDS(plots$ceo_age, paste0(output, "plot_ceo_age.RDS"))
+# saveRDS(plots$curr_assets_rel, paste0(output, "plot_curr_assets.RDS"))
 ```
 
 
@@ -791,6 +793,9 @@ line per category.
 ```{r plots relation 2, include=TRUE, echo=FALSE, fig.align='center', fig.height=2.5, fig.width=9}
 
 grid.arrange(high_growth_new, high_growth_young, high_growth_ind2, ncol = 3)
+# saveRDS(high_growth_new, paste0(output, "high_growth_new.RDS"))
+# saveRDS(high_growth_young, paste0(output, "high_growth_young.RDS"))
+# saveRDS(high_growth_ind2, paste0(output, "high_growth_ind2.RDS"))
 
 ```
 
@@ -1161,11 +1166,13 @@ summary_no_loss <- data.frame(Model = c("Logit w/o interactions", "Logit w inter
                               RMSE = c(CV_RMSE$logit_no_interactions, CV_RMSE$logit_incl_interactions, CV_RMSE$LASSO, CV_RMSE$rf_p),
                               AUC = c(CV_AUC$logit_no_interactions, CV_AUC$logit_incl_interactions, CV_AUC$LASSO, CV_AUC$rf_p))
 
-kable(x = summary_no_loss, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
+summary_no_loss_table <- kable(x = summary_no_loss, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
       linesep = "", caption = "Summary of Prediction Models (no loss function)") %>%
   kable_styling(position = "center",
                 latex_options = "HOLD_position")
 
+summary_no_loss_table
+# saveRDS(summary_no_loss_table, paste0(output, "summary_no_loss_table.RDS"))
 ```
 
 We use our best model to predict on the holdout set and receive a RMSE
@@ -1219,6 +1226,8 @@ discrete_roc_plot <- ggplot(
         axis.title.x = element_text(size = 10),
         axis.title.y = element_text(size = 10)) 
 discrete_roc_plot
+# saveRDS(discrete_roc_plot, paste0(output, "discrete_roc_plot.RDS"))
+
 ```
 
 The confusion matrix for default classification (using 0.5 as
@@ -1252,10 +1261,12 @@ rownames(cm1_perc) <- c("Predicted Low Growth", "Predicted High Growth", "Total"
 # multiply each with 100 and add %
 cm1_perc[] <- lapply(cm1_perc, function(x) sprintf("%.2f%%", x * 100))
 
-kable(x = cm1_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
+cf1_kable <- kable(x = cm1_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
       linesep = "", caption = "Confusion Matrix (Threshold: 0.5)") %>%
   kable_styling(position = "center",
                 latex_options = "HOLD_position") # specify exact place in pdf ouput
+# saveRDS(cf1_kable, paste0(output, "cf1_kable.RDS"))
+
 ```
 
 
@@ -1291,11 +1302,12 @@ rownames(cm2_perc) <- c("Predicted Low Growth", "Predicted High Growth", "Total"
 # multiply each with 100 and add %
 cm2_perc[] <- lapply(cm2_perc, function(x) sprintf("%.2f%%", x * 100))
 
-kable(x = cm2_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
+cf2_kable <- kable(x = cm2_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
       linesep = "", caption = "Confusion Matrix (Threshold: 0.2)") %>%
   kable_styling(position = "center",
                 latex_options = "HOLD_position")
 
+# saveRDS(cf2_kable, paste0(output, "cf2_kable.RDS"))
 
 ```
 
@@ -1516,11 +1528,14 @@ After the introduction of our loss function, we can now compare the models based
 
 
 ```{r, include=TRUE, echo=FALSE}
-kable(x = summary_all_mods, format = "latex", booktabs=TRUE,  digits = 3, #row.names = TRUE,
+summary_all_mods_kable <- kable(x = summary_all_mods, format = "latex", booktabs=TRUE,  digits = 3, #row.names = TRUE,
       linesep = "", col.names = c("Model", "Preds", "Coeffs", "CV RMSE", "CV AUC",
                                   "CV threshold", "CV expected Loss")) %>%
   kable_styling(position = "center",
                 latex_options = "HOLD_position")
+
+# saveRDS(summary_all_mods_kable, paste0(output, "summary_all_mods_kable.RDS"))
+
 ```
 
 <!-- Task1.3: Show a confusion table (on a selected fold or holdout set) -->
@@ -1898,6 +1913,7 @@ The random forest performs better in the services sector. It exhibits a lower RM
 ```{r include table manu serv, echo=FALSE, include=TRUE}
 
 summary_manu_serv_kable
+# saveRDS(summary_manu_serv_kable, paste0(output, "summary_manu_serv_kable.RDS"))
 
 ```
 
@@ -1907,7 +1923,10 @@ Nevertheless, the model performs better in predicting high growth firms in servi
 ```{r include cf matrix manu, echo=FALSE, include=TRUE}
 
 cm5_perc_kable
+# saveRDS(cm5_perc_kable, paste0(output, "cm5_perc_kable.RDS"))
 cm6_perc_kable
+# saveRDS(cm6_perc_kable, paste0(output, "cm6_perc_kable.RDS"))
+
 
 ```
 
