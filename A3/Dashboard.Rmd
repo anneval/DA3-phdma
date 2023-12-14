@@ -36,7 +36,7 @@ Replace code with graphs "ready"-->
 rm(list=ls())
 # set global chunk options
 knitr::opts_chunk$set(include = FALSE, fig.align = 'center', cache = F,
-                      warning = FALSE, message = FALSE, echo = FALSE)
+                     warning = FALSE, message = FALSE, echo = FALSE)
 
 options(scipen = 999)
 ```
@@ -61,21 +61,17 @@ source("ch00-tech-prep/da_helper_functions.R")
 
 ```{r libraries, include=FALSE}
 library(flexdashboard)
-library(tsbox)
-library(dygraphs)
 library(readr)
 library(dplyr)
 library(tidyr)
 library(knitr)
 library(ggplot2)
 library(readxl)
-library(stargazer)
-library(vars)
-library(ranger)
 library(shiny)
 library(treeshap)
 library(pdp)
 library(pROC)
+library(plotly)
 ```
 
 ```{r data import,include=FALSE}
@@ -194,11 +190,33 @@ rf_model_plots_grouped$rf_model_var_imp_grouped_plot3
 ### {style="border: 0px; background: none"}
 
 ## Sidebar {.sidebar}
+```{r}
+# Sample list of saved graphs
+saved_graphs <- list(
+  graph1 = ggplot(data = mtcars, aes(x = mpg, y = wt)) + geom_point(),
+  graph2 = ggplot(data = iris, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) + geom_point()
+)
+```
 
 ```{r, include=TRUE}
 #features <- rfvars# nicer names? 
- features <- c("ceo_age","origin")# nicer names? 
-selectInput("feature_selector", "Select Feature form Random forest model:", choices = features, selected = features[1])
+ #features <- c("ceo_age","origin")# nicer names? 
+#selectInput("feature_selector", "Select Feature form Random forest model:", choices = features, selected = features[1])
+
+selectInput("feature_selector", "Select a Feature", choices = names(saved_graphs))
+
+```
+
+Column
+-----------------------------------------------------------------------
+
+### Geyser Eruption Duration
+```{r, include=TRUE}
+renderPlot({
+  selected_feature <- input$feature_selector
+  print(saved_graphs[[selected_feature]])
+})
+
 ```
  
  
@@ -243,44 +261,45 @@ selectInput("feature_selector", "Select Feature form Random forest model:", choi
 
 
 ```{r, include=TRUE}
-output$pdp_plot <- renderPlot({
-  selected_feature <- input$feature_selector
-
-  # Check if the selected feature is numeric or categorical
-  if (is.numeric(bisnode_holdout[[selected_feature]])) {
-
-    # Retrieve the PDP output for the numeric feature
-    pdp_output <- pdp_outputs[[paste0("pdp_", selected_feature)]]
-
-    # Customize PDP plot for numeric feature
-    pdp_plot <- pdp_output %>%
-      autoplot() +
-      geom_point(color = color[1], size = 2) +
-      geom_line(color = color[1], size = 1) +
-      ylab("Growth") +
-      xlab(paste("Partial Dependence on", selected_feature)) +
-      theme_bg()
-
-    # Print the plot
-    print(pdp_plot)
-
-  } else if (is.factor(bisnode_holdout[[selected_feature]])) {
-
-    # Retrieve the PDP output for the categorical feature
-    pdp_output <- pdp_outputs[[paste0("pdp_", selected_feature)]]
-
-    # Customize PDP plot for categorical feature
-    pdp_plot <- pdp_output %>%
-      autoplot() +
-      geom_point(color = color[1], size = 2) +
-      ylab("Growth") +
-      xlab(paste("Partial Dependence on", selected_feature)) +
-      theme_bg()
-
-    # Print the plot
-    print(pdp_plot)
-  }
-})
+#### correct version
+# output$pdp_plot <- renderPlotly({
+#   selected_feature <- input$feature_selector
+# 
+#   # Check if the selected feature is numeric or categorical
+#   if (is.numeric(bisnode_holdout[[selected_feature]])) {
+# 
+#     # Retrieve the PDP output for the numeric feature
+#     pdp_output <- pdp_outputs[[paste0("pdp_", selected_feature)]]
+# 
+#     # Customize PDP plot for numeric feature
+#     pdp_plot <- pdp_output %>%
+#       autoplot() +
+#       geom_point(color = color[1], size = 2) +
+#       geom_line(color = color[1], size = 1) +
+#       ylab("Growth") +
+#       xlab(paste("Partial Dependence on", selected_feature)) +
+#       theme_bg()
+# 
+#     # Print the plot
+#     print(pdp_plot)
+# 
+#   } else if (is.factor(bisnode_holdout[[selected_feature]])) {
+# 
+#     # Retrieve the PDP output for the categorical feature
+#     pdp_output <- pdp_outputs[[paste0("pdp_", selected_feature)]]
+# 
+#     # Customize PDP plot for categorical feature
+#     pdp_plot <- pdp_output %>%
+#       autoplot() +
+#       geom_point(color = color[1], size = 2) +
+#       ylab("Growth") +
+#       xlab(paste("Partial Dependence on", selected_feature)) +
+#       theme_bg()
+# 
+#     # Print the plot
+#     print(pdp_plot)
+#   }
+# })
 
 ```
 
