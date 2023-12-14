@@ -20,7 +20,7 @@ output:
     runtime: shiny
 ---
 
-<!-- README:  By default dashboards are standard HTML documents that can be deployed on any web server or even attached to an email message. You can optionally add Shiny components for additional interactivity and then deploy on Shiny Server or shinyapps.io. -->
+
 
 <!-- Task3.1: Use some methods to interpret your random forest probability model (Shapley, PDP) --> 
 
@@ -80,8 +80,9 @@ library(pROC)
 
 ```{r data import,include=FALSE}
 data_in <- paste(data_dir,"bisnode-firms", sep = "/")
-load(paste(data_in,"A3.RData",sep = "/")) #activate once we have correct data
-#rf_old <- read_rds(paste(data_in,"rf_A3.rds",sep = "/")) # save in data dir!!!
+#load(paste(data_in,"A3.RData",sep = "/")) #activate once we have correct data
+load(paste(data_in,"A3_dashboard.RData",sep = "/")) #activate once we have correct data
+
 ```
 # Variable Importance
 #### **Importance of key variables**
@@ -195,42 +196,34 @@ rf_model_plots_grouped$rf_model_var_imp_grouped_plot3
 ## Sidebar {.sidebar}
 
 ```{r, include=TRUE}
-features <- rfvars# nicer names? 
+#features <- rfvars# nicer names? 
+ features <- c("ceo_age","origin")# nicer names? 
 selectInput("feature_selector", "Select Feature form Random forest model:", choices = features, selected = features[1])
-
 ```
-
-
-```{r PDP1, include=TRUE}
-#renderPlot
+ 
+ 
+```{r PDP1}
 # renderPlot({
 #   selected_feature <- input$feature_selector
-#   
+# 
 #   # Check if the selected feature is numeric or categorical
 #   if (is.numeric(bisnode_holdout[[selected_feature]])) {
-#     # Create PDP for numeric feature
-#     pdp_result <- pdp::partial(rf_model_p, pred.var = selected_feature, 
-#                                pred.grid = distinct_(bisnode_holdout, selected_feature), 
-#                                train = bisnode_work)
-#     
+# 
 #     # Customize PDP plot for numeric feature
-#     pdp_plot <- pdp_result %>%
+#     
+#     pdp_plot <- CHANGE %>%
 #       autoplot() +
 #       geom_point(color = color[1], size = 2) +
 #       geom_line(color = color[1], size = 1) +
 #       ylab("Growth") +
 #       xlab(paste("Partial Dependence on", selected_feature)) +
 #       theme_bg()
-#     
+# 
 #     # Print the plot
 #     print(pdp_plot)
-#     
+# 
 #   } else if (is.factor(bisnode_holdout[[selected_feature]])) {
-#     # Create PDP for categorical feature
-#     pdp_result <- pdp::partial(rf_model_p, pred.var = selected_feature, 
-#                                pred.grid = unique(bisnode_holdout[[selected_feature]]), 
-#                                train = bisnode_work)
-#     
+# 
 #     # Customize PDP plot for categorical feature
 #     pdp_plot <- pdp_result %>%
 #       autoplot() +
@@ -238,13 +231,60 @@ selectInput("feature_selector", "Select Feature form Random forest model:", choi
 #       ylab("Growth") +
 #       xlab(paste("Partial Dependence on", selected_feature)) +
 #       theme_bg()
-#     
+# 
 #     # Print the plot
 #     print(pdp_plot)
 #     }#,cacheKeyExpr = {input$feature_selector }
 # })
 
 ```
+
+
+
+
+```{r, include=TRUE}
+output$pdp_plot <- renderPlot({
+  selected_feature <- input$feature_selector
+
+  # Check if the selected feature is numeric or categorical
+  if (is.numeric(bisnode_holdout[[selected_feature]])) {
+
+    # Retrieve the PDP output for the numeric feature
+    pdp_output <- pdp_outputs[[paste0("pdp_", selected_feature)]]
+
+    # Customize PDP plot for numeric feature
+    pdp_plot <- pdp_output %>%
+      autoplot() +
+      geom_point(color = color[1], size = 2) +
+      geom_line(color = color[1], size = 1) +
+      ylab("Growth") +
+      xlab(paste("Partial Dependence on", selected_feature)) +
+      theme_bg()
+
+    # Print the plot
+    print(pdp_plot)
+
+  } else if (is.factor(bisnode_holdout[[selected_feature]])) {
+
+    # Retrieve the PDP output for the categorical feature
+    pdp_output <- pdp_outputs[[paste0("pdp_", selected_feature)]]
+
+    # Customize PDP plot for categorical feature
+    pdp_plot <- pdp_output %>%
+      autoplot() +
+      geom_point(color = color[1], size = 2) +
+      ylab("Growth") +
+      xlab(paste("Partial Dependence on", selected_feature)) +
+      theme_bg()
+
+    # Print the plot
+    print(pdp_plot)
+  }
+})
+
+```
+
+
 
 ```{r}
 # function(input, output) {
@@ -261,109 +301,16 @@ selectInput("feature_selector", "Select Feature form Random forest model:", choi
 #Usage is simple: in the most basic form, simply replace your renderPlot() with renderCachedPlot(), and add a cache key expression argument. For example, your server function might look like this:
 ```
 
-
-```{r}
-# library(dplyr)
-# library(pdp)
-# library(ggplot2)
-# 
-# # Assume 'features' is a vector of feature names in your dataset
-# features <- c("accommodates", "room_type", "other_feature") 
-#  
-# for (feature in features) {
-#   # Check if the feature is numeric or categorical
-#   if (is.numeric(listings_holdout[[feature]])) {
-#     # Create PDP for numeric feature
-#     pdp_result <- pdp::partial(rf_old, pred.var = feature, 
-#                                pred.grid = distinct_(listings_holdout, feature), 
-#                                train = listings_holdout)
-#     
-#     # Customize PDP plot for numeric feature
-#     pdp_plot <- pdp_result %>%
-#       autoplot() +
-#       geom_point(color = color[1], size = 2) +
-#       geom_line(color = color[1], size = 1) +
-#       ylab("Predicted price") +
-#       xlab(paste("Partial Dependence on", feature)) +
-#       theme_bg()
-#     
-#     # Save the plot as an image file (adjust the filename and format as needed)
-#     ggsave(paste0("pdp_plot_", feature, ".png"), pdp_plot, width = 6, height = 4)
-#     
-#   } else if (is.factor(listings_holdout[[feature]])) {
-#     # Create PDP for categorical feature
-#     pdp_result <- pdp::partial(rf_old, pred.var = feature, 
-#                                pred.grid = unique(listings_holdout[[feature]]), 
-#                                train = listings_holdout)
-#     
-#     # Customize PDP plot for categorical feature
-#     pdp_plot <- pdp_result %>%
-#       autoplot() +
-#       geom_point(color = color[1], size = 2) +
-#       ylab("Predicted price") +
-#       xlab(paste("Partial Dependence on", feature)) +
-#       theme_bg()
-#     
-#     # Save the plot as an image file (adjust the filename and format as needed)
-#     ggsave(paste0("pdp_plot_", feature, ".png"), pdp_plot, width = 6, height = 4)
-#   }
-# }
-
-```
-
 # <font size="3">Manufacturing</font> {data-navmenu="PDP"}
 ### {style="border: 0px; background: none"}
 
 ```{r, include=TRUE}
 features <- rfvars# nicer names? 
 selectInput("feature_selector", "Select Feature form Random forest model:", choices = features, selected = features[1])
-
 ```
 
 
 ```{r PDP2, include=TRUE}
-#renderPlot
-# renderPlot({
-#   selected_feature <- input$feature_selector
-#   
-#   # Check if the selected feature is numeric or categorical
-#   if (is.numeric(bisnode_holdout[[selected_feature]])) {
-#     # Create PDP for numeric feature
-#     pdp_result <- pdp::partial(rf_model_p, pred.var = selected_feature, 
-#                                pred.grid = distinct_(bisnode_holdout, selected_feature), 
-#                                train = bisnode_work)
-#     
-#     # Customize PDP plot for numeric feature
-#     pdp_plot <- pdp_result %>%
-#       autoplot() +
-#       geom_point(color = color[1], size = 2) +
-#       geom_line(color = color[1], size = 1) +
-#       ylab("Growth") +
-#       xlab(paste("Partial Dependence on", selected_feature)) +
-#       theme_bg()
-#     
-#     # Print the plot
-#     print(pdp_plot)
-#     
-#   } else if (is.factor(bisnode_holdout[[selected_feature]])) {
-#     # Create PDP for categorical feature
-#     pdp_result <- pdp::partial(rf_model_p_manu, pred.var = selected_feature, 
-#                                pred.grid = unique(bisnode_holdout[[selected_feature]]), 
-#                                train = bisnode_work)
-#     
-#     # Customize PDP plot for categorical feature
-#     pdp_plot <- pdp_result %>%
-#       autoplot() +
-#       geom_point(color = color[1], size = 2) +
-#       ylab("Growth") +
-#       xlab(paste("Partial Dependence on", selected_feature)) +
-#       theme_bg()
-#     
-#     # Print the plot
-#     print(pdp_plot)
-#     }#,cacheKeyExpr = {input$feature_selector }
-# })
-
 ```
 # <font size="3">Services</font> {data-navmenu="PDP"}
 ### {style="border: 0px; background: none"}
@@ -376,47 +323,6 @@ selectInput("feature_selector", "Select Feature form Random forest model:", choi
 
 
 ```{r PDP3, include=TRUE}
-#renderPlot
-# renderPlot({
-#   selected_feature <- input$feature_selector
-#   
-#   # Check if the selected feature is numeric or categorical
-#   if (is.numeric(bisnode_holdout[[selected_feature]])) {
-#     # Create PDP for numeric feature
-#     pdp_result <- pdp::partial(rf_model_p_serv, pred.var = selected_feature, 
-#                                pred.grid = distinct_(bisnode_holdout, selected_feature), 
-#                                train = bisnode_work)
-#     
-#     # Customize PDP plot for numeric feature
-#     pdp_plot <- pdp_result %>%
-#       autoplot() +
-#       geom_point(color = color[1], size = 2) +
-#       geom_line(color = color[1], size = 1) +
-#       ylab("Growth") +
-#       xlab(paste("Partial Dependence on", selected_feature)) +
-#       theme_bg()
-#     
-#     # Print the plot
-#     print(pdp_plot)
-#     
-#   } else if (is.factor(bisnode_holdout[[selected_feature]])) {
-#     # Create PDP for categorical feature
-#     pdp_result <- pdp::partial(rf_model_p, pred.var = selected_feature, 
-#                                pred.grid = unique(bisnode_holdout[[selected_feature]]), 
-#                                train = bisnode_work)
-#     
-#     # Customize PDP plot for categorical feature
-#     pdp_plot <- pdp_result %>%
-#       autoplot() +
-#       geom_point(color = color[1], size = 2) +
-#       ylab("Growth") +
-#       xlab(paste("Partial Dependence on", selected_feature)) +
-#       theme_bg()
-#     
-#     # Print the plot
-#     print(pdp_plot)
-#     }#,cacheKeyExpr = {input$feature_selector }
-# })
 
 ```
 # Threshold decision

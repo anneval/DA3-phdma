@@ -43,7 +43,7 @@ options(scipen = 999)
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/AnjaHahn/OneDrive - DataScience Service GmbH/WU/Courses/CEU Prediction with Machine Learning for Economists/da_case_studies')
+knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
@@ -1847,71 +1847,6 @@ kable(x = cm6_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = 
 
 <!-- RF VAR IMP (all 3) W/OUT LOSS adjust  -->
 
-```{r var imp}
-
-rf_models <- list(rf_model_p, rf_model_p_manu, rf_model_p_serv)
-# # Create an empty list to store the plots
-# rf_model_plots <- list()
-# 
-# # Loop over the random forest models
-# for (i in seq_along(rf_models)) {
-#   current_rf_model <- rf_models[[i]]
-# 
-# rf_model_var_imp <- importance(current_rf_model$finalModel)/1000
-# 
-# rf_model_var_imp_df <-
-#   data.frame(varname = names(rf_model_var_imp),imp = rf_model_var_imp) %>%
-#   #mutate(varname = gsub("f_neighbourhood_cleansed", "Borough:", varname) ) %>%
-#   #mutate(varname = gsub("f_room_type", "Room type:", varname) ) %>%
-#   arrange(desc(imp)) %>%
-#   mutate(imp_percentage = imp/sum(imp))
-# 
-# 
-# # Create plot VAR IMP ALL 
-#   current_plot <- ggplot(rf_model_var_imp_df, aes(x = reorder(varname, imp), y = imp_percentage)) +
-#     geom_point(color = color[1], size = 1) +
-#     geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
-#     ylab("Importance (Percent)") +
-#     xlab("Variable Name") +
-#     coord_flip() +
-#     scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-#     theme_minimal() +
-#     theme(panel.grid.major.y = element_blank(),
-#           axis.text.x = element_text(size = 6),
-#           axis.text.y = element_text(size = 6),
-#           axis.title.x = element_text(size = 6),
-#           axis.title.y = element_text(size = 6))
-#   
-#   # Save the plot
-#   rf_model_plots[[paste0("rf_model_plot_all_", i)]] <- current_plot
-# 
-# # Create plot VAR IMP TOP 10  
-#   current_plot <- ggplot(rf_model_var_imp_df[1:10,], aes(x = reorder(varname, imp), y = imp_percentage)) +
-#     geom_point(color = color[1], size = 1) +
-#     geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
-#     ylab("Importance (Percent)") +
-#     xlab("Variable Name") +
-#     coord_flip() +
-#     scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-#     theme_minimal() +
-#     theme(panel.grid.major.y = element_blank(),
-#           axis.text.x = element_text(size = 6),
-#           axis.text.y = element_text(size = 6),
-#           axis.title.x = element_text(size = 6),
-#           axis.title.y = element_text(size = 6))
-#   
-#   # Save the plot
-#   rf_model_plots[[paste0("rf_model_plot_10_", i)]] <- current_plot
-# }
-# 
-# rf_model_plots$rf_model_plot_all_1
-# rf_model_plots$rf_model_plot_10_1
-# rf_model_plots$rf_model_plot_all_2
-# rf_model_plots$rf_model_plot_10_2
-# rf_model_plots$rf_model_plot_all_3
-# rf_model_plots$rf_model_plot_10_3
-```
-
 ```{r}
 library(plotly)
 
@@ -1982,63 +1917,10 @@ group.importance <- function(rf.obj, groups) {
 }
 ```
 
-```{r,echo=FALSE, include=F, warning=F}
-##############################
-# 2) varimp plot grouped to (8)
-##############################
-# grouped variable importance - keep binaries created off factors together
-# dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
-#                  data = bisnode, fullRank = TRUE)
-
-# # Loop over the random forest models
-# for (i in seq_along(rf_models)) {
-#   current_rf_model <- rf_models[[i]]
-# 
-# varnames <- current_rf_model$finalModel$xNames
-# ind_varnames <- grep("ind",varnames, value = TRUE)
-# gender_varnames <- grep("gender",varnames, value = TRUE)
-# origin_varnames <- grep("origin",varnames, value = TRUE)
-# region_m_varnames <- grep("region_m",varnames, value = TRUE)
-# urban_m_varnames <- grep("urban_m",varnames, value = TRUE)
-# 
-# groups <- list(ind=ind_varnames,
-#                gender = gender_varnames,
-#                origin = origin_varnames,
-#                region_m =region_m_varnames,
-#                urban_m = urban_m_varnames)
-# 
-# rf_model_var_imp_grouped <- group.importance(current_rf_model$finalModel, groups)
-# rf_model_var_imp_grouped_df <- data.frame(varname = rownames(rf_model_var_imp_grouped),
-#                                             imp = rf_model_var_imp_grouped[,1])  %>%
-#   mutate(imp_percentage = imp/sum(imp))
-# 
-# current_plot_group <- ggplot(rf_model_var_imp_grouped_df, aes(x = reorder(varname, imp), y = imp_percentage)) +
-#   geom_point(color = color[1], size = 1) +
-#   geom_segment(aes(x = varname, xend = varname, y = 0, yend = imp_percentage), color = color[1], size = 1) +
-#   ylab("Importance (Percent)") +
-#   xlab("Variable Name") +
-#   coord_flip() +
-#   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-#   theme_minimal() +  # Change to theme_minimal or another theme of your choice
-#   theme(panel.grid.major.y = element_blank(),  # Remove horizontal grid lines only
-#         axis.text.x = element_text(size = 6),
-#         axis.text.y = element_text(size = 6),
-#         axis.title.x = element_text(size = 6),
-#         axis.title.y = element_text(size = 6))
-# 
-#  # Save the plot
-#   rf_model_plots[[paste0("rf_model_var_imp_grouped_plot", i)]] <- current_plot_group
-# }
-# rf_model_plots$rf_model_var_imp_grouped_plot1
-# rf_model_plots$rf_model_var_imp_grouped_plot2
-# rf_model_plots$rf_model_var_imp_grouped_plot3
-```
-
-
 ```{r plotly,echo=FALSE, include=F, warning=F}
 ######################################################
 
-library(plotly)
+
 
 # Create an empty list to store the plots
 rf_model_plots_grouped <- list()
@@ -2091,80 +1973,33 @@ for (i in seq_along(rf_model_plots_grouped)) {
 }
 rf_model_plots_grouped$rf_model_var_imp_grouped_plot1
 ```
-
-<!-- Shapley (all 3) AGAIN W/OUT LOSS adjust  -->
-
-```{r,echo=FALSE, include=FALSE, warning=F}
-## SHAP VALUES ##
-# rfvars
-# ### correct facors chosen?? 
-# 
-# # define one-hot encoding function
-# # dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
-# #                  data = bisnode_holdout, fullRank = TRUE)
-# 
-# # #perform one-hot encoding on data frame
-# 
-#  data_holdout_ohe <- data.frame(predict(dmy, newdata=bisnode_holdout))
-# # 
-# # # replace "." character to " " to match model object names
-# names(data_holdout_ohe) <- gsub(x = names(data_holdout_ohe),
-#                                 pattern = "\\.",
-#                                 replacement = " ")
-# # # unify model for treeshap
-# ## now porblem appa. with RF? 
-# 
-# rf_model_unified <- ranger.unify(rf_model_p$finalModel, bisnode_holdout)
-# 
-# 
-# 
-# rf_model_p$finalModel$nu
-# 
-# ranger_model <- rf_model_p_manu$finalModel
-# 
-# tree_info <- ranger_model$unique.tree.info
-# 
-# 
-# 
-# # # when: Error in set_reference_dataset(ret, as.data.frame(data)) : 
-# # # Dataset does not contain all features occurring in the model.
-# # 
-# # #model_variable_names <- rf_model$coefnames
-# # #new_data_variable_names <- colnames(data_holdout_ohe)
-# # 
-# # #missing_variables <- setdiff(rf_model$coefnames, new_data_variable_names)
-# # #if (length(missing_variables) > 0) {
-# #  # stop(paste("Error: Missing variables in new data:", toString(missing_variables)))
-# # #}
-# # # if Error message (add variables from Error here manually)
-# # # Identify the indices of the columns you want to change
-# # indices_to_change <- which(colnames(data_holdout_ohe) %in% c("neighbourhood_cleansedBrnshj Husum", "neighbourhood_cleansedVesterbro Kongens Enghave"))
-# # 
-# # # Create a vector of new column names for the selected columns
-# # new_names <- c("neighbourhood_cleansedBrnshj-Husum", "neighbourhood_cleansedVesterbro-Kongens Enghave")
-# # 
-# # # Change the column names only for the selected columns
-# # names(data_holdout_ohe)[indices_to_change] <- new_names
-# # 
-# # ## go back to unify model for treeshap
-# # 
-# # #rf_model_unified <- ranger.unify(rf_model$finalModel, data_holdout_ohe)
-# # 
-# treeshap_res <- treeshap(rf_model_p, data_holdout_ohe[1:500, ]) # delete # for calculation but excluded here for Rmd knitting 
-# # 
-# # #treeshap_res <- plot_contribution(treeshap_res, obs = 12)
-# # 
-# # #treeshap_featureIMP <- plot_feature_importance(treeshap_res, max_vars = 10)
-# # 
-# # #treeshap_inter <- treeshap(rf_model_unified, data_holdout_ohe[1:100, ], interactions = T)
-# # #summary(treeshap_res)
-```
-
+#try with small list loop... 
 ```{r pdp,echo=FALSE, include=FALSE, warning=F, eval=FALSE}
 #########################################################################################
 # Partial Dependence Plots -------------------------------------------------------
 #########################################################################################
-varnames
+# Create a list to store the PDP outputs
+pdp_outputs <- list()
+
+# Loop over predictor variables
+for (pred_var in rfvars) {
+  # Generate PDP for the current predictor variable
+  pdp_output <- partial(rf_model_p, pred.var = pred_var, pred.grid = distinct_(bisnode_holdout, pred_var), train = bisnode_work)
+  
+  # Save the PDP output
+  pdp_outputs[[paste0("pdp_", pred_var)]] <- pdp_output
+}
+}
+
+
+
+
+
+
+
+
+# do a loop over pred.var partial part and save ! 
+rfvars
 
 # below code does not work!!! T: Attention included eval = false s.t I  could knit, delete this once the PDP code works!!!
 pdp_n_acc <- pdp::partial(rf_model_p, pred.var = "ceo_count", pred.grid = distinct_(bisnode_holdout, "ceo_count"), train = bisnode_work)
@@ -2198,47 +2033,6 @@ pdp_n_roomtype_plot
 
 <!-- Task 3.2: Show expected loss based on different thresholds. -->
 <!-- Kick out this chunk if the one below works for shiny-->
-```{r}
-#######
-# does make some custom plots (but Gabor's are nicer)
-# all_thresholds_cv <- list()
-# all_losses_cv <- list()
-# 
-# for (fold in c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")) {
-#   cv_fold <- 
-#     rf_model_p$pred %>%
-#     filter(mtry == best_mtry,
-#            min.node.size == best_min_node_size,
-#            Resample == fold)
-# 
-#   roc_obj <- roc(cv_fold$obs, cv_fold$high_growth)
-# 
-#   # Evaluate at several thresholds
-#   thresholds <- seq(0, 1, by = 0.01)
-#   losses <- numeric(length(thresholds))
-# 
-#   for (i in seq_along(thresholds)) {
-#     threshold <- thresholds[i]
-#     coords_obj <- coords(roc_obj, x=threshold, input="threshold", ret="all", transpose=FALSE)
-#     
-#     # Calculate expected loss
-#     losses[i] <- (coords_obj$fp*FP + coords_obj$fn*FN)/length(cv_fold$high_growth)
-#   }
-# 
-#   all_thresholds_cv[[fold]] <- thresholds
-#   all_losses_cv[[fold]] <- losses
-# }
-# 
-# # Now you can plot the losses for each fold
-# for (fold in names(all_thresholds_cv)) {
-#   plot(all_thresholds_cv[[fold]], all_losses_cv[[fold]], type="l", 
-#        xlab="Threshold", ylab="Expected Loss", main=paste("Expected Loss for", fold))
-#   lines(all_thresholds_cv[[fold]], all_losses_cv[[fold]], col="blue")
-# }
-# 
-
-```
-
 
 ```{r interactlossplot}
 createInteractLossPlot <- function(r, best_coords, file_name, myheight_small = 5.625, mywidth_small = 7.5) {
@@ -2384,7 +2178,8 @@ XXXX
 
 ```{r}
 save.image(file = "A3.RData") # specify location 
-save(list = c("bisnode", "bisnode_work", "bisnode_holdout","rf_model_p","rf_model_p_manu","rf_model_p_serv","rf_model_p_InteractLossPlot","rf_model_p_manu_InteractLossPlot","rf_model_p_serv_InteractLossPlot","rf_model_plots","rf_model_plots_grouped","rf_vars"), file = "A3_dashboard.RData")
+
+save(list = c("bisnode", "bisnode_work","bisnode_holdout","rf_model_p","rf_model_p_manu","rf_model_p_serv","rf_model_p_InteractLossPlot","rf_model_p_manu_InteractLossPlot","rf_model_p_serv_InteractLossPlot","rf_model_plots","rf_model_plots_grouped","rfvars"), file = "A3_dashboard.RData")
 ```
 
 <!-- References 
