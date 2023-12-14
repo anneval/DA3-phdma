@@ -1,18 +1,24 @@
 ---
+title: "Assignment 3 - Finding fast growing firms"
+subtitle: "Course: ECBS6067 - Prediction with Machine Learning for Economists"
+author: "Anja Hahn, Teresa Huebel & Anne Valder" 
+date: "2023-12-14"
 editor_options:
   markdown:
     wrap: 72
 output: pdf_document
+always_allow_html: true
+df_print: paged
 ---
 
 ------------------------------------------------------------------------
 
-title: "Assignment 3 - Finding fast growing firms" subtitle: "Course:
-ECBS6067 - Prediction with Machine Learning for Economists" author:
-"Anja Hahn, Teresa Huebel & Anne Valder" date: "2023-12-14" output:
-pdf_document: default html_document: df_print: paged
+<!-- title: "Assignment 3 - Finding fast growing firms" subtitle: "Course: -->
+<!-- ECBS6067 - Prediction with Machine Learning for Economists" author: -->
+<!-- "Anja Hahn, Teresa Huebel & Anne Valder" date: "2023-12-14" output: -->
+<!-- pdf_document: default html_document: df_print: paged -->
 
-# Summary
+### Summary
 
 The goal of our analysis is to classify fast growing firms in order to
 identify lucrative investment opportunities. This report includes three
@@ -27,14 +33,13 @@ the subsets manufacturing and services. In comparison, XXXX. Further
 results and interactive graphs can be found in the shiny app linked to
 this report.
 
-{{< pagebreak >}}
 
 ```{r, include=FALSE}
 # Clear memory
 rm(list=ls())
 
 # set global chunk options
-knitr::opts_chunk$set(include = FALSE, fig.align = 'center', cache = TRUE,
+knitr::opts_chunk$set(include = FALSE, fig.align = 'center', # cache = TRUE,
                       warning = FALSE, message = FALSE, echo = FALSE)
 
 options(scipen = 999)
@@ -43,7 +48,7 @@ options(scipen = 999)
 
 ```{r setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies')
+knitr::opts_knit$set(root.dir = 'C:/Users/AnjaHahn/OneDrive - DataScience Service GmbH/WU/Courses/CEU Prediction with Machine Learning for Economists/da_case_studies')
 
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
@@ -77,6 +82,9 @@ library(treeshap)
 library(summarytools)
 library(pROC)
 library(plotly)
+library(pdp)
+library(gridExtra)
+library(kableExtra)
 # add
 ```
 
@@ -109,7 +117,7 @@ bisnode %>%
 
 ```
 
-## Sample Design
+### Sample Design
 
 We exclude some variables that have extremely high rates of missing
 values (above 90%) and only look at firms that are active in 2012, that
@@ -160,7 +168,6 @@ bisnode  <- bisnode %>%
            as.numeric(.))
 
 # look at cross section
-# add explanation to report!!!!
 bisnode <- bisnode %>%
   filter(status_alive == TRUE) %>% # only look at firms that have some sales
   # look at firms below 10m euro revenues and above 1000 euros
@@ -192,7 +199,7 @@ plot_labor_avg
 
 ```
 
-## Label Engineering
+### Label Engineering
 
 We are exploring multiple alternatives as target variable to represent
 high growth firms. In our selection, we pay attention to the following
@@ -200,7 +207,7 @@ dimensions: i) the indicator to choose, ii) the measurement, iii) the
 time horizon, and iv) the threshold. The literature does not yield one
 consensus over a definition of high growth firms, it rather points out
 that any decision along these dimensions depends on the goal of the
-analysis.[\^1] We decided for relative average annual sales growth over
+analysis.[^1] We decided for relative average annual sales growth over
 two years for the following reasons: First, sales provided a more
 relevant and reliable target than number of employees. Sales data is
 missing only in 2.6% of cases whereas number of employees is missing in
@@ -224,7 +231,7 @@ rate and a certain percentile of firms are used. We decided for a
 threshold based on a specific growth rate since we want to analyze
 different sectors (manufacturing and services) with a fixed benchmark.
 
-[\^1] Alex Coad, Sven-Olov Daunfeldt, Werner Hölzl, Dan Johansson, Paul
+[^1]: Alex Coad, Sven-Olov Daunfeldt, Werner Hölzl, Dan Johansson, Paul
 Nightingale, High-growth firms: introduction to the special section,
 Industrial and Corporate Change, Volume 23, Issue 1, February 2014,
 Pages 91--112, <https://doi.org/10.1093/icc/dtt052>
@@ -402,7 +409,7 @@ bisnode$high_growth_factor <- factor(bisnode$high_growth_factor, levels = c("low
 # add one extra employee are not classified as fast growing?
 ```
 
-\^23 <!-- Filter for 2012  -->
+<!-- Filter for 2012  -->
 
 ```{r}
 # restrict sample to 2012 for further analysis
@@ -412,7 +419,7 @@ bisnode <- bisnode %>%
 
 ```
 
-## Feature Engineering
+### Feature Engineering
 
 Feature engineering of the bisnode data set comprises re-coding of
 existing variables s.t. they get the appropriate class and/or meaningful
@@ -656,7 +663,7 @@ significant relationship between a quadratic term and the binary
 response, we add that variable as quadratic predictor as well. From
 visual inspection of the plots, we can say that in general, asset
 variables do not show a lot of variation in the response i.e. do not
-seem to affect *fast_growth* as much.
+seem to affect *fast_growth* as much (see examples below).
 
 ```{r variable_relations}
 ########################################
@@ -683,12 +690,6 @@ for (var in vars_num){
   }
 }
 
-# plots to show
-# example of adding quadratic
-plots$ceo_age
-# example of not adding quadratic
-plots$curr_assets_rel
-
 # check lm with quadratics
 glm_results <- list()
 
@@ -706,16 +707,23 @@ for (var in vars_num){
 
 ```
 
+```{r plots relation, include=TRUE, echo=FALSE, fig.align='center', fig.height=2.5, fig.width=8}
+# plots to show
+grid.arrange(plots$ceo_age, plots$curr_assets_rel, ncol = 2)
+
+```
+
+
 Moreover, we looked at the relationship between the binary response and
 binary/categorical predictors. In the plot below, we see, for example,
 that *high_growth* seems to be more prevalent with a young (defined as
 \< 40 years) CEO. Also, a firm being very young (\< 1 age) seems to play
-a role. As regards possible interactions, the below plot hints towards a
+a role. As regards possible interactions, the below right plot hints towards a
 relationship between industry category (NACE 2 digit classification) and
 age of the company, as can be seen by the different slopes of the fitted
 line per category.
 
-```{r variable_relations_2}
+```{r variable_relations_2, include=TRUE, echo=FALSE, fig.align='center', fig.height=2.5, fig.width=9}
 # add quadratics for chosen variables (based on plots and glms)
 quad <- c("intang_assets_rel", "inventories_rel", "liq_assets_rel", "material_exp_rel",
           "personnel_exp_rel", "subscribed_cap_rel", "inc_bef_tax_rel", 
@@ -731,13 +739,13 @@ binary_variables <- c("gender", "origin", "ind2", "ind", "ind2_cat", "urban_m",
 
 
 # two examples
-ggplot(bisnode, aes(x = factor(new), fill = factor(high_growth))) +
+high_growth_new <- ggplot(bisnode, aes(x = factor(new), fill = factor(high_growth))) +
   geom_bar(position = "fill", stat = "count") +
   labs(y = "Proportion", fill = "High Growth") +
   theme_bg() +
   scale_fill_manual(values = c(color[1], color[2])) +
   theme(legend.text = element_text(size = 10))
-ggplot(bisnode, aes(x = factor(ceo_young), fill = factor(high_growth))) +
+high_growth_young <- ggplot(bisnode, aes(x = factor(ceo_young), fill = factor(high_growth))) +
   geom_bar(position = "fill", stat = "count") +
   labs(y = "Proportion", fill = "High Growth") +
   theme_bg() +
@@ -745,7 +753,7 @@ ggplot(bisnode, aes(x = factor(ceo_young), fill = factor(high_growth))) +
   theme(legend.text = element_text(size = 10))
 
 # interactions
-ggplot(bisnode, aes(x = age, y = high_growth, color = ind2)) +
+high_growth_ind2 <- ggplot(bisnode, aes(x = age, y = high_growth, color = ind2)) +
   # ggplot(bisnode, aes(x = age, y = high_growth, color = ind2_cat)) +
   theme_bw() + 
   geom_point() + 
@@ -759,13 +767,14 @@ bisnode <- bisnode %>%
   mutate(across(where(is.factor), ~ droplevels(.)))
 
 # check remaining data
-colSums(is.na(bisnode))/nrow(bisnode)*100
+# colSums(is.na(bisnode))/nrow(bisnode)*100
 # datasummary_skim(bisnode, type='numeric', histogram = TRUE)
 
+grid.arrange(high_growth_new, high_growth_young, high_growth_ind2, ncol = 3)
 
 ```
 
-## Variable Selection
+### Variable Selection
 
 #### Logit Model
 
@@ -913,7 +922,7 @@ train_control <- trainControl(method = "cv",
 
 ```
 
-## Model Estimation
+### Model Estimation
 
 We divide our data set into a work (80 percent, 15,229 observations) and
 holdout set (20 percent, 3,807 observations). The workout set will be
@@ -937,25 +946,30 @@ performance of our models.
 CV_RMSE_folds <- list()
 logit_models <- list()
 
-for (model_name in names(logit_model_vars)) {
+# for (model_name in names(logit_model_vars)) {
+# 
+#   features <- logit_model_vars[[model_name]]
+# 
+#   set.seed(13505)
+#   glm_model <- train(
+#     formula(paste0("high_growth_factor ~", paste0(features, collapse = " + "))),
+#     method = "glm",
+#     data = bisnode_work,
+#     family = binomial,
+#     trControl = train_control
+#   )
+# 
+#   logit_models[[model_name]] <- glm_model
+#   # Calculate RMSE on test for each fold
+#   CV_RMSE_folds[[model_name]] <- glm_model$resample[, c("Resample", "RMSE")]
+# 
+# }
+# 
+# saveRDS(logit_models, paste0(output, "logit_models.RDS"))
+# saveRDS(CV_RMSE_folds, paste0(output, "CV_RMSE_folds.RDS"))
 
-  features <- logit_model_vars[[model_name]]
-
-  set.seed(13505)
-  glm_model <- train(
-    formula(paste0("high_growth_factor ~", paste0(features, collapse = " + "))),
-    method = "glm",
-    data = bisnode_work,
-    family = binomial,
-    trControl = train_control
-  )
-
-  logit_models[[model_name]] <- glm_model
-  # Calculate RMSE on test for each fold
-  CV_RMSE_folds[[model_name]] <- glm_model$resample[, c("Resample", "RMSE")]
-
-}
-
+logit_models <- readRDS(paste0(output, "logit_models.RDS"))
+CV_RMSE_folds <- readRDS(paste0(output, "CV_RMSE_folds.RDS"))
 
 #############################################x
 # PART I
@@ -1059,18 +1073,21 @@ CV_AUC[["rf_p"]] <- mean(CV_AUC_folds[["rf_p"]]$AUC)
 lambda <- 10^seq(-1, -4, length = 10)
 grid <- expand.grid("alpha" = 1, lambda = lambda)
 
-system.time({
-  logit_lasso_model <- train(
-    formula(paste0("high_growth_factor ~", paste0(lassovars, collapse = " + "))),
-    data = bisnode_work,
-    method = "glmnet",
-    preProcess = c("center", "scale"),
-    family = "binomial",
-    trControl = train_control,
-    tuneGrid = grid,
-    na.action=na.exclude
-  )
-})
+# system.time({
+#   logit_lasso_model <- train(
+#     formula(paste0("high_growth_factor ~", paste0(lassovars, collapse = " + "))),
+#     data = bisnode_work,
+#     method = "glmnet",
+#     preProcess = c("center", "scale"),
+#     family = "binomial",
+#     trControl = train_control,
+#     tuneGrid = grid,
+#     na.action=na.exclude
+#   )
+# })
+# 
+# saveRDS(logit_lasso_model, paste0(output, "logit_lasso_model.RDS"))
+logit_lasso_model <- readRDS(paste0(output, "logit_lasso_model.RDS"))
 
 tuned_logit_lasso_model <- logit_lasso_model$finalModel
 best_lambda <- logit_lasso_model$bestTune$lambda
@@ -1106,7 +1123,7 @@ The logit LASSO does not perform better, either (worse AUC and similar
 RMSE). Based on the CV results, we would therefore go for the random
 forest which performs slightly better in both the RMSE and AUC.
 
-```{r summary_no_loss}
+```{r summary_no_loss, include=TRUE, echo=FALSE}
 
 ncoeff <- lapply(logit_models, FUN = function(x) length(x$coefnames))
 ncoeff[["rf"]] <- NA
@@ -1123,30 +1140,23 @@ summary_no_loss <- data.frame(Model = c("Logit w/o interactions", "Logit w inter
                               AUC = c(CV_AUC$logit_no_interactions, CV_AUC$logit_incl_interactions, CV_AUC$LASSO, CV_AUC$rf_p))
 
 kable(x = summary_no_loss, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
-      linesep = "")
+      linesep = "") %>%
+  kable_styling(position = "center")
 
 ```
 
 We use our best model to predict on the holdout set and receive a RMSE
 of **0.372**. Also, we produce the below (discrete) ROC plot which shows
 us the trade off between making false positive and false negative
-errors. The confusion matrices for default classification (using 0.5 as
-threshold) and for the threshold set to the mean of predicted values
-(approx. 0.2) show, as expected, how a lower threshold would lead to a
-higher probability of predicting high growth. Also, we nicely see the
-trade-off between false positives (going up) and false negatives (going
-down) when lowering the threshold. However, these choices of thresholds
-are still not based on a proper loss function, to which we will come
-next.
+errors. 
 
-```{r best_model_no_loss}
-
+```{r best_model_no_loss, include=TRUE, echo=FALSE, fig.align='center',  fig.height=2.5, fig.width=8}
 # Take best model and estimate RMSE on holdout
 # Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
 
 rf_predicted_probabilities_holdout <- predict(rf_model_p, newdata = bisnode_holdout, type = "prob")
 bisnode_holdout$rf_p_prediction <- rf_predicted_probabilities_holdout[,"high_growth"]
-RMSE(bisnode_holdout$rf_p_prediction, bisnode_holdout$high_growth)
+# RMSE(bisnode_holdout$rf_p_prediction, bisnode_holdout$high_growth)
 
 # produce ROC plot (discrete; could also be continuous)
 thresholds <- seq(0.05, 0.75, by = 0.05)
@@ -1184,16 +1194,20 @@ discrete_roc_plot <- ggplot(
         legend.text = element_text(size = 4),
         legend.key.size = unit(.4, "cm")) 
 discrete_roc_plot
+```
 
+The confusion matrix for default classification (using 0.5 as
+threshold) is shown below. 
+
+```{r best_model_no_loss1, include=TRUE, echo=FALSE}
 # do classification with "random" threshold
 # default: the threshold 0.5 is used to convert probabilities to binary classes
 rf_class_prediction <- predict(rf_model_p, newdata = bisnode_holdout)
-summary(rf_class_prediction)
+# summary(rf_class_prediction)
 
 # confusion matrix for 0.5 threshold
 cm_object1 <- confusionMatrix(rf_class_prediction, bisnode_holdout$high_growth_factor, positive = "high_growth")
 cm1 <- cm_object1$table
-cm1
 
 # observations in holdout
 obs_holdout <- nrow(bisnode_holdout)
@@ -1214,9 +1228,20 @@ rownames(cm1_perc) <- c("Predicted Low Growth", "Predicted High Growth", "Total"
 cm1_perc[] <- lapply(cm1_perc, function(x) sprintf("%.2f%%", x * 100))
 
 kable(x = cm1_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
-      linesep = "")
+      linesep = "") %>%
+  kable_styling(position = "center")
+```
 
 
+When comparing the above confusion matrix to the one below -- where we set the threshold
+to the mean of predicted values (approx. 0.2) -- we see, as expected, 
+how a lower threshold would lead to a higher probability of predicting high growth. 
+Also, we nicely see the trade-off between false positives (going up) and false negatives 
+(going down) when lowering the threshold. However, these choices of thresholds
+are still not based on a proper loss function, to which we will come
+next.
+
+```{r best_model_no_loss2, include=TRUE, echo=FALSE}
 # confusion matrix for mean of predicted probabilities
 mean_predicted_highgrowth_prob <- mean(bisnode_holdout$rf_p_prediction)
 holdout_prediction <-
@@ -1224,7 +1249,6 @@ holdout_prediction <-
   factor(levels = c("low_growth", "high_growth"))
 cm_object2 <- confusionMatrix(holdout_prediction, bisnode_holdout$high_growth_factor)
 cm2 <- cm_object2$table
-cm2
 
 # add a version of the table where each cell is divided by the total number of observations
 cm2_perc <- cm2/obs_holdout
@@ -1242,7 +1266,8 @@ rownames(cm2_perc) <- c("Predicted Low Growth", "Predicted High Growth", "Total"
 cm2_perc[] <- lapply(cm2_perc, function(x) sprintf("%.2f%%", x * 100))
 
 kable(x = cm2_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
-      linesep = "")
+      linesep = "") %>%
+  kable_styling(position = "center")
 
 
 ```
@@ -1263,7 +1288,7 @@ kable(x = cm2_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = 
 ## ADD
 ```
 
-## Introduction of Loss Function
+### Introduction of Loss Function
 
 Next, we introduce a loss function specifically tailored for our business case. In selecting the best model, our primary objective is to minimize false positives. This is crucial because we aim to avoid investing in firms that do not exhibit strong growth potential. However, there's a challenge: only 20% of firms in our dataset are categorized as fast-growing. Overemphasizing the cost of false positives could inadvertently lead the model to classify all observations as low growth. Such an approach would undermine our goal of identifying high-potential business opportunities.
 
@@ -1285,11 +1310,9 @@ cost = FN/FP
 # the prevalence, or the proportion of cases in the population (n.cases/(n.controls+n.cases))
 prevalence = sum(bisnode_work$high_growth)/length(bisnode_work$high_growth)
 
-# Draw ROC Curve and find optimal threshold with loss function --------------------------
 ```
 
 ```{r logit w loss}
-
 # incorporate loss function for logit models
 best_tresholds <- list()
 expected_loss <- list()
@@ -1333,7 +1356,10 @@ for (model_name in names(logit_models)) {
   logit_cv_expected_loss[[model_name]] <- expected_loss_cv[[fold]]
 
 }
+```
 
+
+```{r}
 ###############################################
 logit_summary <- data.frame("Avg of optimal thresholds" = unlist(best_tresholds),
                              "Threshold for Fold5" = sapply(logit_cv_threshold, function(x) {x$threshold}),
@@ -1424,7 +1450,8 @@ rf_summary <- data.frame("CV RMSE" = CV_RMSE[["rf_p"]],
 kable(x = rf_summary, format = "latex", booktabs=TRUE,  digits = 3, row.names = TRUE,
       linesep = "", col.names = c("CV RMSE", "CV AUC",
                                   "Avg of optimal thresholds","Threshold for fold #5",
-                                  "Avg expected loss","Expected loss for fold #5"))
+                                  "Avg expected loss","Expected loss for fold #5")) %>%
+  kable_styling(position = "center")
 
 
 # Create plots - this is for Fold5
@@ -1450,7 +1477,7 @@ expected_loss_holdout <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/lengt
 expected_loss_holdout
 ```
 
-## Model Comparison with Loss Function
+### Model Comparison with Loss Function
 After the introduction of our loss function, we can now compare the models based on their average expected loss over all folds. The model with the lowest expected loss is still the random forest. The simple logistic regression without interactions has the second lowest expected loss.
 
 
@@ -1458,7 +1485,7 @@ After the introduction of our loss function, we can now compare the models based
 
 <!-- Task1.2: Pick model with smallest expected loss -->
 
-```{r}
+```{r, include=TRUE, echo=FALSE}
 # compare all models: to pick the one with lowest expected loss
 ###############################################
 
@@ -1481,12 +1508,13 @@ summary_all_mods <- data.frame(Model = c("Logit w/o interactions", "Logit w inte
 
 kable(x = summary_all_mods, format = "latex", booktabs=TRUE,  digits = 3, row.names = TRUE,
       linesep = "", col.names = c("Model", "Predictors", "Coefficients", "CV RMSE", "CV AUC",
-                                  "CV threshold", "CV expected Loss"))
+                                  "CV threshold", "CV expected Loss")) %>%
+  kable_styling(position = "center")
 
 
 ```
 
-## Confusion Table
+### Confusion Table
 The confusion table shows that we have an accuracy of 82.03% on the holdout set. The model only predicts 1.65% of models to have high growth whereas the prevalence of high growth firms in the data is 18.57%. This low sensitivity (6%) is necessary in order to arrive at the high specificity (99.3%) we desire. This is a trade off we are willing to engage in, in order to avoid investing in firms that will not outperform the market or might even go bankrupt. If we apply our model to similar datasets in multiple countries we will still arrive at a reasonably large number of predicted high growth firms such that our portfolio will be diversified. 
 
 Of course, we realize that we could not test the external validity of our model and applying it in other countries migth lead to worse performance. To that end we conduct another exercise and apply our model to different market segments, that is, manufacturing and services.
@@ -1496,7 +1524,7 @@ Of course, we realize that we could not test the external validity of our model 
 
 <!-- Task1.3: Discuss results, evaluate how useful your model may be -->
 
-```{r confusion table rf}
+```{r confusion table rf, include=TRUE, echo=FALSE}
 ###############################################
 # Create Confusion table for the RF model
 ###############################################
@@ -1526,7 +1554,8 @@ rownames(cm4_perc) <- c("Predicted Low Growth", "Predicted High Growth", "Total"
 cm4_perc[] <- lapply(cm4_perc, function(x) sprintf("%.2f%%", x * 100))
 
 kable(x = cm4_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
-      linesep = "")
+      linesep = "") %>%
+  kable_styling(position = "center")
 
 ```
 
@@ -1626,7 +1655,8 @@ rf_summary_manu <- data.frame("CV RMSE" = CV_RMSE[["rf_p_manu"]],
 kable(x = rf_summary_manu, format = "latex", booktabs=TRUE,  digits = 3, row.names = TRUE,
       linesep = "", col.names = c("CV RMSE", "CV AUC",
                                   "Avg of optimal thresholds","Threshold for fold #5",
-                                  "Avg expected loss","Expected loss for fold #5"))
+                                  "Avg expected loss","Expected loss for fold #5")) %>%
+  kable_styling(position = "center")
 
 
 # Create plots - this is for Fold5
@@ -1732,7 +1762,8 @@ rf_summary_serv <- data.frame("CV RMSE" = CV_RMSE[["rf_p_serv"]],
 kable(x = rf_summary_serv, format = "latex", booktabs=TRUE,  digits = 3, row.names = TRUE,
       linesep = "", col.names = c("CV RMSE", "CV AUC",
                                   "Avg of optimal thresholds","Threshold for fold #5",
-                                  "Avg expected loss","Expected loss for fold #5"))
+                                  "Avg expected loss","Expected loss for fold #5")) %>%
+  kable_styling(position = "center")
 
 
 # Create plots - this is for Fold5
@@ -1785,7 +1816,8 @@ summary_manu_serv <- data.frame(Model = c("Manufacturing", "Services"),
 
 kable(x = summary_manu_serv, format = "latex", booktabs=TRUE,  digits = 3, row.names = TRUE,
       linesep = "", col.names = c("Model", "CV RMSE", "CV AUC",
-                                  "CV threshold", "CV expected Loss"))
+                                  "CV threshold", "CV expected Loss")) %>%
+  kable_styling(position = "center")
 
 ###############################################
 # make confusion table for both subsets
@@ -1834,9 +1866,11 @@ cm5_perc[] <- lapply(cm5_perc, function(x) sprintf("%.2f%%", x * 100))
 cm6_perc[] <- lapply(cm6_perc, function(x) sprintf("%.2f%%", x * 100))
 
 kable(x = cm5_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
-      linesep = "")
+      linesep = "") %>%
+  kable_styling(position = "center")
 kable(x = cm6_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
-      linesep = "")
+      linesep = "") %>%
+  kable_styling(position = "center")
 
 
 ```
@@ -1846,8 +1880,8 @@ kable(x = cm6_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = 
 <!-- RF VAR IMP (all 3)  -->
 
 ```{r}
-s
 # Create an empty list to store the plots
+rf_models <- list(rf_model_p, rf_model_p_manu, rf_model_p_serv)
 rf_model_plots <- list()
 
 # Loop over the random forest models
@@ -1972,7 +2006,7 @@ top10rfvar  <- c("material_exp","d1_sales_mil_log","personnel_exp","liq_assets",
 ```
 
 
-```{r pdp,echo=FALSE, include=FALSE, warning=F, eval=FALSE}
+```{r pdp2,echo=FALSE, include=FALSE, warning=F, eval=FALSE}
 # ONLY DO ONCE AND STORE (bisnode)
 
 # Create a list to store the PDP outputs
@@ -1991,11 +2025,10 @@ top10rfvar  <- c("material_exp","d1_sales_mil_log","personnel_exp","liq_assets",
 
 #saveRDS(pdp_outputs, paste0(output, "pdp_outputs.RDS"))
 
-pdp_outputs <- readRDS(paste0(output, "pdp_outputs.RDS"))
-
 ```
 
 ```{r}
+pdp_outputs <- readRDS(paste0(output, "pdp_outputs.RDS"))
 rf_pdp_plot <- list()
 # Loop over PDP outputs
 for (pred_var in names(pdp_outputs)) {
@@ -2028,7 +2061,7 @@ for (pred_var in names(pdp_outputs)) {
 }
 ```
 
-```{r pdp,echo=FALSE, include=FALSE, warning=F, eval=FALSE}
+```{r pdp3,echo=FALSE, include=FALSE, warning=F, eval=FALSE}
 
 #########################################################################################
 # Partial Dependence Plots MANU -------------------------------------------------------
@@ -2051,10 +2084,10 @@ for (pred_var in names(pdp_outputs)) {
 
 #saveRDS(pdp_outputs_manu, paste0(output, "pdp_outputs_manu.RDS"))
 
-pdp_outputs_manu <- readRDS(paste0(output, "pdp_outputs_manu.RDS"))
 ```
 
 ```{r}
+pdp_outputs_manu <- readRDS(paste0(output, "pdp_outputs_manu.RDS"))
 rf_pdp_plot_manu  <- list()
 # Loop over PDP outputs
 for (pred_var in names(pdp_outputs_manu)) {
@@ -2089,7 +2122,7 @@ for (pred_var in names(pdp_outputs_manu)) {
 #rf_pdp_plot_manu$pdp_ceo_age
 ```
 
-```{r pdp,echo=FALSE, include=FALSE, warning=F, eval=FALSE}
+```{r pdp4,echo=FALSE, include=FALSE, warning=F, eval=FALSE}
 
 #########################################################################################
 # Partial Dependence Plots SERV -------------------------------------------------------
@@ -2112,10 +2145,11 @@ for (pred_var in names(pdp_outputs_manu)) {
 # 
 # saveRDS(pdp_outputs_serv, paste0(output, "pdp_outputs_serv.RDS"))
 
-pdp_outputs_serv <- readRDS(paste0(output, "pdp_outputs_serv.RDS"))
+
 ```
 
 ```{r}
+pdp_outputs_serv <- readRDS(paste0(output, "pdp_outputs_serv.RDS"))
 rf_pdp_plot_serv <- list()
 # Loop over PDP outputs
 for (pred_var in names(pdp_outputs_serv)) {
@@ -2278,7 +2312,7 @@ for (fold in c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")) {
 rf_model_p_serv_InteractLossPlot <- createInteractLossPlot(roc_obj, best_treshold, "rf_p_serv_interact_loss_plot")
 #rf_model_p_serv_InteractLossPlot
 ```
-# Overall Summary
+### Overall Summary
 
 We estimated three models to predict high growth firms (logit, logit LASSO, random forest). Random forest turned out to be the best model, both, when evaluated based on RMSE or AUC as well as expected loss.
 
@@ -2292,9 +2326,9 @@ Our definition of high growth is based on average annual sales growth over two y
 <!-- Save data environment for dashboard  -->
 
 ```{r}
-save.image(file = "A3.RData") # saves in data_dir!
+# save.image(file = "A3.RData") # saves in data_dir!
 
-save(list = c("bisnode", "bisnode_work","bisnode_holdout","rf_model_p","rf_model_p_manu","rf_model_p_serv","rf_model_p_InteractLossPlot","rf_model_p_manu_InteractLossPlot","rf_model_p_serv_InteractLossPlot","rf_model_plots","rf_model_plots_grouped","rfvars","pdp_outputs","pdp_outputs_manu","pdp_outputs_serv","rf_pdp_plot","rf_pdp_plot_manu","rf_pdp_plot_serv"), file = "A3_dashboard.RData")
+# save(list = c("bisnode", "bisnode_work","bisnode_holdout","rf_model_p","rf_model_p_manu","rf_model_p_serv","rf_model_p_InteractLossPlot","rf_model_p_manu_InteractLossPlot","rf_model_p_serv_InteractLossPlot","rf_model_plots","rf_model_plots_grouped","rfvars","pdp_outputs","pdp_outputs_manu","pdp_outputs_serv","rf_pdp_plot","rf_pdp_plot_manu","rf_pdp_plot_serv"), file = "A3_dashboard.RData")
 
 ```
 
