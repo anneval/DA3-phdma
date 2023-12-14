@@ -15,15 +15,15 @@ df_print: paged
 
 The goal of our analysis is to classify fast growing firms in order to
 identify lucrative investment opportunities. This report includes three
-different models to predict fast growing firms. It is based on bisnode
+different models to predict fast growing firms. It is based on the bisnode
 panel data. Firm growth is defined by average annual percentage growth
 in sales over two years. We use data from 2012 to predict sales growth
-two years ahead. The models are logit, random forest and logit lasso.
+two years ahead. The models are a logit, a random forest and a logit lasso.
 The models' predictive power is evaluated once without and once with the
 use of a loss function. After the introduction of a loss function, we
-identified random forest as strongest model. This model is also used on
+identified the random forest as strongest model. This model is also used on
 the subsets manufacturing and services. In comparison, the random forest 
-performs better in the services sector. Further results and interactive graphs can be found in the shiny app linked to this report.
+performs better in the services sector. Further results and interactive graphs can be found in the felxdashbaord linked to this report.
 
 
 ```{r setup, include=FALSE}
@@ -49,8 +49,7 @@ library(kableExtra)
 ### Sample Design
 
 We exclude some variables that have extremely high rates of missing
-values (above 90%) and only look at firms that are active in 2012, that
-is, they have some sales. What is more, our analysis is only based on
+values (above 90%) and only look at firms that are active in 2012, i.e. have some sales. What is more, our analysis is only based on
 firms with annual sales between 1,000 and 10 million euros. We believe
 this subset presents the most attractive investment opportunities.
 First, very small firms with sales below 1,000 EUR in sales are likely
@@ -79,12 +78,11 @@ Second, we decided to use relative growth instead of absolute growth.
 This decision will favor smaller firms since high relative growth is
 harder to achieve for larger firms. We believe relative growth to be
 more relevant since it is more closely linked to our expected return on
-investment. To be more specific, we calculated percentage change and did
+investment. To be more specific, we calculated the percentage change and did
 not rely on log differences. Even though this decision does not affect
 the ranking of firms, it does affect the magnitude of the growth rate in
 the subset of high growth firms. The difference is visualized in a plot that
-shows the distribution of growth rates for both measures, where log-differences
-are right-skewed. 
+shows the distribution of growth rates for both measures, where log-differences are right-skewed. 
 
 ```{r plot sales growth, include=TRUE, echo=FALSE, fig.align='center', fig.height=2.5, fig.width=8}
 plot_sales_growth_both <- readRDS(paste0(output, "plot_sales_growth_both.RDS"))
@@ -95,7 +93,7 @@ plot_sales_growth_both
 We favored percentage change primarily because of
 its more intuitive interpretation. Third, we decided for a two year time
 horizon instead of a one year horizon to relate more closely to the OECD
-definition of high growth firms that is defined over a three year
+definition of high growth firms (HGF) that is defined over a three year
 horizon. Fourth, we decided for a threshold of 30% annual growth. In our
 sample this is equivalent to classifying roughly the fastest growing 20%
 of firms as HGF. In the literature, both thresholds on a certain growth
@@ -117,7 +115,7 @@ implausible variables, such as *ceo_age* below 18 years, we set to NA.
 
 In the process of analysing missing values, we impute some important
 ones (*ceo_age*, *labor_avg*) and add flags for missing values. For
-other, very important variables (mainly assets, CEO and industry
+other, important variables (mainly assets, CEO and industry
 information), we do not impute but rather drop NAs. Moreover,
 we intend to use the variable on previous firm growth as predictor for
 (future) fast growth -- very much in the same fashion as we know from
@@ -136,7 +134,7 @@ for whether it is a *new* company, has *multiple_ceo*s or a
 two-digit NACE codes into "manufacturing" vs. "services", generate a 
 variable for *total_assets* and compute ratios of
 some financial variables (with either *total_assets* or *sales* as
-reference). Lastly, we windsorize tails of numeric variables and add
+reference). Lastly, we winsorize tails of numeric variables and add
 flags accordingly.
 
 Next, we look at relationships between predictors and the binary
@@ -145,7 +143,7 @@ method to fit a smooth curve to the data points. In case the curve shows
 some clear non-linear behaviour, we add quadratic terms of predictors
 concerned. These decisions are re-assured by the estimation of simple
 GLMs, where we explain *high_growth* with the respective numeric
-variable and its quadratic -- whenever we detect a statistically
+variable and its quadratic term -- whenever we detect a statistically
 significant relationship between a quadratic term and the binary
 response, we add that variable as quadratic predictor as well. From
 visual inspection of the plots, we can say that in general, asset
@@ -156,8 +154,7 @@ Moreover, we looked at the relationship between the binary response and
 binary/categorical predictors. In the left plot below, we see, for example,
 that *high_growth* seems to be more prevalent with a young (defined as
 \< 40 years) CEO. Also, a firm being very young (\< 1 age) seems to play
-a role. As regards possible interactions, the below right plot hints towards a
-relationship between industry category (NACE 2 digit classification) and
+a role. Regarding possible interactions, the below right plot hints towards a relationship between industry category (NACE 2 digit classification) and
 age of the company, as can be seen by the different slopes of the fitted
 line per category.
 
@@ -211,11 +208,11 @@ performance of our models.
 
 #### Probability Prediction
 
-The below table shows the results for our different model specifications.
+The table below shows the results for our different model specifications.
 We would choose the first simple logit model over the second, since it
 has fewer coefficients and even better (lower) RMSE and (higher) AUC.
 The logit LASSO does not perform better, either (worse AUC and similar
-RMSE). Based on the CV results, we would therefore go for the random
+RMSE). Based on the CV results, we would therefore select the random
 forest which performs slightly better in both the RMSE and AUC.
 
 ```{r summary_no_loss, include=TRUE, echo=FALSE}
@@ -256,9 +253,9 @@ cf2_kable
 
 #### Introduction of Loss Function
 
-We introduce a loss function specifically tailored for our business case. In selecting the best model, our primary objective is to minimize false positives. This is crucial because we aim to avoid investing in firms that do not exhibit strong growth potential. However, there's a challenge: only 20% of firms in our dataset are categorized as fast-growing. Overemphasizing the cost of false positives could inadvertently lead the model to classify all observations as low growth. Such an approach would undermine our goal of identifying high-potential business opportunities.
+We introduce a loss function specifically tailored for our business case. In selecting the best model, our primary objective is to minimize false positives. This is crucial because we aim to avoid investing in firms that do not exhibit strong growth potential. However, there's a challenge: only 20% of firms in our data set are categorized as fast-growing. Overemphasizing the cost of false positives could inadvertently lead the model to classify all observations as low growth. Such an approach would undermine our goal of identifying high-potential business opportunities.
 
-To address this, we have calibrated the cost associated with false positives (FP) and false negatives (FN) in a balanced manner. We have set the cost of a false positive at 150% of that of a false negative. This ratio reflects a strategic decision: while avoiding unfruitful investments is important, we also do not want to miss out on promising firms. Additionally, we have incorporated the prevalence of high-growth firms into the model's weighting system. This adjustment ensures that our model remains sensitive to the relatively scarce yet valuable high-growth opportunities in our dataset, thereby aligning the model's predictions more closely with our business objectives.
+To address this, we have calibrated the cost associated with false positives (FP) and false negatives (FN) in a balanced manner. We have set the cost of a false positive at 150% of that of a false negative. This ratio reflects a strategic decision: while avoiding unfruitful investments is important, we also do not want to miss out on promising firms. Additionally, we have incorporated the prevalence of high-growth firms into the model's weighting system. This adjustment ensures that our model remains sensitive to the relatively scarce yet valuable high-growth opportunities in our data set, thereby aligning the model's predictions more closely with our business objectives.
 
 #### Model Comparison with Loss Function
 After the introduction of our loss function, we can now compare the models based on their average expected loss over all folds. The model with the lowest expected loss is still the random forest. The simple logistic regression without interactions has the second lowest expected loss.
@@ -270,7 +267,7 @@ summary_all_mods_kable
 ```
 
 #### Confusion Table
-The confusion table shows that we have an accuracy of 82.03% on the holdout set. The model only predicts 1.65% of models to have high growth whereas the prevalence of high growth firms in the data is 18.57%. This low sensitivity (6%) is necessary in order to arrive at the high specificity (99.3%) we desire. This is a trade off we are willing to engage in, in order to avoid investing in firms that will not outperform the market or might even go bankrupt. If we apply our model to similar datasets in multiple countries we will still arrive at a reasonably large number of predicted high growth firms such that our portfolio will be diversified. 
+The confusion table shows that we have an accuracy of 82.03% on the holdout set. The model only predicts 1.65% of models to have high growth whereas the prevalence of high growth firms in the data is 18.57%. This low sensitivity (6%) is necessary in order to arrive at the high specificity (99.3%) we desire. This is a trade off we are willing to engage in, in order to avoid investing in firms that will not outperform the market or might even go bankrupt. If we apply our model to similar data sets in multiple countries we will still arrive at a reasonably large number of predicted high growth firms such that our portfolio will be diversified. 
 
 Of course, we realize that we could not test the external validity of our model and applying it in other countries might lead to worse performance. To that end, we conduct another exercise and apply our model to different market segments, that is, manufacturing and services.
 
@@ -298,6 +295,6 @@ cm6_perc_kable
 
 ### Variable Importance
 
-As a last task, we looked at some methods to interpret our random forest probability model. Therefore, we set up a dashboard, which can be found in our dashboard (see github folder, incl. README).  
+As a last task, we looked at some methods to interpret our random forest probability model. These visualizations can be found in an interactive dashboard we set up (see Dashboard.rmd in github folder, incl. README).  
 
 All in all, we are confident that our model points us to some of the firms with the highest growth potential and believe it to be a valuable tool for predicting high growth firms. At the same time, we realize that our high specificity comes at the cost of a low sensitivity. This means that we will miss many other high growth firms.
