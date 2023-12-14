@@ -25,12 +25,10 @@ panel data. Firm growth is defined by average annual percentage growth
 in sales over two years. We use data from 2012 to predict sales growth
 two years ahead. The models are logit, random forest and logit lasso.
 The models' predictive power is evaluated once without and once with the
-use of a loss function. After the introduction of a loss function we
+use of a loss function. After the introduction of a loss function, we
 identified random forest as strongest model. This model is also used on
 the subsets manufacturing and services. In comparison, the random forest 
-performs better in the services sector. Further
-results and interactive graphs can be found in the shiny app linked to
-this report.
+performs better in the services sector. Further results and interactive graphs can be found in the shiny app linked to this report.
 
 
 ```{r, include=FALSE}
@@ -167,7 +165,7 @@ values (above 90%) and only look at firms that are active in 2012, that
 is, they have some sales. What is more, our analysis is only based on
 firms with annual sales between 1,000 and 10 million euros. We believe
 this subset presents the most attractive investment opportunities.
-First, very small firms with sales below 1000 EUR in sales are likely
+First, very small firms with sales below 1,000 EUR in sales are likely
 not to seek investment and high growth events might happen at random
 more easily. Second, very large firms are well represented in various
 indices and any expected growth is likely to be already incorporated in
@@ -413,7 +411,7 @@ We favored percentage change primarily because of
 its more intuitive interpretation. Third, we decided for a two year time
 horizon instead of a one year horizon to relate more closely to the OECD
 definition of high growth firms that is defined over a three year
-horizon. Third, we decided for a threshold of 30% annual growth. In our
+horizon. Fourth, we decided for a threshold of 30% annual growth. In our
 sample this is equivalent to classifying roughly the fastest growing 20%
 of firms as HGF. In the literature, both thresholds on a certain growth
 rate and a certain percentile of firms are used. We decided for a
@@ -728,17 +726,15 @@ bisnode <- bisnode %>%
 
 ### Feature Engineering
 
-Feature engineering of the bisnode data set comprises re-coding of
-existing variables s.t. they get the appropriate class and/or meaningful
-levels and values. Also, plausibility checks are conducted: As some of
+The feature engineering process includes plausibility checks: As some of
 our financial variables (e.g. *inventories*, *fixed_assets* etc.) must
 not be negative, we flag them and set negative values to zero. Other
 implausible variables, such as *ceo_age* below 18 years, we set to NA.
 
 In the process of analysing missing values, we impute some important
 ones (*ceo_age*, *labor_avg*) and add flags for missing values. For
-other, very important variables (mainly on assets, CEO and industry
-information), we do not impute but rather drop missing values. Moreover,
+other, very important variables (mainly assets, CEO and industry
+information), we do not impute but rather drop NAs. Moreover,
 we intend to use the variable on previous firm growth as predictor for
 (future) fast growth -- very much in the same fashion as we know from
 time trend models. Thus, we include the lagged growth in sales (2011 to
@@ -894,12 +890,12 @@ length(lassovars)
 #### Logit Model
 
 For the logit, we try out two specifications. Both of them include the
-sales variables (past growth), engineered variables (i.e. ratios of
+sales variable (past growth), engineered variables (i.e. ratios of
 financial variables, windsorized), the detected (possible) quadratic
 terms and the flags we created for extreme, missing and potentially
 erroneous data. Also, both specifications include quality variables
 (balance sheet information) and information on HR (e.g. CEO information)
-and the firm itself (e.g. regarding the location and industry). The
+and the firm itself (e.g. regarding the location). The
 difference lies in interactions included: Whilst the first specification
 does not include any interactions, the second one interacts selected
 variables with the industry variable. 
@@ -1143,7 +1139,7 @@ CV_AUC[["LASSO"]] <- mean(CV_AUC_folds[["LASSO"]]$AUC)
 
 #### Probability Prediction
 
-The below plot shows the results for our different model specifications.
+The below table shows the results for our different model specifications.
 We would choose the first simple logit model over the second, since it
 has fewer coefficients and even better (lower) RMSE and (higher) AUC.
 The logit LASSO does not perform better, either (worse AUC and similar
@@ -1177,7 +1173,7 @@ summary_no_loss_table
 
 We use our best model to predict on the holdout set and receive a RMSE
 of **0.372**. Also, we produce the below (discrete) ROC plot which shows
-us the trade off between making false positive and false negative
+the trade off between making false positive and false negative
 errors. 
 
 ```{r best_model_no_loss, include=TRUE, echo=FALSE, fig.align='center',  fig.height=2.5, fig.width=8}
@@ -1270,9 +1266,7 @@ cf1_kable <- kable(x = cm1_perc, format = "latex", booktabs = TRUE,  digits = 3,
 ```
 
 
-When comparing the above confusion matrix to the one below -- where we set the threshold
-to the mean of predicted values (approx. 0.2) -- we see, as expected, 
-how a lower threshold would lead to a higher probability of predicting high growth. 
+When comparing the above confusion matrix (default classification of 0.5 as threshold) to the one below -- where we set the threshold to the mean of predicted values (approx. 0.2) -- we see, as expected,  how a lower threshold would lead to a higher probability of predicting high growth. 
 Also, we nicely see the trade-off between false positives (going up) and false negatives 
 (going down) when lowering the threshold. However, these choices of thresholds
 are still not based on a proper loss function, to which we will come
@@ -1491,9 +1485,10 @@ expected_loss_holdout
 
 #### Introduction of Loss Function
 
-Next, we introduce a loss function specifically tailored for our business case. In selecting the best model, our primary objective is to minimize false positives. This is crucial because we aim to avoid investing in firms that do not exhibit strong growth potential. However, there's a challenge: only 20% of firms in our dataset are categorized as fast-growing. Overemphasizing the cost of false positives could inadvertently lead the model to classify all observations as low growth. Such an approach would undermine our goal of identifying high-potential business opportunities.
+We introduce a loss function specifically tailored for our business case. In selecting the best model, our primary objective is to minimize false positives. This is crucial because we aim to avoid investing in firms that do not exhibit strong growth potential. However, there's a challenge: only 20% of firms in our dataset are categorized as fast-growing. Overemphasizing the cost of false positives could inadvertently lead the model to classify all observations as low growth. Such an approach would undermine our goal of identifying high-potential business opportunities.
 
 To address this, we have calibrated the cost associated with false positives (FP) and false negatives (FN) in a balanced manner. We have set the cost of a false positive at 150% of that of a false negative. This ratio reflects a strategic decision: while avoiding unfruitful investments is important, we also do not want to miss out on promising firms. Additionally, we have incorporated the prevalence of high-growth firms into the model's weighting system. This adjustment ensures that our model remains sensitive to the relatively scarce yet valuable high-growth opportunities in our dataset, thereby aligning the model's predictions more closely with our business objectives.
+
 
 <!-- Task1.2: For each of the three models: predict probabilities, look for the optimal classification threshold, calculate expected loss with your loss function  -->
 
@@ -1581,7 +1576,8 @@ kable(x = cm4_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = 
 #### Confusion Table
 The confusion table shows that we have an accuracy of 82.03% on the holdout set. The model only predicts 1.65% of models to have high growth whereas the prevalence of high growth firms in the data is 18.57%. This low sensitivity (6%) is necessary in order to arrive at the high specificity (99.3%) we desire. This is a trade off we are willing to engage in, in order to avoid investing in firms that will not outperform the market or might even go bankrupt. If we apply our model to similar datasets in multiple countries we will still arrive at a reasonably large number of predicted high growth firms such that our portfolio will be diversified. 
 
-Of course, we realize that we could not test the external validity of our model and applying it in other countries might lead to worse performance. To that end we conduct another exercise and apply our model to different market segments, that is, manufacturing and services.
+Of course, we realize that we could not test the external validity of our model and applying it in other countries might lead to worse performance. To that end, we conduct another exercise and apply our model to different market segments, that is, manufacturing and services.
+
 
 
 
@@ -1908,7 +1904,7 @@ cm6_perc_kable <- kable(x = cm6_perc, format = "latex", booktabs = TRUE,  digits
 ```
 
 #### Comparison of models in manufacturing and services
-The random forest performs better in the services sector. It exhibits a lower RMSE, a higher AUC and a lower expected loss. More differences can be seen in the respective confusion tables. First, manufacturing exhibits a higher prevalence of high growth firms (20.6% versus 17.6%).
+The random forest performs better in the services sector. It exhibits a lower RMSE, a higher AUC and a lower expected loss. More differences can be seen in the respective confusion tables. 
 
 ```{r include table manu serv, echo=FALSE, include=TRUE}
 
@@ -1917,7 +1913,7 @@ summary_manu_serv_kable
 
 ```
 
-
+More differences can be seen in the respective confusion tables. First, manufacturing exhibits a higher prevalence of high growth firms (20.6% versus 17.6%).
 Nevertheless, the model performs better in predicting high growth firms in services. In this sector it exhibits a lower false positive rate and a lower false negative rate. Notably, the false positive rate in our holdout set is at zero, meaning we classified no firm in the services sector as fast growing that did not turn out to become a high growth firm. This finding points to the services industry as an attractive market albeit its lower average growth rates. It seems to be the case that the characteristics of firms in services make their future growth more predictable.
 
 ```{r include cf matrix manu, echo=FALSE, include=TRUE}
