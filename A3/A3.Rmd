@@ -1846,10 +1846,7 @@ kable(x = cm6_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = 
 <!-- RF VAR IMP (all 3)  -->
 
 ```{r}
-
-
-rf_models <- list(rf_model_p, rf_model_p_manu, rf_model_p_serv)
-
+s
 # Create an empty list to store the plots
 rf_model_plots <- list()
 
@@ -1864,9 +1861,9 @@ for (i in seq_along(rf_models)) {
     mutate(imp_percentage = imp / sum(imp))
 
   # Create plot VAR IMP ALL 
-  current_plot_all <- plot_ly(rf_model_var_imp_df, x = ~imp_percentage, y = ~reorder(varname, imp), type = 'bar', orientation = 'h') %>%
+  current_plot_all <- plot_ly(rf_model_var_imp_df[1:30, ], x = ~imp_percentage, y = ~reorder(varname, imp), type = 'bar', orientation = 'h') %>%
     layout(
-      xaxis = list(title = "Importance", range = c(0, 0.07), tickvals = seq(0, 0.07, by = 0.01), tickformat = ".0%"),
+      xaxis = list(title = "Importance", tickformat = ".00%"),
       yaxis = list(title = "Variable Name"),
       showlegend = FALSE,
       barmode = 'stack',  # Use 'stack' mode to adjust bar width
@@ -1879,17 +1876,16 @@ for (i in seq_along(rf_models)) {
   # Create plot VAR IMP TOP 10  
   current_plot_10 <- plot_ly(rf_model_var_imp_df[1:10, ], x = ~imp_percentage, y = ~reorder(varname, imp), type = 'bar', orientation = 'h') %>%
     layout(
-      xaxis = list(title = "Importance", range = c(0, 0.07), tickvals = seq(0, 0.07, by = 0.01), tickformat = ".0%"),
-      yaxis = list(title = "Variable Name"),
+      xaxis = list(title = "Importance", tickformat = ".00%"),
+      yaxis = list(title = "Variable Name" ),
       showlegend = FALSE,
       barmode = 'stack',  # Use 'stack' mode to adjust bar width
       bargap = 0.2  # Adjust the bar width by changing bargap
     )
-
   # Save the plot
   rf_model_plots[[paste0("rf_model_plot_10_", i)]] <- current_plot_10
 }
-# 
+
 # # Print or view the plots
 # for (i in seq_along(rf_model_plots)) {
 #   print(rf_model_plots[[i]])
@@ -2296,9 +2292,10 @@ Our definition of high growth is based on average annual sales growth over two y
 <!-- Save data environment for dashboard  -->
 
 ```{r}
-#save.image(file = "A3.RData") # saves in data_dir!
+save.image(file = "A3.RData") # saves in data_dir!
 
-#save(list = c("bisnode", "bisnode_work","bisnode_holdout","rf_model_p","rf_model_p_manu","rf_model_p_serv","rf_model_p_InteractLossPlot","rf_model_p_manu_InteractLossPlot","rf_model_p_serv_InteractLossPlot","rf_model_plots","rf_model_plots_grouped","rfvars","pdp_outputs","pdp_outputs_manu","pdp_outputs_serv","rf_pdp_plot","rf_pdp_plot_manu","rf_pdp_plot_serv"), file = "A3_dashboard.RData")
+save(list = c("bisnode", "bisnode_work","bisnode_holdout","rf_model_p","rf_model_p_manu","rf_model_p_serv","rf_model_p_InteractLossPlot","rf_model_p_manu_InteractLossPlot","rf_model_p_serv_InteractLossPlot","rf_model_plots","rf_model_plots_grouped","rfvars","pdp_outputs","pdp_outputs_manu","pdp_outputs_serv","rf_pdp_plot","rf_pdp_plot_manu","rf_pdp_plot_serv"), file = "A3_dashboard.RData")
+
 ```
 
 <!-- References 

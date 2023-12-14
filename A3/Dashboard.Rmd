@@ -71,29 +71,32 @@ library(plotly)
 
 ```{r data import,include=FALSE}
 data_in <- paste(data_dir,"bisnode-firms", sep = "/")
-#load(paste(data_in,"A3.RData",sep = "/")) #activate once we have correct data
-load(paste(data_in,"A3_dashboard.RData",sep = "/")) #activate once we have correct data
-
+#load(paste(data_in,"A3.RData",sep = "/")) 
+load(paste(data_in,"A3_dashboard.RData",sep = "/"))
 ```
 # Variable Importance
 #### **Importance of key variables**
 #### {style="border: 0px; background: none"}
 
-In this dashboard we visualize our findings of the best-performing model when predicting fast growth for the bisnode data set. According to our evaluation metrics (RMSE, AUC, etc.), the best-performing model is the Random forest. Since this is a “black-box” Machine Learning model, the interactive dashboard allows us to get a better understanding of how the actual predictions are created and investigate why the Random forest model was the best-performing model.One way to do this is by looking at the features’ contribution to predicted values on average, i.e. variable importance. Understanding what factors influence fast growth the most will help the firms to make informed decisions about their investment strategies. The current page shows three variable-importance graphs. First, including all features; second, the ten most important features; and last, the importance grouped by factors. On top of all three graphs there is a tab that selects which of the data sets (bisnod, manufacturing or services) we want to look at. 
+In this dashboard we visualize our findings of the best-performing model when predicting fast growth for the bisnode data set. According to our evaluation metrics (RMSE, AUC, etc.), the best-performing model is the Random forest. Since this is a “black-box” Machine Learning model, the interactive dashboard allows us to get a better understanding of how the actual predictions are created and investigate why the Random forest model was the best-performing model. One way to do this is by looking at the features’ contribution to predicted values on average, i.e. variable importance. Understanding what factors influence fast growth the most will help the firms to make informed decisions about their investment strategies. The current page shows three variable-importance graphs. First, including all features; second, the ten most important features; and last, the importance grouped by factors. On top of all three graphs there is a tab that selects which of the data sets (bisnod, manufacturing or services) we want to look at. 
 
-First, considering the entire 'bisnode' data set we can the variable importance plot including all features shows the variables ‘material_exp’, ‘personnel_exp’ & ‘liq_assets’ contribute the most. In percentage terms together, these three variables explain about 19% of the prediction performance. Looking at th second graph which displays only the ten most important features we see that the ten most important variables each explain between 5-7% of the prediction performance. Overall we observe the typical shape that ten to fifteen variables are quite important in explaining the prediction outcome and the others contribute relatively little. The last plot groups the factor variables together and recalculates the variable importance. It indicates that the factor variables together contribute much more than previously on their own. This is especially true for the industry variable in the 'bisnode' and manufacturing data sets. 
+First, considering the entire 'bisnode' data set we can the variable importance plot including all features shows the variables ‘material_exp’,‘d1_sales_mil_log’ & ‘personnel_exp’ contribute the most. In percentage terms together, these three variables explain about 19% of the prediction performance. Looking at th second graph which displays only the ten most important features we see that the ten most important variables each explain between 5-7% of the prediction performance. Overall we observe the typical shape that ten to fifteen variables are quite important in explaining the prediction outcome and the others contribute relatively little. The last plot groups the factor variables together and recalculates the variable importance. It indicates that the factor variables together contribute much more than previously on their own. This is especially true for the industry variable in the 'bisnode' and manufacturing data sets. 
 Overall the ten most important variables remain the same for all data sets. However some of them become marginally more or less important when changing the chosen data set. The same is true when considering the graph displaying the importance of all features for different data sets.
 
-## Row {.tabset .tabset-fade}
+
+## Row {.tabset .tabset-fade data-height=650}
+
 ### Bisnode 
 Variable importance all features
 
 ```{r, include=T}
+### Row {.tabset .tabset-fade}
 
 ##############################
 # 3) full varimp plot, above a cutoff
 ##############################
 rf_model_plots$rf_model_plot_all_1
+
 ```
 
 ###  Manufacturing
@@ -107,7 +110,7 @@ rf_model_plots$rf_model_plot_all_2
 
 ```
 
-### Services
+### Services 
 Variable importance all features
 
 ```{r, include=T}

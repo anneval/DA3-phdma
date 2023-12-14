@@ -26,7 +26,7 @@ have to specify here the output as" flexdashboard::flex_dashboard:", set a theme
 to "scrolling" in this case and the navigation bar, which includes, for example, a link to our GitHub repository. In addition, we specify "runtime: shiny" since
 we included some Shiny components for interactive visualization of the partial dependence plots, which deploy on a Shiny server or shinyapps.io.
 
-The dashboard has three different pages: Variable Importance, PDP, and Threshold decision. The first one shows three graphs 
+The dashboard has three different pages: Variable Importance, PDP, and Threshold decision. The first one shows three 
 variable-importance graphs. First, including all features; second, the ten most important features; and  last, the importance grouped by factors. They are always
 shown for the main data set, bisnode, and the two subsets that filter for manufacturing and services. The Second page interactively displays the different 
 partial dependence plots again for all three data sets (via a drop-down menu). The last page illustrates the expected loss based on different thresholds again
