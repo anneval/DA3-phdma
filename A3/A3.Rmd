@@ -11,11 +11,6 @@ always_allow_html: true
 df_print: paged
 ---
 
-<!-- title: "Assignment 3 - Finding fast growing firms" subtitle: "Course: -->
-<!-- ECBS6067 - Prediction with Machine Learning for Economists" author: -->
-<!-- "Anja Hahn, Teresa Huebel & Anne Valder" date: "2023-12-14" output: -->
-<!-- pdf_document: default html_document: df_print: paged -->
-
 ### Summary
 
 The goal of our analysis is to classify fast growing firms in order to
@@ -82,7 +77,6 @@ library(plotly)
 library(pdp)
 library(gridExtra)
 library(kableExtra)
-# add
 ```
 
 <!-- Load data  -->
@@ -98,7 +92,7 @@ bisnode <- read_csv(paste(data_in,"cs_bisnode_panel.csv", sep = "/")) # 287829 o
 colSums(is.na(bisnode))
 colSums(is.na(bisnode))/nrow(bisnode)*100
 
-#proportion of observations with less than 1 labor_avg among all that have an observation for labor_avg
+# proportion of observations with less than 1 labor_avg among all that have an observation for labor_avg
 bisnode %>% filter(labor_avg < 1) %>% nrow() / bisnode %>% filter(!is.na(labor_avg)) %>% nrow()
 
 # look at data
@@ -110,19 +104,14 @@ bisnode %>%
   summarise(n = n(), mean = mean(sales))
 
 # overall summary statistics
- #descr(bisnode)
+# descr(bisnode)
 
 ```
 
 <!-- Sample design  -->
 
 ```{r sample design, include=FALSE}
-####################################
-# Sample design
-####################################
-# collect "weird stuff" here:
-# Company with ID 12212152320 had a massive explosion from 2012 to 2013 (0 to 63 employees etc) - how to treat?
-## did they exit before? Maybe we have to add a variable that indicate newly established firms?
+# Sample design ----------------------------------------------------------------
 
 # add all missing year and company combinations
 bisnode <- bisnode %>%
@@ -193,16 +182,13 @@ plot_labor_avg <- bisnode %>% filter(labor_avg > 0) %>%
     theme_bg() 
 plot_labor_avg
 
-
 ```
 
 
 <!-- Label engineering  -->
 
 ```{r label engineering, include=FALSE}
-####################################
-# Label engineering
-####################################
+# Label engineering-------------------------------------------------------------
 
 # generate different variations to display sales
 bisnode <- bisnode %>%
@@ -216,9 +202,8 @@ bisnode <- bisnode %>%
 bisnode <- bisnode %>%
   mutate(ln_labor_avg = ifelse(labor_avg > 0, log(labor_avg), 0))
 
-###################################
-# Creation of different labels: sales
-###################################
+
+# Creation of different labels: sales-------------------------------------------
 
 # YoY relative sales growth
 bisnode <- bisnode %>%
@@ -242,9 +227,7 @@ bisnode <- bisnode %>%
   mutate(sales_growth_2y_ahead = (lead(sales, n = 2L)/sales -1)/2) %>%
   ungroup()
 
-###################################
-# Visualization sales growth
-
+# Visualization sales growth----------------------------------------------------
 
 # make histogram that shows both sales growth and d1_sales_mil_log
 plot_sales_growth_both <- ggplot(bisnode, aes(x = sales_growth_ahead)) +
@@ -261,6 +244,7 @@ plot_sales_growth_both <- ggplot(bisnode, aes(x = sales_growth_ahead)) +
     axis.title.y = element_text(size = 10),
     legend.text = element_text(size = 10)
   )
+# save some plots for easier generation of summary report
 # saveRDS(plot_sales_growth_both, paste0(output, "plot_sales_growth_both.RDS"))
 
 plot_sales_growth_both
@@ -294,10 +278,10 @@ bisnode <- bisnode %>%
   mutate(birch_ind = ((labor_avg - lag(labor_avg)) * (labor_avg/lag(labor_avg) - 1)) ) %>%
   ungroup()
 
-###################################
-# Visualization employment growth
 
-#make histogram that shows both employee growth and d1_labor_avg_log
+# Visualization employment growth-----------------------------------------------
+
+# make histogram that shows both employee growth and d1_labor_avg_log
 plot_labor_growth_both <- ggplot(bisnode, aes(x = labor_growth)) +
   geom_histogram(aes(fill = "Percentage Change"), bins = 100, color = color.outline, alpha = 0.5) +
   geom_histogram(aes(x = d1_labor_avg_log, fill = "Log-Differences"), bins = 100, 
@@ -318,7 +302,6 @@ plot_birch_ind <- ggplot(bisnode, aes(x = birch_ind)) +
 plot_birch_ind
 
 
-###################################
 # Overwrite d1_sales_mil log to lagged variables since we will not use it as target but might include it as predictor
 # YoY sales growth as logdiff
 bisnode <- bisnode %>%
@@ -334,9 +317,7 @@ x <-bisnode %>%
   summarise(na_count = sum(is.na(sales_growth_2y_ahead)))
 
 
-###################################
-# Define Cutoff for High Growth firms
-###################################
+# Define Cutoff for High Growth firms-------------------------------------------
 
 # Look at good cutoff for high growth
 quantile(bisnode$sales_growth_2y_ahead, na.rm = TRUE, probs = seq(0, 1, 0.05))
@@ -356,9 +337,7 @@ bisnode$high_growth_factor <- as.factor(ifelse(bisnode$high_growth == 1, "high_g
 bisnode$high_growth_factor <- factor(bisnode$high_growth_factor, levels = c("low_growth", "high_growth"))
 
 
-####################################
-# notes on growth
-####################################
+# notes on growth---------------------------------------------------------------
 # different types of growth
 # yoy relative growth in sales
 # average yoy relative growth in sales over 2 years
@@ -452,8 +431,7 @@ bisnode <- bisnode %>%
 bisnode <- bisnode %>%
   mutate(across(all_of(c("ind", "ind2", "nace_main")), as.factor))
 
-###################################
-# new variables
+# new variables-----------------------------------------------------------------
 # firm characteristics
 bisnode <- bisnode %>%
   mutate(age = (year-founded_year) %>% # maybe remove again if computed earlier
@@ -464,8 +442,8 @@ bisnode <- bisnode %>%
          multiple_ceo = as.numeric(ceo_count > 1),
          ceo_age = (year-round(birth_year))) # avoid digits for years
 
-###################################
-# plausibility checks of relevant numeric variables
+
+# plausibility checks of relevant numeric variables-----------------------------
 for (var in c("age", "ceo_age", "ceo_count", "tang_assets",
              "curr_assets", "curr_liab", "extra_exp", "extra_inc",
              "extra_profit_loss", "fixed_assets", "inc_bef_tax",
@@ -479,8 +457,8 @@ for (var in c("age", "ceo_age", "ceo_count", "tang_assets",
 }
 rm(var)
 
-###################################
-# problematic data
+
+# problematic data--------------------------------------------------------------
 # age CEO cannot be negative, also some too young
 bisnode <- bisnode %>%
   mutate(ceo_age = ifelse(ceo_age < 18, NA, ceo_age)) # overwrite implausible ones with NA for now
@@ -506,8 +484,7 @@ bisnode <- bisnode %>%
   mutate_at(vars(zero), funs(ifelse(. < 0, 0, .)))
 
 
-###################################
-# NA analysis and imputation
+# NA analysis and imputation----------------------------------------------------
 colSums(is.na(bisnode))/nrow(bisnode)*100
 
 # drop missing important variables
@@ -552,9 +529,7 @@ for (var in names(bisnode)){
 }
 rm(var)
 
-###################################
-# new variables and 
-# variable transformation
+# new variables and variable transformation-------------------------------------
 
 # group some industry category codes (2-digit NACE)
 # after NA removal, categories have decreased considerably to
@@ -590,8 +565,7 @@ bisnode <- bisnode %>%
             funs("rel" = ifelse(total_assets == 0, 0, ./total_assets)))
 
 
-######################################
-# creating flags and winsorizing tails
+# creating flags and winsorizing tails------------------------------------------
 
 # overwrite selected variables with relative ones
 zero <- paste0(zero, "_rel")
@@ -632,8 +606,7 @@ bisnode <- bisnode %>%
          d1_sales_mil_log_mod_quad = d1_sales_mil_log_mod^2
          )
 
-########################################
-# relationships between variables
+# relationships between variables-----------------------------------------------
 
 # scatterplot computation
 plots <- list()
@@ -798,20 +771,7 @@ grid.arrange(high_growth_new, high_growth_young, high_growth_ind2, ncol = 3)
 <!-- Variable Selection  -->
 
 ```{r variable selection}
-#####################
-# Group Variables
-
-# # one-hot encode factor variables (to use in random forest and later for SHAP values)
-# variable_types <- sapply(bisnode, class)
-# # Identify factor variables
-# factor_variables <- names(variable_types[variable_types == "factor"])
-# 
-# dmy <- dummyVars("~ ind + ind2 + ind2_cat + gender + origin + region_m + urban_m", 
-#                  data = bisnode, fullRank = TRUE)
-# new_dat <- data.frame(predict(dmy, newdata = bisnode))
-# # add new variables to data
-# bisnode <- cbind(bisnode, new_dat)
-# rm(new_dat)
+# Group Variables---------------------------------------------------------------
 
 rawvars <-  c("curr_assets", "curr_liab", "extra_exp", "extra_inc", "extra_profit_loss", 
               "fixed_assets", "inc_bef_tax", "intang_assets", "inventories", "liq_assets", 
@@ -846,7 +806,6 @@ hr <- c("ceo_old", "ceo_young", "ceo_age", "flag_missing_ceo_age",
 
 firm <- c("age", "new", "urban_m", "region_m", "ind2")
 
-#onehot <- names(bisnode[, c(133:150)])
 
 # test <- c(rawvars, qualityvars, engvar, engvar2, engvar3, sales, hr, firm)
 # setdiff(names(bisnode), test);setdiff(test, names(bisnode))
@@ -859,11 +818,9 @@ interactions1 <- c("ind2*age", "ind2*age_quad",
                    "ind2*urban_m", "ind2*ln_labor_avg", "ind2*multiple_ceo")
 
 
-####################
-# Variable Selection
+# Variable Selection------------------------------------------------------------
 
 # logit
-# try without interactions?
 logitvars1 <- c(qualityvars, engvar, engvar2, engvar3, sales, hr, firm)
 length(logitvars1)
 logitvars2 <- c(qualityvars, engvar, engvar2, engvar3, sales, hr, firm, interactions1)
@@ -873,10 +830,6 @@ logit_model_vars <- list("logit_no_interactions" = logitvars1, "logit_incl_inter
 # random forest (no interactions, no modified features)
 rfvars  <-  c("d1_sales_mil_log", "flag_missing_d1_sales_mil_log", 
               "ceo_count", "labor_avg", rawvars, qualityvars, hr, firm)
-# rfvars  <-  c("d1_sales_mil_log", "flag_missing_d1_sales_mil_log", 
-#               "ceo_count", "labor_avg", rawvars, qualityvars, hr, firm, onehot)
-#rfvars <- rfvars[!rfvars %in% c("origin", "gender", "urban_m", "region_m", "ind2")]
-
 length(rfvars)
 
 # for logit LASSO
@@ -953,20 +906,13 @@ performance of our models.
 <!-- Task1.1: Model 1 - Logit  -->
 
 ```{r logit}
-#######################################################
-# PART I PREDICT PROBABILITIES
-# Predict logit model ----------------------------------------------
-#######################################################
+# Predict logit model-----------------------------------------------------------
 
 # No loss function
-# RMSE (AUC also?based on threshold that corresponds to prevalence of pos/neg in dataset)
-
-# Train Logit Models ----------------------------------------------
-## keep maybe for shiny but decide which is our main model!
-
 CV_RMSE_folds <- list()
 logit_models <- list()
 
+# due to faster rendering of plot, we load the below (and some more) models
 # for (model_name in names(logit_model_vars)) {
 # 
 #   features <- logit_model_vars[[model_name]]
@@ -992,12 +938,7 @@ logit_models <- list()
 logit_models <- readRDS(paste0(output, "logit_models.RDS"))
 CV_RMSE_folds <- readRDS(paste0(output, "CV_RMSE_folds.RDS"))
 
-#############################################x
-# PART I
-# No loss fn
-########################################
-
-# Draw ROC Curve and calculate AUC for each folds --------------------------------
+# Draw ROC Curve and calculate AUC for each folds-------------------------------
 CV_AUC_folds <- list()
 
 for (model_name in names(logit_models)) {
@@ -1017,8 +958,7 @@ for (model_name in names(logit_models)) {
                                               "AUC" = unlist(auc))
 }
 
-# For each model: average RMSE and average AUC for models ----------------------------------
-
+# For each model: average RMSE and average AUC for models----------------------- 
 CV_RMSE <- list()
 CV_AUC <- list()
 
@@ -1027,23 +967,14 @@ for (model_name in names(logit_models)) {
   CV_AUC[[model_name]] <- mean(CV_AUC_folds[[model_name]]$AUC)
 }
 
-# # Take best model and estimate RMSE on holdout  -------------------------------------------
-# 
-# best_logit_no_loss <- logit_models[["logit_no_interactions"]]
-# 
-# logit_predicted_probabilities_holdout <- predict(best_logit_no_loss, newdata = bisnode_holdout, type = "prob")
-# bisnode_holdout[,"best_logit_no_loss_pred"] <- logit_predicted_probabilities_holdout[,"high_growth"]
-# RMSE(bisnode_holdout[, "best_logit_no_loss_pred", drop=TRUE], bisnode_holdout$high_growth)
 
 ```
 
 <!-- Task1.1: Model 2 - Probability forest  -->
 
 ```{r probability forest}
-#################################################
-# Probability forest
+# Probability forest------------------------------------------------------------
 # Split by gini, ratio of 1's in each tree, average over trees
-#################################################
 
 tune_grid <- expand.grid(
   .mtry = c(5, 6, 7), # sq root is 6.244
@@ -1066,7 +997,7 @@ rf_model_p$results
 best_mtry <- rf_model_p$bestTune$mtry
 best_min_node_size <- rf_model_p$bestTune$min.node.size
 
-# Get average (ie over the folds) RMSE and AUC ------------------------------------
+# Get average (ie over the folds) RMSE and AUC----------------------------------
 CV_RMSE_folds[["rf_p"]] <- rf_model_p$resample[,c("Resample", "RMSE")]
 
 auc <- list()
@@ -1089,7 +1020,7 @@ CV_AUC[["rf_p"]] <- mean(CV_AUC_folds[["rf_p"]]$AUC)
 <!-- Task1.1: Model 3 - Logit LASSO  -->
 
 ```{r logit lasso}
-# Logit lasso -----------------------------------------------------------
+# Logit lasso-------------------------------------------------------------------
 
 lambda <- 10^seq(-1, -4, length = 10)
 grid <- expand.grid("alpha" = 1, lambda = lambda)
@@ -1177,8 +1108,7 @@ the trade off between making false positive and false negative
 errors. 
 
 ```{r best_model_no_loss, include=TRUE, echo=FALSE, fig.align='center',  fig.height=2.5, fig.width=8}
-# Take best model and estimate RMSE on holdout
-# Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
+# Take best model and estimate RMSE, AUC, expected loss on holdout--------------
 
 rf_predicted_probabilities_holdout <- predict(rf_model_p, newdata = bisnode_holdout, type = "prob")
 bisnode_holdout$rf_p_prediction <- rf_predicted_probabilities_holdout[,"high_growth"]
@@ -1309,12 +1239,8 @@ cf2_kable <- kable(x = cm2_perc, format = "latex", booktabs = TRUE,  digits = 3,
 <!-- Task1.2: Loss function design -->
 
 ```{r logit with loss}
-#############################################
-# PART II.
-# We have a loss function
-########################################
+# introduce loss function-------------------------------------------------------
 
-# Introduce loss function
 # relative cost of of a false negative classification (as compared with a false positive classification)
 FP= 1.5
 FN= 1
@@ -1375,7 +1301,7 @@ kable(x = logit_summary, format = "latex", booktabs=TRUE,  digits = 3, row.names
       linesep = "", col.names = c("Avg of optimal thresholds","Threshold for fold #5",
                                   "Avg expected loss","Expected loss for fold #5"))
 
-## Create plots based on Fold5 in CV ----------------------------------------------
+## Create plots based on Fold5 in CV--------------------------------------------
 for (model_name in names(logit_cv_rocs)) {
 
    r <- logit_cv_rocs[[model_name]]
@@ -1387,7 +1313,7 @@ for (model_name in names(logit_cv_rocs)) {
 }
 
 
-# Pick best model based on average expected loss ----------------------------------
+# Pick best model based on average expected loss--------------------------------
 
 best_logit_with_loss <- logit_models[["logit_incl_interactions"]]
 best_logit_optimal_treshold <- best_tresholds[["logit_incl_interactions"]]
@@ -1417,11 +1343,10 @@ cm3
 <!-- Task1.1: Loss function RF -->
 
 ```{r rf with loss}
-################################
-# loss function for RF
-################################
+# loss function for RF----------------------------------------------------------
 
-# Now use loss function and search for best thresholds and expected loss over folds -----
+# Now use loss function and search for best thresholds
+# and expected loss over folds
 best_tresholds_cv <- list()
 expected_loss_cv <- list()
 
@@ -1463,7 +1388,7 @@ kable(x = rf_summary, format = "latex", booktabs=TRUE,  digits = 3, row.names = 
 createLossPlot(roc_obj, best_treshold, "rf_p_loss_plot")
 createRocPlotWithOptimal(roc_obj, best_treshold, "rf_p_roc_plot")
 
-# Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
+# take model to holdout and estimate RMSE, AUC and expected loss----------------
 
 rf_predicted_probabilities_holdout <- predict(rf_model_p, newdata = bisnode_holdout, type = "prob")
 bisnode_holdout$rf_p_prediction <- rf_predicted_probabilities_holdout[,"high_growth"]
@@ -1475,7 +1400,7 @@ roc_obj_holdout <- roc(bisnode_holdout$high_growth_factor, bisnode_holdout[, "rf
 # AUC
 as.numeric(roc_obj_holdout$auc)
 
-# Get expected loss on holdout with optimal threshold
+# get expected loss on holdout with optimal threshold
 holdout_treshold <- coords(roc_obj_holdout, x = best_tresholds[["rf_p"]] , input= "threshold",
                            ret="all", transpose = FALSE)
 expected_loss_holdout <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/length(bisnode_holdout$high_growth)
@@ -1495,8 +1420,7 @@ To address this, we have calibrated the cost associated with false positives (FP
 <!-- Task1.2: Pick model with smallest expected loss -->
 
 ```{r}
-# compare all models: to pick the one with lowest expected loss
-###############################################
+# compare all models: to pick the one with lowest expected loss-----------------
 
 summary_all_mods <- data.frame(Model = c("Logit w/o interactions", "Logit w interactions", 
                                          "Logit LASSO", "Random Forest"),
@@ -1538,9 +1462,8 @@ summary_all_mods_kable <- kable(x = summary_all_mods, format = "latex", booktabs
 <!-- Task1.3: Discuss results, evaluate how useful your model may be -->
 
 ```{r confusion table rf}
-###############################################
-# Create Confusion table for the RF model
-###############################################
+# Create Confusion table for the RF model---------------------------------------
+
 # Confusion table on holdout for RF
 holdout_prediction <-
   ifelse(bisnode_holdout$rf_p_prediction < best_tresholds[["rf_p"]], "low_growth", "high_growth") %>%
@@ -1596,10 +1519,9 @@ serv_holdout <- bisnode_work %>% filter(ind2_cat == "services")
 <!-- Task2.1: Random forest Manufacturing (WITHOUT LOSS FUNCTION!!!)  -->
 
 ```{r rf manufacturing}
-#################################################
-# Probability forest for manufacturing sample!
+# ------------------------------------------------------------------------------
+# Probability forest for manufacturing sample-----------------------------------
 # Split by gini, ratio of 1's in each tree, average over trees
-#################################################
 
 # rf_model_p_manu <- train(
 #   formula(paste0("high_growth_factor ~ ", paste0(rfvars , collapse = " + "))),
@@ -1616,7 +1538,7 @@ rf_model_p_manu$results
 best_mtry <- rf_model_p_manu$bestTune$mtry
 best_min_node_size <- rf_model_p_manu$bestTune$min.node.size
 
-# Get average (ie over the folds) RMSE and AUC ------------------------------------
+# Get average (ie over the folds) RMSE and AUC----------------------------------
 CV_RMSE_folds[["rf_p_manu"]] <- rf_model_p_manu$resample[,c("Resample", "RMSE")]
 
 auc <- list()
@@ -1641,9 +1563,8 @@ CV_AUC[["rf_p_manu"]] <- mean(CV_AUC_folds[["rf_p_manu"]]$AUC)
 <!-- Task2.1: Random forest Manufacturing (INCLUDING LOSS FUNCTION!!!)  -->
 
 ```{r loss function rf manufacturing}
-######################################
-# loss function for RF manufacturing
-######################################
+# ------------------------------------------------------------------------------
+# loss function for RF manufacturing--------------------------------------------
 
 # Now use loss function and search for best thresholds and expected loss over folds -----
 best_tresholds_cv_manu <- list()
@@ -1688,7 +1609,7 @@ kable(x = rf_summary_manu, format = "latex", booktabs=TRUE,  digits = 3, row.nam
 createLossPlot(roc_obj, best_treshold, "rf_p_manu_loss_plot")
 createRocPlotWithOptimal(roc_obj, best_treshold, "rf_p_manu_roc_plot")
 
-# Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
+# Take model to holdout and estimate RMSE, AUC and expected loss----------------
 
 rf_predicted_probabilities_manu_holdout <- predict(rf_model_p_manu, newdata = manu_holdout, type = "prob")
 manu_holdout$rf_p_manu_prediction <- rf_predicted_probabilities_manu_holdout[,"high_growth"]
@@ -1710,10 +1631,9 @@ expected_loss_holdout_manu <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/
 <!-- Task2.1: Random forest services (WITHOUT LOSS FUNCTION!!!)  -->
 
 ```{r rf services}
-#################################################
-# Probability forest for service sample!
+# ------------------------------------------------------------------------------
+# Probability forest for service sample!----------------------------------------
 # Split by gini, ratio of 1's in each tree, average over trees
-#################################################
 
 # rf_model_p_serv <- train(
 #   formula(paste0("high_growth_factor ~ ", paste0(rfvars , collapse = " + "))),
@@ -1730,7 +1650,7 @@ rf_model_p_serv$results
 best_mtry <- rf_model_p_serv$bestTune$mtry
 best_min_node_size <- rf_model_p_serv$bestTune$min.node.size
 
-# Get average (ie over the folds) RMSE and AUC ------------------------------------
+# Get average (ie over the folds) RMSE and AUC----------------------------------
 CV_RMSE_folds[["rf_p_serv"]] <- rf_model_p_serv$resample[,c("Resample", "RMSE")]
 
 auc <- list()
@@ -1752,11 +1672,10 @@ CV_AUC[["rf_p_serv"]] <- mean(CV_AUC_folds[["rf_p_serv"]]$AUC)
 <!-- Task2.1: Random forest services (INCLUDING LOSS FUNCTION!!!)  -->
 
 ```{r loss function rf services}
-######################################
-# loss function for RF services
-######################################
+# ------------------------------------------------------------------------------
+# loss function for RF services-------------------------------------------------
 
-# Now use loss function and search for best thresholds and expected loss over folds -----
+# Now use loss function and search for best thresholds and expected loss over folds
 best_tresholds_cv_serv <- list()
 expected_loss_cv_serv <- list()
 
@@ -1798,7 +1717,7 @@ kable(x = rf_summary_serv, format = "latex", booktabs=TRUE,  digits = 3, row.nam
 createLossPlot(roc_obj, best_treshold, "rf_p_serv_loss_plot")
 createRocPlotWithOptimal(roc_obj, best_treshold, "rf_p_serv_roc_plot")
 
-# Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
+# Take model to holdout and estimate RMSE, AUC and expected loss----------------
 
 rf_predicted_probabilities_serv_holdout <- predict(rf_model_p_serv, newdata = serv_holdout, type = "prob")
 serv_holdout$rf_p_serv_prediction <- rf_predicted_probabilities_serv_holdout[,"high_growth"]
@@ -1821,11 +1740,10 @@ expected_loss_holdout_serv <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/
 <!-- Task2.3: Compare the model performance across two samples -->
 
 ```{r}
-
-# make table with RMSE, AUC, and expected loss for both subsets
+# ------------------------------------------------------------------------------
+# make table with RMSE, AUC, and expected loss for both subsets-----------------
 
 # compare all models: to pick the one with lowest expected loss
-###############################################
 
 summary_manu_serv <- data.frame(Model = c("Manufacturing", "Services"),
                               RMSE = c(CV_RMSE$rf_p_manu, 
@@ -1844,8 +1762,8 @@ summary_manu_serv_kable <- kable(x = summary_manu_serv, format = "latex", bookta
   kable_styling(position = "center",
                 latex_options = "HOLD_position")
 
-###############################################
-# make confusion table for both subsets
+
+# make confusion table for both subsets-----------------------------------------
 
 # Confusion table on holdout manufacturing
 holdout_pred_manu <-
@@ -1907,7 +1825,7 @@ cm6_perc_kable <- kable(x = cm6_perc, format = "latex", booktabs = TRUE,  digits
 The random forest performs better in the services sector. It exhibits a lower RMSE, a higher AUC and a lower expected loss. More differences can be seen in the respective confusion tables. 
 
 ```{r include table manu serv, echo=FALSE, include=TRUE}
-
+# ------------------------------------------------------------------------------
 summary_manu_serv_kable
 # saveRDS(summary_manu_serv_kable, paste0(output, "summary_manu_serv_kable.RDS"))
 
@@ -1917,12 +1835,11 @@ More differences can be seen in the respective confusion tables. First, manufact
 Nevertheless, the model performs better in predicting high growth firms in services. In this sector it exhibits a lower false positive rate and a lower false negative rate. Notably, the false positive rate in our holdout set is at zero, meaning we classified no firm in the services sector as fast growing that did not turn out to become a high growth firm. This finding points to the services industry as an attractive market albeit its lower average growth rates. It seems to be the case that the characteristics of firms in services make their future growth more predictable.
 
 ```{r include cf matrix manu, echo=FALSE, include=TRUE}
-
+# ------------------------------------------------------------------------------
 cm5_perc_kable
 # saveRDS(cm5_perc_kable, paste0(output, "cm5_perc_kable.RDS"))
 cm6_perc_kable
 # saveRDS(cm6_perc_kable, paste0(output, "cm6_perc_kable.RDS"))
-
 
 ```
 
@@ -1936,6 +1853,7 @@ As a last task, we looked at some methods to interpret our random forest probabi
 <!-- RF VAR IMP (all 3)  -->
 
 ```{r}
+# ------------------------------------------------------------------------------
 # Create an empty list to store the plots
 rf_models <- list(rf_model_p, rf_model_p_manu, rf_model_p_serv)
 rf_model_plots <- list()
@@ -1981,13 +1899,13 @@ for (i in seq_along(rf_models)) {
 #   print(rf_model_plots[[i]])
 # }
 
-
 ```
 
 
 
 ```{r}
-### Variable importance top 10 
+# ------------------------------------------------------------------------------
+# Variable importance top 10 
 # use RF model since performed the best!
 # first need a function to calculate grouped varimp
 group.importance <- function(rf.obj, groups) {
@@ -2000,8 +1918,7 @@ group.importance <- function(rf.obj, groups) {
 ```
 
 ```{r plotly,echo=FALSE, include=F, warning=F}
-######################################################
-
+# ------------------------------------------------------------------------------
 # Create an empty list to store the plots
 rf_model_plots_grouped <- list()
 
@@ -2054,10 +1971,9 @@ for (i in seq_along(rf_models)) {
 ```
 
 ```{r pdp,echo=FALSE, include=FALSE, warning=F, eval=FALSE}
+# ------------------------------------------------------------------------------
+# Partial Dependence Plots bisnode ---------------------------------------------
 
-#########################################################################################
-# Partial Dependence Plots bisnode -------------------------------------------------------
-#########################################################################################
 top10rfvar  <- c("material_exp","d1_sales_mil_log","personnel_exp","liq_assets","curr_liab","curr_assets","inc_bef_tax","share_eq","profit_loss_year","ceo_age")
 ```
 
@@ -2119,9 +2035,8 @@ for (pred_var in names(pdp_outputs)) {
 
 ```{r pdp3,echo=FALSE, include=FALSE, warning=F, eval=FALSE}
 
-#########################################################################################
-# Partial Dependence Plots MANU -------------------------------------------------------
-#########################################################################################
+# ------------------------------------------------------------------------------
+# Partial Dependence Plots MANU-------------------------------------------------
 
 # ONLY DO ONCE AND STORE (manu)
 
@@ -2180,9 +2095,8 @@ for (pred_var in names(pdp_outputs_manu)) {
 
 ```{r pdp4,echo=FALSE, include=FALSE, warning=F, eval=FALSE}
 
-#########################################################################################
-# Partial Dependence Plots SERV -------------------------------------------------------
-#########################################################################################
+# ------------------------------------------------------------------------------
+# Partial Dependence Plots SERV-------------------------------------------------
 
 # ONLY DO ONCE AND STORE (serv)
 
@@ -2320,7 +2234,7 @@ rf_model_p_InteractLossPlot <- createInteractLossPlot(roc_obj, best_treshold, "r
 
 ## manu
 
-# Now use loss function and search for best thresholds and expected loss over folds -----
+# Now use loss function and search for best thresholds and expected loss over folds
 best_tresholds_cv <- list()
 expected_loss_cv <- list()
 
@@ -2347,7 +2261,7 @@ rf_model_p_manu_InteractLossPlot <- createInteractLossPlot(roc_obj, best_treshol
 
 ## services
 
-# Now use loss function and search for best thresholds and expected loss over folds -----
+# Now use loss function and search for best thresholds and expected loss over folds
 best_tresholds_cv <- list()
 expected_loss_cv <- list()
 
