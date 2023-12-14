@@ -29,7 +29,8 @@ two years ahead. The models are logit, random forest and logit lasso.
 The models' predictive power is evaluated once without and once with the
 use of a loss function. After the introduction of a loss function we
 identified random forest as strongest model. This model is also used on
-the subsets manufacturing and services. In comparison, XXXX. Further
+the subsets manufacturing and services. In comparison, the random forest 
+performs better in the services sector. Further
 results and interactive graphs can be found in the shiny app linked to
 this report.
 
@@ -220,7 +221,9 @@ more relevant since it is more closely linked to our expected return on
 investment. To be more specific, we calculated percentage change and did
 not rely on log differences. Even though this decision does not affect
 the ranking of firms, it does affect the magnitude of the growth rate in
-the subset of high growth firms. We favored percentage change because of
+the subset of high growth firms. The difference is visualized in a plot that
+shows the distribution of growth rates for both measures, where log-differences
+are right-skewed. We favored percentage change primarily because of
 its more intuitive interpretation. Third, we decided for a two year time
 horizon instead of a one year horizon to relate more closely to the OECD
 definition of high growth firms that is defined over a three year
@@ -284,6 +287,7 @@ bisnode <- bisnode %>%
 ###################################
 # Visualization sales growth
 
+
 # make histogram that shows both sales growth and d1_sales_mil_log
 plot_sales_growth_both <- ggplot(bisnode, aes(x = sales_growth_ahead)) +
   geom_histogram(aes(fill = "Percentage Change"), bins = 100, color = color.outline, alpha = 0.5) +
@@ -295,6 +299,7 @@ plot_sales_growth_both <- ggplot(bisnode, aes(x = sales_growth_ahead)) +
                     name = "Growth Measures") +
   theme_bg()
 
+# include_in_report
 plot_sales_growth_both
 # It makes a difference whether relative growth is measured in log(diff) or percentage change
 # since logdiff is an inaccurate approximation for high changes this is especially relevant for high growth firms
@@ -1517,7 +1522,7 @@ kable(x = summary_all_mods, format = "latex", booktabs=TRUE,  digits = 3, row.na
 ### Confusion Table
 The confusion table shows that we have an accuracy of 82.03% on the holdout set. The model only predicts 1.65% of models to have high growth whereas the prevalence of high growth firms in the data is 18.57%. This low sensitivity (6%) is necessary in order to arrive at the high specificity (99.3%) we desire. This is a trade off we are willing to engage in, in order to avoid investing in firms that will not outperform the market or might even go bankrupt. If we apply our model to similar datasets in multiple countries we will still arrive at a reasonably large number of predicted high growth firms such that our portfolio will be diversified. 
 
-Of course, we realize that we could not test the external validity of our model and applying it in other countries migth lead to worse performance. To that end we conduct another exercise and apply our model to different market segments, that is, manufacturing and services.
+Of course, we realize that we could not test the external validity of our model and applying it in other countries might lead to worse performance. To that end we conduct another exercise and apply our model to different market segments, that is, manufacturing and services.
 
 
 <!-- Task1.3: Show a confusion table (on a selected fold or holdout set) -->
@@ -1651,6 +1656,7 @@ rf_summary_manu <- data.frame("CV RMSE" = CV_RMSE[["rf_p_manu"]],
                          "Threshold for Fold5" = best_treshold$threshold,
                          "Avg expected loss" = expected_loss[["rf_p_manu"]],
                          "Expected loss for Fold5" = expected_loss_cv[[fold]])
+
 
 kable(x = rf_summary_manu, format = "latex", booktabs=TRUE,  digits = 3, row.names = TRUE,
       linesep = "", col.names = c("CV RMSE", "CV AUC",
@@ -1790,9 +1796,7 @@ expected_loss_holdout_serv <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/
 ```
 
 ### Comparison of models in manufacturing and services
-The random forest performs better in the services sector. It exhibits a lower RMSE, a higher AUC and a lower expected loss. More differences can be seen in the respective confusion tables. First, manufacturing exhibits a higher prevalence of high growth firms (20.6% versus 17.6%). The mode XXX.
-
-In both subsets our random forest exhibits similar performance. Interestingly RMSE, AUC and expected loss are all identical up to three digits. The optimal threshold is somewhat lower in the services subset. This already hints at the more profound difference between the samples that we can see in the confusion matrices. Even though expected losses are identical, they are not identically distributed over false positives and false negatives. First, it should be noted that the prevalence of high growth firms is lower in the services sector (17.6%) than in the manufacturing sector (20.6%). Second, the model is much more cautious in predicting high growth in the services sector. Here only 4.5% of all firms are predicted as high growth compared to 14.4% in manufacturing. Still, the false positive rate is lower in manufacturing. It seems to be the case that it is easier to avoid predicting false positives in this subset. Hence, the model can arrive at a rate of positive predictions that is closer to the prevalence in the data.  
+The random forest performs better in the services sector. It exhibits a lower RMSE, a higher AUC and a lower expected loss. More differences can be seen in the respective confusion tables. First, manufacturing exhibits a higher prevalence of high growth firms (20.6% versus 17.6%). Nevertheless, the model performs better in predicting high growth firms in services. In this sector it exhibits a lower false positive rate and a lower false negative rate. Notably, the false positive rate in our holdout set is at zero, meaning we classified no firm in the services sector as fast growing that did not turn out to become a high growth firm. This finding points to the services industry as an attractive market albeit its lower average growth rates. Int seems to be the case that the characteristics of firms in services make their future growth more predictable.
 
 <!-- Task2.3: Compare the model performance across two samples -->
 
@@ -1814,6 +1818,7 @@ summary_manu_serv <- data.frame(Model = c("Manufacturing", "Services"),
                                            expected_loss$rf_p_serv))
 # identical loss, different thresholds used look at CM to interpret this
 
+# include_in_report
 kable(x = summary_manu_serv, format = "latex", booktabs=TRUE,  digits = 3, row.names = TRUE,
       linesep = "", col.names = c("Model", "CV RMSE", "CV AUC",
                                   "CV threshold", "CV expected Loss")) %>%
@@ -1865,9 +1870,10 @@ rownames(cm6_perc) <- c("Predicted Low Growth", "Predicted High Growth", "Total"
 cm5_perc[] <- lapply(cm5_perc, function(x) sprintf("%.2f%%", x * 100))
 cm6_perc[] <- lapply(cm6_perc, function(x) sprintf("%.2f%%", x * 100))
 
+#include_in_report
 kable(x = cm5_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
-      linesep = "") %>%
-  kable_styling(position = "center")
+      linesep = "")
+# include_in_report
 kable(x = cm6_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = TRUE,
       linesep = "") %>%
   kable_styling(position = "center")
@@ -2316,11 +2322,17 @@ rf_model_p_serv_InteractLossPlot <- createInteractLossPlot(roc_obj, best_treshol
 
 We estimated three models to predict high growth firms (logit, logit LASSO, random forest). Random forest turned out to be the best model, both, when evaluated based on RMSE or AUC as well as expected loss.
 
-Our definition of high growth is based on average annual sales growth over two years ahead above 30%. In our loss function we assigned 50% higher costs to false positives, reflecting our desire to avoid bad investments. This decision lead to a high specificity of our classification but at the same time to a low sensitivity. We prefer this trade-off since we do not need to identify all high growth firms but rather just find some of them with enough confidence to make an investment. 
+Our definition of high growth is based on average annual sales growth over two years ahead above 30%. In our loss function we assigned 50% higher costs to false positives, reflecting our desire to avoid bad investments. This decision lead to a high specificity of our classification but at the same time to a low sensitivity. We prefer this trade-off, since we do not need to identify all high growth firms but rather just find some of them with enough confidence to make an investment. 
+
+We also created some visualizations that help understand the influence of important variables of our best model. These visualizations including some discussions can be found in a dashboard that is linked to this report.
+
+In a next step, we applied our model to the two segments of manufacturing and services. The model performs better in the services sector leading to lower false positives and lower false negatives.
+
+We are confident that our model points us to some of the firms with the highest growth potential and believe it to be a valuable tool for predicting high growth firms. At the same time, we realize, that our high specificity comes at the cost of a low sensitivity. This means that we will miss many other high growth firms.
+
 
 <!-- In a next step we applied our model to the two segments of manufacturing and services. The model performs better in the services sector leading to lower false positives and lower false negatives. -->
 
-## Section on variable importance/PDP/Shapley here (into dashboard)
 
 
 <!-- Save data environment for dashboard  -->
