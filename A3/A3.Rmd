@@ -1841,12 +1841,14 @@ kable(x = cm6_perc, format = "latex", booktabs = TRUE,  digits = 3, row.names = 
 
 ```
 
-<!-- Task3.1: Use some methods to interpret your random forest probability model (Shapley, PDP) -->
+<!-- Task3.1: Use some methods to interpret your random forest probability model -->
 
-<!-- RF VAR IMP (all 3) W/OUT LOSS adjust  -->
+<!-- RF VAR IMP (all 3)  -->
 
 ```{r}
-library(plotly)
+
+
+rf_models <- list(rf_model_p, rf_model_p_manu, rf_model_p_serv)
 
 # Create an empty list to store the plots
 rf_model_plots <- list()
@@ -1887,18 +1889,14 @@ for (i in seq_along(rf_models)) {
   # Save the plot
   rf_model_plots[[paste0("rf_model_plot_10_", i)]] <- current_plot_10
 }
+# 
+# # Print or view the plots
+# for (i in seq_along(rf_model_plots)) {
+#   print(rf_model_plots[[i]])
+# }
 
-# Print or view the plots
-for (i in seq_along(rf_model_plots)) {
-  print(rf_model_plots[[i]])
-}
-
-
-rf_model_plots$rf_model_plot_all_1
 
 ```
-
-
 
 ### Variable importance grouped
 
@@ -1917,8 +1915,6 @@ group.importance <- function(rf.obj, groups) {
 
 ```{r plotly,echo=FALSE, include=F, warning=F}
 ######################################################
-
-
 
 # Create an empty list to store the plots
 rf_model_plots_grouped <- list()
@@ -1971,8 +1967,8 @@ for (i in seq_along(rf_models)) {
 # }
 ```
 
-
 ```{r pdp,echo=FALSE, include=FALSE, warning=F, eval=FALSE}
+
 #########################################################################################
 # Partial Dependence Plots bisnode -------------------------------------------------------
 #########################################################################################
@@ -1981,20 +1977,26 @@ top10rfvar  <- c("material_exp","d1_sales_mil_log","personnel_exp","liq_assets",
 
 
 ```{r pdp,echo=FALSE, include=FALSE, warning=F, eval=FALSE}
-# ONLY DO ONCE AND STORE 
+# ONLY DO ONCE AND STORE (bisnode)
+
 # Create a list to store the PDP outputs
-pdp_outputs <- list()
+# pdp_outputs <- list()
+# 
+# #top10rfvar <- c("ceo_age")
+# 
+# # Loop over predictor variables
+# for (pred_var in top10rfvar) {
+#   # Generate PDP for the current predictor variable
+#   pdp_output <- pdp::partial(rf_model_p, pred.var = pred_var, pred.grid = distinct_(bisnode_holdout[1:100,], pred_var), train = bisnode_work[1:100,])
+#   
+#   # Save the PDP output
+#   pdp_outputs[[paste0("pdp_", pred_var)]] <- pdp_output
+# }
 
-top10rfvar <- c("ceo_age")
+#saveRDS(pdp_outputs, paste0(output, "pdp_outputs.RDS"))
 
-# Loop over predictor variables
-for (pred_var in top10rfvar) {
-  # Generate PDP for the current predictor variable
-  pdp_output <- pdp::partial(rf_model_p, pred.var = pred_var, pred.grid = distinct_(bisnode_holdout, pred_var), train = bisnode_work)
-  
-  # Save the PDP output
-  pdp_outputs[[paste0("pdp_", pred_var)]] <- pdp_output
-}
+pdp_outputs <- readRDS(paste0(output, "pdp_outputs.RDS"))
+
 ```
 
 ```{r}
@@ -2009,18 +2011,20 @@ for (pred_var in names(pdp_outputs)) {
     dp_plot <- pdp_output %>%
       autoplot() +
       geom_point(color = color[1], size = 2) +
-      ylab("Predicted price") +
+      ylab("Predicited Growth") +
       xlab(pred_var) +
-      theme_bg()
+      theme_bg() 
+     # scale_y_continuous(limits = c(0, 1))
     
   } else {
     pdp_plot <- pdp_output %>%
       autoplot() +
       geom_point(color = color[1], size = 2) +
       geom_line(color = color[1], size = 1) +
-      ylab("Growth") +
+      ylab("Predicited Growth") +
       xlab(pred_var) +
       theme_bg()
+    #scale_y_continuous(limits = c(0, 1))
     
     # Save the plot
   rf_pdp_plot[[paste0(pred_var)]] <- pdp_plot
@@ -2034,20 +2038,24 @@ for (pred_var in names(pdp_outputs)) {
 # Partial Dependence Plots MANU -------------------------------------------------------
 #########################################################################################
 
-# ONLY DO ONCE AND STORE 
+# ONLY DO ONCE AND STORE (manu)
 
 # Create a list to store the PDP outputs
-pdp_outputs_manu <- list()
+# pdp_outputs_manu <- list()
+# 
+# #rfvars_test <- c("ceo_age","origin","")
+# # Loop over predictor variables
+# for (pred_var in top10rfvar) {
+#   # Generate PDP for the current predictor variable
+#   pdp_output <- pdp::partial(rf_model_p_manu, pred.var = pred_var, pred.grid = distinct_(manu_holdout[1:100,], pred_var), train = manu_work[1:100,])
+#   
+#   # Save the PDP output
+#   pdp_outputs_manu[[paste0("pdp_", pred_var)]] <- pdp_output
+# }
 
-#rfvars_test <- c("ceo_age","origin","")
-# Loop over predictor variables
-for (pred_var in top10rfvar) {
-  # Generate PDP for the current predictor variable
-  pdp_output <- pdp::partial(rf_model_p_manu, pred.var = pred_var, pred.grid = distinct_(manu_holdout, pred_var), train = manu_work)
-  
-  # Save the PDP output
-  pdp_outputs_manu[[paste0("pdp_", pred_var)]] <- pdp_output
-}
+#saveRDS(pdp_outputs_manu, paste0(output, "pdp_outputs_manu.RDS"))
+
+pdp_outputs_manu <- readRDS(paste0(output, "pdp_outputs_manu.RDS"))
 ```
 
 ```{r}
@@ -2062,23 +2070,27 @@ for (pred_var in names(pdp_outputs_manu)) {
     dp_plot <- pdp_output %>%
       autoplot() +
       geom_point(color = color[1], size = 2) +
-      ylab("Predicted price") +
+      ylab("Predicited Growth") +
       xlab(pred_var) +
       theme_bg()
+    #  scale_y_continuous(limits = c(0, 1))
     
   } else {
     pdp_plot <- pdp_output %>%
       autoplot() +
       geom_point(color = color[1], size = 2) +
       geom_line(color = color[1], size = 1) +
-      ylab("Growth") +
+      ylab("Predicited Growth") +
       xlab(pred_var) +
       theme_bg()
+     # scale_y_continuous(limits = c(0, 1))
     
     # Save the plot
   rf_pdp_plot_manu[[paste0(pred_var)]] <- pdp_plot
   }
 }
+
+#rf_pdp_plot_manu$pdp_ceo_age
 ```
 
 ```{r pdp,echo=FALSE, include=FALSE, warning=F, eval=FALSE}
@@ -2087,22 +2099,24 @@ for (pred_var in names(pdp_outputs_manu)) {
 # Partial Dependence Plots SERV -------------------------------------------------------
 #########################################################################################
 
-# ONLY DO ONCE AND STORE 
+# ONLY DO ONCE AND STORE (serv)
 
-# Create a list to store the PDP outputs
-pdp_outputs_serv <- list()
+# # Create a list to store the PDP outputs
+# pdp_outputs_serv <- list()
+# 
+# #rfvars_test <- c("ceo_age","origin","")
+# # Loop over predictor variables
+# for (pred_var in top10rfvar) {
+#   # Generate PDP for the current predictor variable
+#   pdp_output <- pdp::partial(rf_model_p_serv, pred.var = pred_var, pred.grid = distinct_(serv_holdout[1:100,], pred_var), train = serv_work[1:100,])
+#   
+#   # Save the PDP output
+#   pdp_outputs_serv[[paste0("pdp_", pred_var)]] <- pdp_output
+# }
+# 
+# saveRDS(pdp_outputs_serv, paste0(output, "pdp_outputs_serv.RDS"))
 
-#rfvars_test <- c("ceo_age","origin","")
-# Loop over predictor variables
-for (pred_var in top10rfvar) {
-  # Generate PDP for the current predictor variable
-  pdp_output <- pdp::partial(rf_model_p_serv, pred.var = pred_var, pred.grid = distinct_(serv_holdout, pred_var), train = serv_work)
-  
-  # Save the PDP output
-  pdp_outputs_serv[[paste0("pdp_", pred_var)]] <- pdp_output
-}
-
-
+pdp_outputs_serv <- readRDS(paste0(output, "pdp_outputs_serv.RDS"))
 ```
 
 ```{r}
@@ -2117,23 +2131,26 @@ for (pred_var in names(pdp_outputs_serv)) {
     dp_plot <- pdp_output %>%
       autoplot() +
       geom_point(color = color[1], size = 2) +
-      ylab("Predicted price") +
+      ylab("Predicited Growth") +
       xlab(pred_var) +
-      theme_bg()
+      ylim = c(0, 1)+
+      theme_bg() 
+    #scale_y_continuous(limits = c(0, 1))
     
   } else {
-    pdp_plot <- pdp_output %>%
+  pdp_plot <- pdp_output %>%
       autoplot() +
       geom_point(color = color[1], size = 2) +
       geom_line(color = color[1], size = 1) +
-      ylab("Growth") +
+      ylab("Predicited Growth") +
       xlab(pred_var) +
       theme_bg()
-    
     # Save the plot
   rf_pdp_plot_serv[[paste0(pred_var)]] <- pdp_plot
   }
 }
+
+#rf_pdp_plot_serv$pdp_ceo_age
 ```
 <!-- Task 3.2: Show expected loss based on different thresholds. -->
 <!-- Kick out this chunk if the one below works for shiny-->
@@ -2271,19 +2288,17 @@ We estimated three models to predict high growth firms (logit, logit LASSO, rand
 
 Our definition of high growth is based on average annual sales growth over two years ahead above 30%. In our loss function we assigned 50% higher costs to false positives, reflecting our desire to avoid bad investments. This decision lead to a high specificity of our classification but at the same time to a low sensitivity. We prefer this trade-off since we do not need to identify all high growth firms but rather just find some of them with enough confidence to make an investment. 
 
+<!-- In a next step we applied our model to the two segments of manufacturing and services. The model performs better in the services sector leading to lower false positives and lower false negatives. -->
+
 ## Section on variable importance/PDP/Shapley here (into dashboard)
-What is more, we analyzed the influence of the variables entering our model. We find that XXXX.
 
-In a next step we applied our model to the two segments of manufacturing and services. The model performs better in the services sector leading to lower false positives and lower false negatives.
-
-XXXX
 
 <!-- Save data environment for dashboard  -->
 
 ```{r}
-save.image(file = "A3.RData") # specify location 
+#save.image(file = "A3.RData") # saves in data_dir!
 
-save(list = c("bisnode", "bisnode_work","bisnode_holdout","rf_model_p","rf_model_p_manu","rf_model_p_serv","rf_model_p_InteractLossPlot","rf_model_p_manu_InteractLossPlot","rf_model_p_serv_InteractLossPlot","rf_model_plots","rf_model_plots_grouped","rfvars","pdp_outputs","rf_pdp_plot","rf_pdp_plot_manu","rf_pdp_plot_serv"), file = "A3_dashboard.RData")
+#save(list = c("bisnode", "bisnode_work","bisnode_holdout","rf_model_p","rf_model_p_manu","rf_model_p_serv","rf_model_p_InteractLossPlot","rf_model_p_manu_InteractLossPlot","rf_model_p_serv_InteractLossPlot","rf_model_plots","rf_model_plots_grouped","rfvars","pdp_outputs","pdp_outputs_manu","pdp_outputs_serv","rf_pdp_plot","rf_pdp_plot_manu","rf_pdp_plot_serv"), file = "A3_dashboard.RData")
 ```
 
 <!-- References 

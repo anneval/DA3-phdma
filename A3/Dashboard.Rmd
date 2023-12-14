@@ -2,7 +2,7 @@
 title: "Predicting fast growth"
 output: 
   flexdashboard::flex_dashboard:
-    theme: journal #  yeti
+    theme: yeti #  yeti
       #bg: "#101010"
       #fg: "#FDF7F7" 
       #primary: "#ED79F9"
@@ -10,7 +10,7 @@ output:
       #code_font: !expr bslib::font_google("JetBrains Mono")
     orientation: rows
     version: 4
-    #source_code: embed
+    source_code: embed
     vertical_layout: scroll
     #social: ["menu"]
     navbar:
@@ -20,11 +20,9 @@ output:
     runtime: shiny
 ---
 
-
-
 <!-- Task3.1: Use some methods to interpret your random forest probability model (Shapley, PDP) --> 
 
-<!-- Task3.2: Create a shiny (flexdashboard) app for the project where you can show (1) how key variables influence the prediction (!Shapley) and (2) show expected loss based on different thresholds. -->
+<!-- Task3.2: Create a shiny (flexdashboard) app for the project where you can show (1) how key variables influence the prediction and (2) show expected loss based on different thresholds. -->
 
 
 ```{r global setup, include=FALSE}
@@ -64,6 +62,7 @@ library(knitr)
 library(ggplot2)
 library(readxl)
 library(shiny)
+library(shinyjs)
 library(treeshap)
 library(pdp)
 library(pROC)
@@ -78,13 +77,19 @@ load(paste(data_in,"A3_dashboard.RData",sep = "/")) #activate once we have corre
 ```
 # Variable Importance
 #### **Importance of key variables**
-### {style="border: 0px; background: none"}
- 
+#### {style="border: 0px; background: none"}
+
+In this dashboard we visualize our findings of the best-performing model when predicting fast growth for the bisnode data set. According to our evaluation metrics (RMSE, AUC, etc.), the best-performing model is the Random forest. Since this is a “black-box” Machine Learning model, the interactive dashboard allows us to get a better understanding of how the actual predictions are created and investigate why the Random forest model was the best-performing model.One way to do this is by looking at the features’ contribution to predicted values on average, i.e. variable importance. Understanding what factors influence fast growth the most will help the firms to make informed decisions about their investment strategies. The current page shows three variable-importance graphs. First, including all features; second, the ten most important features; and last, the importance grouped by factors. On top of all three graphs there is a tab that selects which of the data sets (bisnod, manufacturing or services) we want to look at. 
+
+First, considering the entire 'bisnode' data set we can the variable importance plot including all features shows the variables ‘CHANGE’, ‘liq_assets’ & ‘curr_assets’ contribute the most. In percentage terms together, these three variables explain about 19% of the prediction performance. Looking at th second graph which displays only the ten most important features we see that the ten most important variables each explain between 5-7% of the prediction performance. Overall we observe the typical shape that ten to fifteen variables are quite important in explaining the prediction outcome and the others contribute relatively little. The last plot groups the factor variables together and recalculates the variable importance. It indicates that the factor variables together contribute much more than previously on their own. This is especially true for the industry variable in the 'bisnode' and manufacturing data sets. 
+Overall the ten most important variables remain the same for all data sets. However some of them become marginally more or less important when changing the chosen data set. The same is true when considering the graph displaying the importance of all features for different data sets.
+
 ## Row {.tabset .tabset-fade}
 ### Bisnode 
 Variable importance all features
 
 ```{r, include=T}
+
 ##############################
 # 3) full varimp plot, above a cutoff
 ##############################
@@ -112,8 +117,10 @@ Variable importance all features
 rf_model_plots$rf_model_plot_all_3
 ```
 
+
 ## Row {.tabset .tabset-fade}
 ### Bisnode 
+
 Variable importance top 10 
 ```{r, include=T}
 ##############################
@@ -144,8 +151,11 @@ rf_model_plots$rf_model_plot_10_3
 ```
 
 
+
 ## Row {.tabset .tabset-fade}
+
 ### Bisnode 
+
 Variable importance grouped
 ```{r, include=T}
 ##############################
@@ -183,11 +193,17 @@ rf_model_plots_grouped$rf_model_var_imp_grouped_plot3
 # <font size="3">Bisnode</font> {data-navmenu="PDP"}
 ### {style="border: 0px; background: none"}
 
+This page of the dashboard interactively displays the different partial dependence plots. In a partial dependence plot gives us an even deeper analysis between each value of a predictor and the predicted values. Via the tab at the top of the page the three different data sets can be chosen. On the left hand side there is a drop-down menu where one of the top ten variables can be selected to show its partial dependence plot. Here non of the  top ten variables are factors. Concentrating on one variable for example the "ceo age" we see in the 'bisnode' data that when the ceo is between 45 and 65 years old the model more likely predicted fast growth. The same is true for the service sub set. If we consider only the manufacturing data this age range becomes more broad. The effect for the most important variable for the 'bisnode' data the material expenses seem not change much once they are larger than 500.000.
+
 ## Sidebar {.sidebar}
 ```{r, include=TRUE}
 # Sample list of saved graphs
+
 saved_graphs <- rf_pdp_plot
-selectInput("feature_selector", "Select a Feature", choices = names(saved_graphs))
+selectInput("feature_selector",
+            label = h3("Select a feature"),
+            choices = names(rf_pdp_plot),
+)
 
 ```
 
@@ -205,12 +221,16 @@ renderPlot({
 # <font size="3">Manufacturing</font> {data-navmenu="PDP"}
 ### {style="border: 0px; background: none"}
 
+This page of the dashboard interactively displays the different partial dependence plots. In a partial dependence plot gives us an even deeper analysis between each value of a predictor and the predicted values. Via the tab at the top of the page the three different data sets can be chosen. On the left hand side there is a drop-down menu where one of the top ten variables can be selected to show its partial dependence plot. Here non of the  top ten variables are factors. Concentrating on one variable for example the "ceo age" we see in the 'bisnode' data that when the ceo is between 45 and 65 years old the model more likely predicted fast growth. The same is true for the service sub set. If we consider only the manufacturing data this age range becomes more broad. The effect for the most important variable for the 'bisnode' data the material expenses seem not change much once they are larger than 500.000.
+
 ## Sidebar {.sidebar}
 ```{r, include=TRUE}
 # Sample list of saved graphs
-saved_graphs <- rf_pdp_plot_manu
-selectInput("feature_selector", "Select a Feature", choices = names(saved_graphs))
-
+saved_graphs_manu <- rf_pdp_plot_manu
+selectInput("feature_selector",
+            label = h3("Select a feature"),
+            choices = names(rf_pdp_plot_manu),
+)
 ```
 
 Column
@@ -220,19 +240,23 @@ Column
 ```{r, include=TRUE}
 renderPlot({
   selected_feature <- input$feature_selector
-  print(saved_graphs[[selected_feature]])
+  print(saved_graphs_manu[[selected_feature]])
 })
 ```
 
 # <font size="3">Services</font> {data-navmenu="PDP"}
 ### {style="border: 0px; background: none"}
 
+This page of the dashboard interactively displays the different partial dependence plots. In a partial dependence plot gives us an even deeper analysis between each value of a predictor and the predicted values. Via the tab at the top of the page the three different data sets can be chosen. On the left hand side there is a drop-down menu where one of the top ten variables can be selected to show its partial dependence plot. Here non of the  top ten variables are factors. Concentrating on one variable for example the "ceo age" we see in the 'bisnode' data that when the ceo is between 45 and 65 years old the model more likely predicted fast growth. The same is true for the service sub set. If we consider only the manufacturing data this age range becomes more broad. The effect for the most important variable for the 'bisnode' data the material expenses seem not change much once they are larger than 500.000.
+
 ## Sidebar {.sidebar}
 ```{r, include=TRUE}
 # Sample list of saved graphs
-saved_graphs <- rf_pdp_plot_serv
-selectInput("feature_selector", "Select a Feature", choices = names(saved_graphs))
-
+saved_graphs_serv <- rf_pdp_plot_serv
+selectInput("feature_selector",
+            label = h3("Select a feature"),
+            choices = names(rf_pdp_plot_serv),
+)
 ```
 
 Column
@@ -242,14 +266,14 @@ Column
 ```{r, include=TRUE}
 renderPlot({
   selected_feature <- input$feature_selector
-  print(saved_graphs[[selected_feature]])
+  print(saved_graphs_serv[[selected_feature]])
 })
 ```
 
 # Threshold decision
 #### **Expected loss based on different thresholds:**
 
-TEXT 
+The graph below shows the expected loss based on different thresholds. Using the tabs we can switch between the main data set 'bisnode' and the two sub samples 'manufacturing' and 'services'. Moving the cursor along the graph we see how changing the threshold would result in a different level of loss. For the 'bisnode' data the optimal threshold is at 0.69 with a loss of 0.18. However the shape of the graph illustrates that after a threshold of 0.40 the marginal decrease in loss is rather small as the curve flattens out. The same is true for the sub data sets. For the 'manufacturing' data the optimal threshold is at 0.59 with a loss of 0.20 and for the 'services' data at 0.55 with a loss of 0.17. Both curves have a similar shape as the 'bisnode' data. Overll ew conclude that the model performs better in the services sector leading to lower false positives and lower false negatives and thus as indicated the lowest loss.
 
 ## Row {.tabset .tabset-fade}
 ### Bisnode
