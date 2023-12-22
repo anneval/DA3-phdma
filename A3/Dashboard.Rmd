@@ -17,7 +17,7 @@ output:
       - {icon: "fa-github", 
          title: "Repository", 
          href: "https://github.com/anneval/DA3-phdma/tree/main/A3", align: right, target: blank}
-    runtime: shiny
+runtime: shiny
 ---
 <!-- Comment @Gabor: We realized only very late now that once we click 'open in browser' after already successfully running the document our PDPs vanish. Unfortunately we could not find a solution for that any more --> 
 
@@ -38,8 +38,13 @@ options(scipen = 999)
 
 ```{r md setup, include=FALSE}
 # Set options for markdown
-knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies')
+#knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies')
 
+dirname <-  '~/Documents/Study/WS_23_24/Pred_MLE_Econ/DA3-phdma/A3'
+if (!dir.exists(dirname))dir.create(dirname,recursive=TRUE)
+
+
+#knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies')
 # store different directories here:
 # C:/Users/thuebel/OneDrive - WU Wien/Docs/06 Courses and Study/02 Prediction with ML for Economists/da_case_studies
 # C:/Users/avalder/OneDrive - WU Wien/Documents/Study/WS_23_24/Pred_MLE_Econ/da_case_studies
@@ -49,9 +54,9 @@ knitr::opts_knit$set(root.dir = 'C:/Users/avalder/OneDrive - WU Wien/Documents/S
 <!-- Set directory, load functions and theme  --> 
 ```{r helper functions, include=FALSE}
 #getwd()
-source("set-data-directory.R")
-source("ch00-tech-prep/theme_bg.R")
-source("ch00-tech-prep/da_helper_functions.R")
+#source("set-data-directory.R")
+#source("ch00-tech-prep/theme_bg.R")
+#source("ch00-tech-prep/da_helper_functions.R")
 ```
 
 ```{r libraries, include=FALSE}
@@ -64,17 +69,18 @@ library(ggplot2)
 library(readxl)
 library(shiny)
 library(shinydashboard)
-library(treeshap)
+#library(treeshap)
 library(pdp)
 library(pROC)
 library(plotly)
 ```
 
 ```{r data import,include=FALSE}
-data_in <- paste(data_dir,"bisnode-firms", sep = "/")
+#data_in <- paste(dirname,"bisnode-firms", sep = "/")
 #load(paste(data_in,"A3.RData",sep = "/")) 
-load(paste(data_in,"A3_dashboard.RData",sep = "/"))
+load("A3_dashboard.RData")
 ```
+
 # Variable Importance
 #### **Importance of key variables**
 #### {style="border: 0px; background: none"}
@@ -272,6 +278,8 @@ renderPlot({
   selected_feature <- input$feature_selector
   print(saved_graphs_serv[[selected_feature]])
 })
+
+
 ```
 
 # Threshold decision

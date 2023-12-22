@@ -1,0 +1,12 @@
+name: dashboard
+title:
+username: avalder
+account: avalder
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 10839625
+bundleId: 8076520
+url: https://avalder.shinyapps.io/dashboard/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
